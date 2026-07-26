@@ -4369,11 +4369,11 @@ function openAdminModal(){
   };
 }
 function openPortfolioModal(){
-  const totalPnl = positions.reduce((a,p)=>a+pnlFor(p),0);
+  const marketValue = positions.reduce((a,p)=> a + bidPrice(symbols[p.symIdx]) * p.vol * symbols[p.symIdx].unit, 0);
   openModal(t('portfolioTitle'), `
     <div class="stat-grid">
       <div class="stat-box"><div class="lbl">${t('balance')}</div><div class="val">${fmt(balance,2)}</div></div>
-      <div class="stat-box"><div class="lbl">${t('equity')}</div><div class="val">${fmt(balance+totalPnl,2)}</div></div>
+      <div class="stat-box"><div class="lbl">${t('equity')}</div><div class="val">${fmt(balance+marketValue,2)}</div></div>
       <div class="stat-box"><div class="lbl">${t('tabOpen')}</div><div class="val">${positions.length}</div></div>
       <div class="stat-box"><div class="lbl">${t('closedPositionsLbl')}</div><div class="val">${closedTrades.length}</div></div>
     </div>

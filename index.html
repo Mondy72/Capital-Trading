@@ -122,6 +122,7 @@
   .tf-btn.active{color:#FFFFFF;background:var(--accent);border-color:var(--accent);font-weight:600;}
 
   .chart-wrap{position:relative;flex:1;min-height:340px;padding:10px 4px;}
+  .position-row.active-row{background:var(--bg-panel-raised);box-shadow:inset 3px 0 0 var(--accent);}
   canvas#chart{width:100%;height:100%;display:block;}
   .chart-price-tag{position:absolute;left:8px;background:var(--accent);color:#FFFFFF;font-family:var(--font-mono);font-weight:700;font-size:12px;padding:3px 8px;border-radius:5px;transform:translateY(-50%);transition:top .3s linear;box-shadow:0 2px 8px rgba(0,182,126,.35);}
   .chart-price-tag.down{background:var(--sell);color:#fff;}
@@ -186,9 +187,22 @@
     display:flex;flex-wrap:wrap;gap:0;background:var(--bg-panel);border-top:1px solid var(--border);
   }
   .summary-item{flex:1;min-width:130px;padding:14px 18px;border-inline-end:1px solid var(--border-soft);}
-  .summary-label{font-size:11.5px;color:var(--text-dim);margin-bottom:4px;}
+  .summary-label{font-size:11.5px;color:var(--text-dim);margin-bottom:4px;display:flex;align-items:center;gap:5px;}
   .summary-value{font-family:var(--font-mono);font-weight:600;font-size:15px;}
   .summary-value.accent{color:var(--accent);}
+  .balance-add-ico{
+    display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;
+    background:linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 65%, #000000));
+    color:#fff;font-size:12px;font-weight:700;line-height:1;cursor:pointer;flex-shrink:0;
+    box-shadow:0 1px 4px rgba(0,0,0,.2);
+    transition:transform .15s ease, box-shadow .15s ease, filter .15s ease;
+  }
+  .balance-add-ico:hover{transform:scale(1.15);box-shadow:0 2px 6px rgba(0,0,0,.25);filter:brightness(1.08);}
+  .balance-add-ico:active{transform:scale(.88);}
+  .currency-toggle{display:flex;gap:8px;margin-top:4px;}
+  .currency-toggle-btn{flex:1;padding:9px 10px;border-radius:9px;border:1.5px solid var(--border);background:var(--bg-panel-raised);color:var(--text-dim);font-size:13.5px;font-weight:600;cursor:pointer;transition:all .15s ease;text-align:center;}
+  .currency-toggle-btn.active{border-color:var(--accent);background:color-mix(in srgb, var(--accent) 14%, var(--bg-panel-raised));color:var(--accent);}
+
 
   /* ===== dropdowns (bell / menu / account) ===== */
   .dropdown-anchor{position:relative;}
@@ -564,7 +578,7 @@
 
   <!-- Summary bar -->
   <div class="summary-bar">
-    <div class="summary-item"><div class="summary-label"><span data-i18n="balance">الرصيد</span><span class="info-ico" data-info="infoBalance">؟</span></div><div class="summary-value" id="sumBalance">0.00</div></div>
+    <div class="summary-item"><div class="summary-label"><span data-i18n="balance">الرصيد</span><span class="info-ico" data-info="infoBalance">؟</span><span class="balance-add-ico" id="balanceAddBtn" title="إضافة رصيد">+</span></div><div class="summary-value"><span id="sumBalance">0.00</span></div></div>
     <div class="summary-item"><div class="summary-label"><span data-i18n="floatingPnl">الأرباح العائمة</span><span class="info-ico" data-info="infoFloatingPnl">؟</span></div><div class="summary-value" id="sumPnl">0.00</div></div>
     <div class="summary-item"><div class="summary-label"><span data-i18n="equity">الحقوق (Equity)</span><span class="info-ico" data-info="infoEquity">؟</span></div><div class="summary-value accent" id="sumEquity">0.00</div></div>
     <div class="summary-item"><div class="summary-label"><span data-i18n="usedMargin">الهامش المستخدم</span><span class="info-ico" data-info="infoUsedMargin">؟</span></div><div class="summary-value" id="sumMargin">0.00</div></div>
@@ -898,11 +912,14 @@ symbols.forEach(s=> s.fav = defaultFavNames.includes(s.name));
 // around this base every tick — see jitterSpread() — instead of sitting frozen.
 symbols.forEach(s=> s.baseStep = s.step);
 
-/* ---- Admin-controlled manual prices for Saudi stocks ----
+/* ---- Admin-controlled manual prices for any stock ----
    Backed by the `stock_price_overrides` table (symbol text primary key,
    price numeric). Public read (everyone must see the same price), admin-only
    write. The mock engine still jitters the price a little every tick, but
-   mean-reverts it back toward the admin's anchor instead of drifting freely. */
+   mean-reverts it back toward the admin's anchor instead of drifting freely.
+   Works with any symbol in any category — the moment an admin sets a manual
+   price, every live-fetch function skips that symbol (see `!s.anchorPrice`
+   guards above/below) until the override is cleared again. */
 let stockPriceOverridesList = [];
 async function loadStockPriceOverrides(){
   try {
@@ -912,10 +929,14 @@ async function loadStockPriceOverrides(){
     if(error) throw error;
     stockPriceOverridesList = data || [];
     stockPriceOverridesList.forEach(row=>{
-      const s = symbols.find(sym=> sym.cat==='saudi' && sym.name===row.symbol);
+      const s = symbols.find(sym=> sym.name===row.symbol);
       if(!s) return;
       s.anchorPrice = Number(row.price);
       s.price = s.anchorPrice;
+      // Drop any stale "live" flag so the badge reflects reality immediately
+      // instead of waiting up to 6 minutes to fall back to "محاكاة".
+      delete s.liveAt;
+      delete s.liveSource;
     });
   } catch(err){
     console.warn('could not load stock price overrides:', err);
@@ -1207,13 +1228,24 @@ const translations = {
 "cashbackMenuLabel": "اطلب كاش باك",
 "cashbackTitle": "طلب كاش باك على الإيداع",
 "cashbackIntro": "استمتع باسترداد نسبة من قيمة معاملاتك وفقًا لشروط وأحكام برنامج الكاش باك",
-"cashbackAmountLabel": "المبلغ اللي عايز تودّعه (ر.س)",
+"cashbackAmountLabel": "المبلغ اللي عايز تودّعه",
 "cashbackAmountErrorMsg": "من فضلك أدخل مبلغ صحيح أكبر من صفر",
 "cashbackSubmitBtn": "إرسال الطلب",
 "cashbackSuccessTitle": "تم إرسال طلبك",
 "cashbackSuccessMsg": "استلمنا طلبك. فريق كابيتال هيتواصل معاك على رقم هاتفك قريبًا بتفاصيل الكاش باك وإتمام الإيداع.",
 "cashbackSuccessNotifTitle": "تم إرسال طلب كاش باك",
 "cashbackPartialFailMsg": "استلمنا طلبك عن طريق الإيميل، لكن حصلت مشكلة في حفظه في النظام. فريق كابيتال هيتواصل معاك برضو، بس لو مسمعتش خبر خلال يوم كلّمنا مباشرة.",
+"depositTitle": "طلب إضافة رصيد",
+"depositIntro": "اكتب المبلغ اللي عايز تضيفه لرصيدك ورقم هاتفك، وفريق كابيتال هيتواصل معاك لإتمام عملية الإيداع.",
+"depositAmountLabel": "المبلغ اللي عايز تضيفه",
+"depositAmountErrorMsg": "من فضلك أدخل مبلغ صحيح أكبر من صفر",
+"depositSubmitBtn": "إرسال الطلب",
+"depositSuccessTitle": "تم إرسال طلبك",
+"depositSuccessMsg": "استلمنا طلبك. فريق كابيتال هيتواصل معاك على رقم هاتفك قريبًا لإتمام عملية إضافة الرصيد.",
+"depositSuccessNotifTitle": "تم إرسال طلب إضافة رصيد",
+"depositPartialFailMsg": "استلمنا طلبك عن طريق الإيميل، لكن حصلت مشكلة في حفظه في النظام. فريق كابيتال هيتواصل معاك برضو، بس لو مسمعتش خبر خلال يوم كلّمنا مباشرة.",
+"depositNeedsPlanTitle": "لازم تشترك في باقة الأول",
+"depositNeedsPlanMsg": "إضافة الرصيد متاحة بس للحسابات المميزة. اشترك في أي باقة الأول عشان تقدر تضيف رصيد وتبدأ التداول الحقيقي.",
 "reportTotalTrades": "عدد الصفقات المقفولة",
 "reportWinRate": "نسبة الصفقات الرابحة",
 "reportNetPnl": "صافي الأرباح/الخسائر",
@@ -1488,13 +1520,24 @@ const translations = {
 "cashbackMenuLabel": "Request Cash Back",
 "cashbackTitle": "Cash Back Deposit Request",
 "cashbackIntro": "Enter the amount you'd like to deposit and your phone number, and the Capital team will contact you with the available cash-back rate and to complete the deposit.",
-"cashbackAmountLabel": "Amount to deposit (SAR)",
+"cashbackAmountLabel": "Amount to deposit",
 "cashbackAmountErrorMsg": "Please enter a valid amount greater than zero",
 "cashbackSubmitBtn": "Submit Request",
 "cashbackSuccessTitle": "Your request has been sent",
 "cashbackSuccessMsg": "We received your request. The Capital team will contact you on your phone soon with cash-back details and to complete the deposit.",
 "cashbackSuccessNotifTitle": "Cash-back request sent",
 "cashbackPartialFailMsg": "We received your request by email, but there was a problem saving it in the system. The Capital team will still reach out, but if you don't hear back within a day, please contact us directly.",
+"depositTitle": "Add Balance Request",
+"depositIntro": "Enter the amount you'd like to add to your balance and your phone number, and the Capital team will contact you to complete the deposit.",
+"depositAmountLabel": "Amount to add",
+"depositAmountErrorMsg": "Please enter a valid amount greater than zero",
+"depositSubmitBtn": "Submit Request",
+"depositSuccessTitle": "Your request has been sent",
+"depositSuccessMsg": "We received your request. The Capital team will contact you on your phone soon to complete the balance top-up.",
+"depositSuccessNotifTitle": "Add-balance request sent",
+"depositPartialFailMsg": "We received your request by email, but there was a problem saving it in the system. The Capital team will still reach out, but if you don't hear back within a day, please contact us directly.",
+"depositNeedsPlanTitle": "Subscribe to a plan first",
+"depositNeedsPlanMsg": "Adding balance is only available for premium accounts. Subscribe to any plan first so you can add balance and start real trading.",
 "reportTotalTrades": "Closed Trades Count",
 "reportWinRate": "Win Rate",
 "reportNetPnl": "Net P/L",
@@ -2355,7 +2398,7 @@ function renderPositions(){
     if(p.tp != null) tpSlBits.push(`🎯${fmt(p.tp, s.decimals)}`);
     if(p.sl != null) tpSlBits.push(`🛑${fmt(p.sl, s.decimals)}`);
     const tpSlLine = tpSlBits.length ? `<div style="font-size:10.5px;color:var(--text-dim);margin-top:2px;">${tpSlBits.join(' · ')}</div>` : '';
-    return `<tr>
+    return `<tr class="position-row${p.symIdx===activeSymbolIdx?' active-row':''}" data-symidx="${p.symIdx}" style="cursor:pointer;">
       <td>${s.icon} ${s.short}${tpSlLine}</td>
       <td><span class="type-badge ${p.type}">${t('buy')}</span></td>
       <td>${p.vol.toFixed(2)}</td>
@@ -2364,6 +2407,15 @@ function renderPositions(){
       <td class="${pnlClass}">${pnl>=0?'+':''}${fmt(pnl,2)}</td>
     </tr>`;
   }).join('');
+  posBody.querySelectorAll('.position-row').forEach(row=>{
+    row.addEventListener('click', ()=>{
+      activeSymbolIdx = +row.dataset.symidx;
+      syncSymbolUI();
+      renderTickerStrip();
+      renderPositions();
+      document.querySelector('.chart-col').scrollIntoView({behavior:'smooth', block:'start'});
+    });
+  });
   updateSummary();
 }
 window.closePosition = closePosition;
@@ -2501,7 +2553,7 @@ async function fetchLiveCryptoPrices(){
     symbols.forEach(s=>{
       const pair = binanceSymbolMap[s.name];
       const real = pair && lookup[pair];
-      if(real && !isNaN(real)){
+      if(real && !isNaN(real) && !s.anchorPrice){
         s.price = real;
         s.step = Math.max(real*0.0006, real>=1 ? 0.01 : 0.0001);
         s.baseStep = s.step;
@@ -2527,7 +2579,7 @@ setInterval(fetchLiveCryptoPrices, 45000);
 liveDataStatus.coingecko = 'connecting';
 async function fetchLiveCoinGeckoPrices(){
   try {
-    const candidates = symbols.filter((s,i)=> (s.fav || i===activeSymbolIdx) && coingeckoIdMap[s.name]);
+    const candidates = symbols.filter((s,i)=> (s.fav || i===activeSymbolIdx) && coingeckoIdMap[s.name] && !s.anchorPrice);
     if(candidates.length===0){ liveDataStatus.coingecko='idle'; return; }
     const ids = [...new Set(candidates.map(s=>coingeckoIdMap[s.name]))];
     const res = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${encodeURIComponent(ids.join(','))}&vs_currencies=usd`);
@@ -2537,7 +2589,7 @@ async function fetchLiveCoinGeckoPrices(){
     candidates.forEach(s=>{
       const id = coingeckoIdMap[s.name];
       const real = data[id] && data[id].usd;
-      if(real && !isNaN(real)){
+      if(real && !isNaN(real) && !s.anchorPrice){
         s.price = real;
         s.step = Math.max(real*0.0006, real>=1 ? 0.01 : 0.0001);
         s.baseStep = s.step;
@@ -2654,7 +2706,7 @@ const SAUDI_PROXY_URL = 'https://lgisoufikwcaraclzdvr.supabase.co/functions/v1/s
 liveDataStatus.twelveData = 'connecting';
 async function fetchLiveTwelveData(){
   try {
-    const candidates = symbols.filter((s,i)=> (s.fav || i===activeSymbolIdx) && tdSymbolMap[s.name]);
+    const candidates = symbols.filter((s,i)=> (s.fav || i===activeSymbolIdx) && tdSymbolMap[s.name] && !s.anchorPrice);
     if(candidates.length===0){ liveDataStatus.twelveData='idle'; return; }
     const tdSymbols = [...new Set(candidates.map(s=>tdSymbolMap[s.name]))];
     const res = await fetch(`https://api.twelvedata.com/price?symbol=${encodeURIComponent(tdSymbols.join(','))}&apikey=${twelveDataKey}`);
@@ -2668,7 +2720,7 @@ async function fetchLiveTwelveData(){
       const tdSym = tdSymbolMap[s.name];
       const entry = lookup[tdSym];
       const real = entry && parseFloat(entry.price);
-      if(real && !isNaN(real)){
+      if(real && !isNaN(real) && !s.anchorPrice){
         s.price = real;
         s.step = Math.max(real*0.0004, real>=1 ? 0.01 : 0.0001);
         s.baseStep = s.step;
@@ -2698,7 +2750,7 @@ async function fetchLiveSaudiPrices(){
     // Fetch every Saudi symbol that has a real ticker mapped, not just favorites/active —
     // there are only ~44 of them and the proxy accepts a batched ticker list, so there's no
     // need to wait for the user to open/favorite a symbol before its price goes live.
-    const candidates = symbols.filter(s=> s.cat==='saudi' && saudiTickerMap[s.name]);
+    const candidates = symbols.filter(s=> s.cat==='saudi' && saudiTickerMap[s.name] && !s.anchorPrice);
     if(candidates.length===0){ liveDataStatus.saudi='idle'; return; }
     const tickers = [...new Set(candidates.map(s=>saudiTickerMap[s.name]))];
     const res = await fetch(`${SAUDI_PROXY_URL}?tickers=${encodeURIComponent(tickers.join(','))}`);
@@ -2710,7 +2762,7 @@ async function fetchLiveSaudiPrices(){
       const ticker = saudiTickerMap[s.name];
       const entry = prices[ticker];
       const real = entry && entry.price;
-      if(real && !isNaN(real)){
+      if(real && !isNaN(real) && !s.anchorPrice){
         s.price = real;
         s.step = Math.max(real*0.0004, real>=1 ? 0.01 : 0.0001);
         s.baseStep = s.step;
@@ -2738,7 +2790,7 @@ setInterval(fetchLiveSaudiPrices, 90000);
 liveDataStatus.yahooIndices = 'connecting';
 async function fetchLiveYahooIndices(){
   try {
-    const candidates = symbols.filter((s,i)=> (s.fav || i===activeSymbolIdx) && s.cat==='indices' && yahooIndexMap[s.name]);
+    const candidates = symbols.filter((s,i)=> (s.fav || i===activeSymbolIdx) && s.cat==='indices' && yahooIndexMap[s.name] && !s.anchorPrice);
     if(candidates.length===0){ liveDataStatus.yahooIndices='idle'; return; }
     const syms = [...new Set(candidates.map(s=>yahooIndexMap[s.name]))];
     const res = await fetch(`${YAHOO_PROXY_URL}?symbols=${encodeURIComponent(syms.join(','))}`);
@@ -2750,7 +2802,7 @@ async function fetchLiveYahooIndices(){
       const sym = yahooIndexMap[s.name];
       const entry = prices[sym];
       const real = entry && entry.price;
-      if(real && !isNaN(real)){
+      if(real && !isNaN(real) && !s.anchorPrice){
         s.price = real;
         s.step = Math.max(real*0.0004, real>=1 ? 0.01 : 0.0001);
         s.baseStep = s.step;
@@ -2777,7 +2829,7 @@ setInterval(fetchLiveYahooIndices, 90000);
 liveDataStatus.yahooCommodities = 'connecting';
 async function fetchLiveYahooCommodities(){
   try {
-    const candidates = symbols.filter((s,i)=> (s.fav || i===activeSymbolIdx) && s.cat==='commodities' && yahooCommodityMap[s.name]);
+    const candidates = symbols.filter((s,i)=> (s.fav || i===activeSymbolIdx) && s.cat==='commodities' && yahooCommodityMap[s.name] && !s.anchorPrice);
     if(candidates.length===0){ liveDataStatus.yahooCommodities='idle'; return; }
     const syms = [...new Set(candidates.map(s=>yahooCommodityMap[s.name]))];
     const res = await fetch(`${YAHOO_PROXY_URL}?symbols=${encodeURIComponent(syms.join(','))}`);
@@ -2789,7 +2841,7 @@ async function fetchLiveYahooCommodities(){
       const sym = yahooCommodityMap[s.name];
       const entry = prices[sym];
       const real = entry && entry.price;
-      if(real && !isNaN(real)){
+      if(real && !isNaN(real) && !s.anchorPrice){
         s.price = real;
         s.step = Math.max(real*0.0004, real>=1 ? 0.01 : 0.0001);
         s.baseStep = s.step;
@@ -2815,7 +2867,7 @@ setInterval(fetchLiveYahooCommodities, 90000);
 liveDataStatus.yahooGlobal = 'connecting';
 async function fetchLiveYahooGlobal(){
   try {
-    const candidates = symbols.filter((s,i)=> (s.fav || i===activeSymbolIdx) && s.cat==='global' && yahooGlobalMap[s.name]);
+    const candidates = symbols.filter((s,i)=> (s.fav || i===activeSymbolIdx) && s.cat==='global' && yahooGlobalMap[s.name] && !s.anchorPrice);
     if(candidates.length===0){ liveDataStatus.yahooGlobal='idle'; return; }
     const syms = [...new Set(candidates.map(s=>yahooGlobalMap[s.name]))];
     const res = await fetch(`${YAHOO_PROXY_URL}?symbols=${encodeURIComponent(syms.join(','))}`);
@@ -2827,7 +2879,7 @@ async function fetchLiveYahooGlobal(){
       const sym = yahooGlobalMap[s.name];
       const entry = prices[sym];
       const real = entry && entry.price;
-      if(real && !isNaN(real)){
+      if(real && !isNaN(real) && !s.anchorPrice){
         s.price = real;
         s.step = Math.max(real*0.0004, real>=1 ? 0.01 : 0.0001);
         s.baseStep = s.step;
@@ -2852,7 +2904,7 @@ setInterval(fetchLiveYahooGlobal, 90000);
 /* ============ Live real prices: forex (Frankfurter, api.frankfurter.dev, free, no key, reliable CORS) ============ */
 async function fetchLiveForexRates(){
   try {
-    const forexSymbols = symbols.filter(s=> s.cat==='forex');
+    const forexSymbols = symbols.filter(s=> s.cat==='forex' && !s.anchorPrice);
     const groups = {};
     forexSymbols.forEach(s=>{
       const [base, quote] = s.name.split('/');
@@ -2868,7 +2920,7 @@ async function fetchLiveForexRates(){
       if(!data.rates){ window.__liveErrors.forex = 'frankfurter: no rates in response'; continue; }
       forexSymbols.forEach(s=>{
         const [b,q] = s.name.split('/');
-        if(b===base && data.rates[q]){
+        if(b===base && data.rates[q] && !s.anchorPrice){
           const real = data.rates[q];
           s.price = real;
           s.step = Math.max(real*0.0004, real>=1 ? 0.0002 : 0.00001);
@@ -3118,6 +3170,25 @@ notifBtn.addEventListener('click', (e)=>{
   notifDropdown.classList.toggle('open');
   if(notifDropdown.classList.contains('open')) renderNotifDropdown();
 });
+
+const balanceAddBtn = document.getElementById('balanceAddBtn');
+if(balanceAddBtn){
+  balanceAddBtn.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    if(!currentUser){ openLoginModal(); return; }
+    if(accountMode !== 'real'){
+      openModal(t('depositNeedsPlanTitle'), `
+        <div class="modal-note">${t('depositNeedsPlanMsg')}</div>
+        <button class="modal-btn primary" id="depositGoPlanBtn">${t('subscribeBtn')}</button>
+        <button class="modal-btn ghost" id="depositNeedsPlanClose">${t('closeBtn')}</button>
+      `);
+      document.getElementById('depositNeedsPlanClose').onclick = closeModal;
+      document.getElementById('depositGoPlanBtn').onclick = ()=>{ closeModal(); openSubscriptionModal(); };
+      return;
+    }
+    openAddBalanceModal();
+  });
+}
 
 /* ============ Menu dropdown (☰) ============ */
 const menuBtn = document.getElementById('menuBtn');
@@ -3989,7 +4060,7 @@ async function loadPendingCashback(){
       return `
         <div class="plan-card" style="text-align:right;">
           <div class="plan-name">${r.email}</div>
-          <div class="plan-desc">المبلغ المطلوب إيداعه: ${fmt(r.amount,2)} ر.س</div>
+          <div class="plan-desc">المبلغ المطلوب إيداعه: ${fmt(r.amount,2)} ${t(r.currency==='USD'?'currencyUSD':'currencySAR')}</div>
           <div class="plan-desc">الهاتف: ${r.phone || '—'} · ${dateLabel}</div>
           <button class="modal-btn primary" style="margin-top:8px;" data-contacted-idx="${i}">📞 تواصلت مع العميل</button>
         </div>`;
@@ -4014,6 +4085,47 @@ async function loadPendingCashback(){
     listEl.innerHTML = `<div class="modal-note" style="color:var(--sell);">تعذّر تحميل الطلبات: ${err.message || 'حاول تاني'}</div>`;
   }
 }
+async function loadPendingDeposits(){
+  const listEl = document.getElementById('pendingDepositsList');
+  if(!listEl) return;
+  listEl.innerHTML = `<div class="modal-note">جاري التحميل...</div>`;
+  try {
+    const { data, error } = await supabaseClient.rpc('admin_list_pending_deposit_requests');
+    if(error) throw error;
+    if(!data || !data.length){
+      listEl.innerHTML = `<div class="modal-note">مفيش طلبات إضافة رصيد معلّقة دلوقتي.</div>`;
+      return;
+    }
+    listEl.innerHTML = data.map((r,i)=>{
+      const dateLabel = new Date(r.created_at).toLocaleString('ar-EG');
+      return `
+        <div class="plan-card" style="text-align:right;">
+          <div class="plan-name">${r.email}</div>
+          <div class="plan-desc">المبلغ المطلوب إضافته: ${fmt(r.amount,2)} ${t(r.currency==='USD'?'currencyUSD':'currencySAR')}</div>
+          <div class="plan-desc">الهاتف: ${r.phone || '—'} · ${dateLabel}</div>
+          <button class="modal-btn primary" style="margin-top:8px;" data-deposit-contacted-idx="${i}">📞 تواصلت مع العميل</button>
+        </div>`;
+    }).join('');
+    data.forEach((r,i)=>{
+      const btn = listEl.querySelector(`[data-deposit-contacted-idx="${i}"]`);
+      if(btn) btn.onclick = async ()=>{
+        btn.disabled = true;
+        btn.textContent = 'جاري التحديث...';
+        try {
+          const { error } = await supabaseClient.rpc('admin_mark_deposit_contacted', { request_id: r.id });
+          if(error) throw error;
+          btn.textContent = '✅ اتسجّل التواصل';
+        } catch(err){
+          btn.disabled = false;
+          btn.textContent = 'فشل — حاول تاني';
+          console.warn('markDepositContacted failed:', err);
+        }
+      };
+    });
+  } catch(err){
+    listEl.innerHTML = `<div class="modal-note" style="color:var(--sell);">تعذّر تحميل الطلبات: ${err.message || 'حاول تاني'}</div>`;
+  }
+}
 function openAdminRequestsTrackingModal(){
   openModal('📥 متابعة الطلبات', `
     <div class="modal-note">طلبات الاشتراك الجديدة (pending) مباشرة من الداتابيز — من غير ما تعتمد على وصول الإيميل.</div>
@@ -4025,11 +4137,19 @@ function openAdminRequestsTrackingModal(){
     <div class="modal-note">طلبات كاش باك على الإيداع — عملاء عايزين يودّعوا رصيد وسألوا عن نسبة الكاش باك.</div>
     <button class="modal-btn ghost" id="refreshCashbackBtn" style="margin-top:6px;">🔄 تحديث القائمة</button>
     <div id="pendingCashbackList" style="margin-top:10px;display:flex;flex-direction:column;gap:10px;"></div>
+
+    <div style="border-top:1px solid var(--border);margin:18px 0 14px;"></div>
+
+    <div class="modal-note">طلبات إضافة رصيد — عملاء مميزون عايزين يضيفوا رصيد لحسابهم.</div>
+    <button class="modal-btn ghost" id="refreshDepositsBtn" style="margin-top:6px;">🔄 تحديث القائمة</button>
+    <div id="pendingDepositsList" style="margin-top:10px;display:flex;flex-direction:column;gap:10px;"></div>
   `);
   loadPendingSubscriptions();
   loadPendingCashback();
+  loadPendingDeposits();
   document.getElementById('refreshPendingBtn').onclick = loadPendingSubscriptions;
   document.getElementById('refreshCashbackBtn').onclick = loadPendingCashback;
+  document.getElementById('refreshDepositsBtn').onclick = loadPendingDeposits;
 }
 function openAdminModal(){
   const planOptionsHTML = subscriptionPlans.map(p=>`<option value="${p.id}">${t(p.nameKey)} — ${p.price} ${planCurrencyLabel(p)}</option>`).join('');
@@ -4376,6 +4496,10 @@ function openCashbackModal(){
       <span class="field-label">${t('cashbackAmountLabel')}</span>
       <input class="field-input" style="text-align:right;" id="cashbackAmountInput" type="number" min="1" step="0.01" placeholder="1000">
     </div>
+    <div class="currency-toggle">
+      <button type="button" class="currency-toggle-btn active" id="cashbackCurSAR" data-currency="SAR">﷼ ${t('currencySAR')}</button>
+      <button type="button" class="currency-toggle-btn" id="cashbackCurUSD" data-currency="USD">$ ${t('currencyUSD')}</button>
+    </div>
     <div class="form-row">
       <span class="field-label">${t('phoneLabel')}</span>
       <input class="field-input" style="text-align:right;" id="cashbackPhoneInput" type="tel" placeholder="05xxxxxxxx">
@@ -4384,6 +4508,17 @@ function openCashbackModal(){
     <button class="modal-btn primary" id="cashbackSubmitBtn">${t('cashbackSubmitBtn')}</button>
     <button class="modal-btn ghost" id="cashbackCancelBtn">${t('noBtn')}</button>
   `);
+  let cashbackCurrency = 'SAR';
+  document.getElementById('cashbackCurSAR').onclick = ()=>{
+    cashbackCurrency = 'SAR';
+    document.getElementById('cashbackCurSAR').classList.add('active');
+    document.getElementById('cashbackCurUSD').classList.remove('active');
+  };
+  document.getElementById('cashbackCurUSD').onclick = ()=>{
+    cashbackCurrency = 'USD';
+    document.getElementById('cashbackCurUSD').classList.add('active');
+    document.getElementById('cashbackCurSAR').classList.remove('active');
+  };
   document.getElementById('cashbackCancelBtn').onclick = closeModal;
   document.getElementById('cashbackSubmitBtn').onclick = ()=>{
     const amount = parseFloat(document.getElementById('cashbackAmountInput').value);
@@ -4399,14 +4534,115 @@ function openCashbackModal(){
       errEl.style.display = 'block';
       return;
     }
-    requestCashback(amount, phone);
+    requestCashback(amount, phone, cashbackCurrency);
   };
 }
-async function requestCashback(amount, phone){
+function openAddBalanceModal(){
+  if(!currentUser){
+    openLoginModal();
+    return;
+  }
+  openModal(t('depositTitle'), `
+    <div class="modal-note">${t('depositIntro')}</div>
+    <div class="form-row">
+      <span class="field-label">${t('depositAmountLabel')}</span>
+      <input class="field-input" style="text-align:right;" id="depositAmountInput" type="number" min="1" step="0.01" placeholder="1000">
+    </div>
+    <div class="currency-toggle">
+      <button type="button" class="currency-toggle-btn active" id="depositCurSAR" data-currency="SAR">﷼ ${t('currencySAR')}</button>
+      <button type="button" class="currency-toggle-btn" id="depositCurUSD" data-currency="USD">$ ${t('currencyUSD')}</button>
+    </div>
+    <div class="form-row">
+      <span class="field-label">${t('phoneLabel')}</span>
+      <input class="field-input" style="text-align:right;" id="depositPhoneInput" type="tel" placeholder="05xxxxxxxx">
+    </div>
+    <div id="depositError" style="color:var(--sell);font-size:12.5px;display:none;"></div>
+    <button class="modal-btn primary" id="depositSubmitBtn">${t('depositSubmitBtn')}</button>
+    <button class="modal-btn ghost" id="depositCancelBtn">${t('noBtn')}</button>
+  `);
+  let depositCurrency = 'SAR';
+  document.getElementById('depositCurSAR').onclick = ()=>{
+    depositCurrency = 'SAR';
+    document.getElementById('depositCurSAR').classList.add('active');
+    document.getElementById('depositCurUSD').classList.remove('active');
+  };
+  document.getElementById('depositCurUSD').onclick = ()=>{
+    depositCurrency = 'USD';
+    document.getElementById('depositCurUSD').classList.add('active');
+    document.getElementById('depositCurSAR').classList.remove('active');
+  };
+  document.getElementById('depositCancelBtn').onclick = closeModal;
+  document.getElementById('depositSubmitBtn').onclick = ()=>{
+    const amount = parseFloat(document.getElementById('depositAmountInput').value);
+    const phone = document.getElementById('depositPhoneInput').value.trim();
+    const errEl = document.getElementById('depositError');
+    if(!amount || amount<=0){
+      errEl.textContent = t('depositAmountErrorMsg');
+      errEl.style.display = 'block';
+      return;
+    }
+    if(phone.length<8){
+      errEl.textContent = t('phoneErrorMsg');
+      errEl.style.display = 'block';
+      return;
+    }
+    requestAddBalance(amount, phone, depositCurrency);
+  };
+}
+async function requestAddBalance(amount, phone, currency){
+  currency = currency || 'SAR';
+  const curLabel = t(currency==='USD' ? 'currencyUSD' : 'currencySAR');
+  let dbSaved = false;
+  try {
+    const { error } = await supabaseClient.from('deposit_requests').insert({
+      user_id: currentUser.id, email: currentUser.email, phone, amount, currency, status: 'pending'
+    });
+    if(error) throw error;
+    dbSaved = true;
+  } catch(err){
+    console.warn('deposit request DB insert failed:', err);
+  }
+  try {
+    await fetch('https://api.web3forms.com/submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        access_key: WEB3FORMS_KEY,
+        subject: `طلب إضافة رصيد جديد — ${amount} ${curLabel}`,
+        from_name: 'كابيتال — طلبات إضافة رصيد',
+        email: currentUser.email,
+        phone: phone,
+        amount: amount + ' ' + curLabel,
+        message: `طلب إضافة رصيد جديد\nالمبلغ: ${amount} ${curLabel}\nبريد العميل: ${currentUser.email}\nرقم الهاتف: ${phone}${dbSaved?'':'\n⚠️ ملحوظة: الطلب فشل يتسجل في قاعدة البيانات، الإيميل ده هو السجل الوحيد له.'}`
+      })
+    });
+  } catch(err){
+    console.warn('deposit request email delivery failed:', err);
+  }
+  closeModal();
+  if(!dbSaved){
+    openModal(t('depositSuccessTitle'), `
+      <div class="modal-note">${t('depositPartialFailMsg')}</div>
+      <button class="modal-btn primary" id="depositDoneBtn">${t('closeBtn')}</button>
+    `);
+    document.getElementById('depositDoneBtn').onclick = closeModal;
+    return;
+  }
+  openModal(t('depositSuccessTitle'), `
+    <div class="modal-note">${t('depositSuccessMsg')}</div>
+    <button class="modal-btn primary" id="depositDoneBtn">${t('closeBtn')}</button>
+  `);
+  document.getElementById('depositDoneBtn').onclick = closeModal;
+  pushNotification(t('depositSuccessNotifTitle'), `${fmt(amount,2)} ${curLabel}`);
+}
+
+async function requestCashback(amount, phone, currency){
+  currency = currency || 'SAR';
+  const curLabel = t(currency==='USD' ? 'currencyUSD' : 'currencySAR');
   let dbSaved = false;
   try {
     const { error } = await supabaseClient.from('cashback_requests').insert({
-      user_id: currentUser.id, email: currentUser.email, phone, amount, status: 'pending'
+      user_id: currentUser.id, email: currentUser.email, phone, amount, currency, status: 'pending'
     });
     if(error) throw error;
     dbSaved = true;
@@ -4419,12 +4655,12 @@ async function requestCashback(amount, phone){
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         access_key: WEB3FORMS_KEY,
-        subject: `طلب كاش باك جديد — ${amount} ر.س`,
+        subject: `طلب كاش باك جديد — ${amount} ${curLabel}`,
         from_name: 'كابيتال — طلبات كاش باك',
         email: currentUser.email,
         phone: phone,
-        amount: amount + ' ر.س',
-        message: `طلب كاش باك جديد على إيداع\nالمبلغ: ${amount} ر.س\nبريد العميل: ${currentUser.email}\nرقم الهاتف: ${phone}${dbSaved?'':'\n⚠️ ملحوظة: الطلب فشل يتسجل في قاعدة البيانات، الإيميل ده هو السجل الوحيد له.'}`
+        amount: amount + ' ' + curLabel,
+        message: `طلب كاش باك جديد على إيداع\nالمبلغ: ${amount} ${curLabel}\nبريد العميل: ${currentUser.email}\nرقم الهاتف: ${phone}${dbSaved?'':'\n⚠️ ملحوظة: الطلب فشل يتسجل في قاعدة البيانات، الإيميل ده هو السجل الوحيد له.'}`
       })
     });
   } catch(err){
@@ -4444,7 +4680,7 @@ async function requestCashback(amount, phone){
     <button class="modal-btn primary" id="cashbackDoneBtn">${t('closeBtn')}</button>
   `);
   document.getElementById('cashbackDoneBtn').onclick = closeModal;
-  pushNotification(t('cashbackSuccessNotifTitle'), amount+' ر.س');
+  pushNotification(t('cashbackSuccessNotifTitle'), amount+' '+curLabel);
 }
 
 /* ============ AI recommendations (ai add-on plan) ============ */
@@ -4540,6 +4776,17 @@ async function openAIRecommendationsModal(){
 function symbolOptionsForMarket(marketKey){
   const cat = recMarketConfig[marketKey].cat;
   return symbols.filter(s=>s.cat===cat).map(s=>`<option value="${s.name}">${s.icon} ${s.name}</option>`).join('');
+}
+// Cascading category -> symbol pickers (same pattern as the admin recommendations
+// modal) so picking one stock out of 100+ doesn't mean scrolling one long list.
+function manualPriceCategoryOptionsHTML(){
+  return Object.keys(catKeys)
+    .filter(cat=> symbols.some(s=>s.cat===cat))
+    .map(cat=>`<option value="${cat}">${catNameFor(cat)}</option>`).join('');
+}
+function manualPriceSymbolOptionsForCategory(cat){
+  return symbols.filter(s=>s.cat===cat)
+    .map(s=>`<option value="${s.name}">${s.icon} ${s.name}</option>`).join('');
 }
 async function openAdminRecommendationsModal(){
   openModal(t('adminRecsTitle'), `<div class="modal-note">${t('loadingMsg')}</div>`);
@@ -4679,22 +4926,26 @@ function renderAdminStockPricesModal(){
     ? stockPriceOverridesList.map(row=>{
         const s = findSymbolByName(row.symbol);
         const icon = s ? s.icon : '📈';
+        const catLabel = s ? catNameFor(s.cat) : '';
+        const decimals = s ? s.decimals : 2;
         return `
         <div class="switch-row">
-          <span>${icon} ${row.symbol}</span>
+          <span>${icon} ${row.symbol} <span style="color:var(--text-dim);font-size:11px;">— ${catLabel}</span></span>
           <span style="display:flex;align-items:center;gap:8px;">
-            <span style="font-weight:700;">${Number(row.price).toFixed(2)} ر.س</span>
-            <button class="close-btn" data-symbol="${row.symbol}" title="${t('closeBtn')}">✕</button>
+            <span style="font-weight:700;">${Number(row.price).toFixed(decimals)}</span>
+            <button class="modal-btn ghost" data-symbol="${row.symbol}" style="padding:4px 10px;font-size:12px;" title="يمسح السعر اليدوي ويطلب سعر لايف فورًا">🔄 رجّعه لايف</button>
           </span>
         </div>`;
       }).join('')
     : `<div class="modal-note" style="font-size:12.5px;">لسه مفيش أسعار متحددة يدويًا.</div>`;
 
   openModal('💰 أسعار الأسهم', `
-    <div class="modal-note">حدد سعر يدوي لسهم سعودي. السعر ده هيبقى المرجع لكل العملاء، والمحاكاة هتهتز حواليه بس مش هتسيح بعيد عنه.</div>
-    <label style="display:block;margin-top:10px;font-size:13px;color:var(--text-dim);">السهم</label>
-    <select id="adminStockPriceSymbol" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);margin-top:4px;box-sizing:border-box;">${symbolOptionsForMarket('saudi')}</select>
-    <label style="display:block;margin-top:12px;font-size:13px;color:var(--text-dim);">السعر (ر.س)</label>
+    <div class="modal-note">حدد سعر يدوي لأي سهم — سواء كان أصلاً لايف من مصدر خارجي أو محاكاة. السهم اللي تحط له سعر يدوي هيخرج فورًا من نظام تتبع الأسعار اللايف وهيفضل عليه (مع اهتزاز بسيط حواليه) لحد ما تدوس "رجّعه لايف" تحت.</div>
+    <label style="display:block;margin-top:10px;font-size:13px;color:var(--text-dim);">الكاتيجوري</label>
+    <select id="adminStockPriceCategory" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);margin-top:4px;box-sizing:border-box;">${manualPriceCategoryOptionsHTML()}</select>
+    <label style="display:block;margin-top:12px;font-size:13px;color:var(--text-dim);">السهم</label>
+    <select id="adminStockPriceSymbol" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);margin-top:4px;box-sizing:border-box;">${manualPriceSymbolOptionsForCategory(Object.keys(catKeys).find(cat=>symbols.some(s=>s.cat===cat)))}</select>
+    <label style="display:block;margin-top:12px;font-size:13px;color:var(--text-dim);">السعر</label>
     <input type="number" id="adminStockPriceValue" placeholder="56.25" min="0.01" step="0.01" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);margin-top:4px;box-sizing:border-box;">
     <div id="adminStockPriceMsg" style="margin-top:10px;font-size:13px;"></div>
     <button class="modal-btn primary" id="adminStockPriceSubmitBtn" style="margin-top:8px;">تحديث السعر</button>
@@ -4707,6 +4958,9 @@ function renderAdminStockPricesModal(){
   `);
 
   document.getElementById('adminStockPricesClose').onclick = closeModal;
+  document.getElementById('adminStockPriceCategory').onchange = (e)=>{
+    document.getElementById('adminStockPriceSymbol').innerHTML = manualPriceSymbolOptionsForCategory(e.target.value);
+  };
   document.getElementById('adminStockPriceSubmitBtn').onclick = async ()=>{
     const symbolName = document.getElementById('adminStockPriceSymbol').value;
     const priceVal = parseFloat(document.getElementById('adminStockPriceValue').value);
@@ -4724,7 +4978,14 @@ function renderAdminStockPricesModal(){
         .upsert({ symbol: symbolName, price: priceVal, updated_at: new Date().toISOString() });
       if(error) throw error;
       const s = findSymbolByName(symbolName);
-      if(s){ s.anchorPrice = priceVal; s.price = priceVal; }
+      if(s){
+        s.anchorPrice = priceVal; s.price = priceVal;
+        // Same-turn as the live-fetch guards: drop any live flag right away so the
+        // "محاكاة" badge shows instantly instead of waiting for the 6-minute timeout.
+        delete s.liveAt;
+        delete s.liveSource;
+        refreshLivePriceOnly();
+      }
       await loadStockPriceOverrides();
       renderAdminStockPricesModal();
     } catch(err){
@@ -4739,7 +5000,12 @@ function renderAdminStockPricesModal(){
         const { error } = await supabaseClient.from('stock_price_overrides').delete().eq('symbol', symbolName);
         if(error) throw error;
         const s = findSymbolByName(symbolName);
-        if(s) delete s.anchorPrice;
+        if(s){
+          delete s.anchorPrice;
+          // Ask that symbol's real live source (whichever it is) for a fresh price
+          // right now, instead of waiting for the next 45-90s polling cycle.
+          scheduleImmediateLiveCheck(s);
+        }
         await loadStockPriceOverrides();
         renderAdminStockPricesModal();
       } catch(err){

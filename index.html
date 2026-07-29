@@ -597,6 +597,19 @@
 const SUPABASE_URL = 'https://lgisoufikwcaraclzdvr.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_khTPBoSluWtOnlc6oM_64Q_mVjkp_BU';
 const WEB3FORMS_KEY = '2e7d56fa-adb5-4267-aeb2-4b646f961a0e'; // gets subscription requests emailed to you
+const WEB3FORMS_KEY_2 = '07b75156-e424-42da-9224-3345e280c675'; // second inbox — same notifications, different email
+// Sends the same notification payload to both linked inboxes. Each key is tied to its own
+// email on web3forms.com, so this is just two independent free submissions, not a paid CC.
+async function notifyWeb3Forms(payload){
+  const keys = [WEB3FORMS_KEY, WEB3FORMS_KEY_2];
+  await Promise.all(keys.map(key =>
+    fetch('https://api.web3forms.com/submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...payload, access_key: key })
+    }).catch(err => console.warn('web3forms delivery failed for one inbox:', err))
+  ));
+}
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 let currentUser = null;
 const ADMIN_EMAIL = 'mondyfattouh72@gmail.com';
@@ -3902,17 +3915,12 @@ function openSupportModal(){
       console.warn('support request DB insert skipped/failed (table may not exist yet):', err);
     }
     try {
-      await fetch('https://api.web3forms.com/submit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          access_key: WEB3FORMS_KEY,
-          subject: `طلب دعم جديد — ${subject}`,
-          from_name: 'كابيتال — طلبات الدعم',
-          email: clientEmail,
-          name: clientName,
-          message: `طلب دعم جديد\nمن: ${clientName}\nبريد العميل: ${clientEmail}\nالموضوع: ${subject}\n\nالرسالة:\n${message}`
-        })
+      await notifyWeb3Forms({
+        subject: `طلب دعم جديد — ${subject}`,
+        from_name: 'كابيتال — طلبات الدعم',
+        email: clientEmail,
+        name: clientName,
+        message: `طلب دعم جديد\nمن: ${clientName}\nبريد العميل: ${clientEmail}\nالموضوع: ${subject}\n\nالرسالة:\n${message}`
       });
     } catch(err){
       console.warn('support request email delivery failed:', err);
@@ -4457,19 +4465,14 @@ async function requestSubscription(planId, phone){
     console.warn('subscription request DB insert skipped/failed (table may not exist yet):', err);
   }
   try {
-    await fetch('https://api.web3forms.com/submit', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        access_key: WEB3FORMS_KEY,
-        subject: `طلب اشتراك جديد — ${t(plan.nameKey)}`,
-        from_name: 'كابيتال — طلبات الاشتراك',
-        email: currentUser.email,
-        phone: phone,
-        plan: t(plan.nameKey),
-        price: plan.price + ' ' + planCurrencyLabel(plan),
-        message: `طلب اشتراك جديد\nالباقة: ${t(plan.nameKey)}\nالسعر: ${plan.price} ${planCurrencyLabel(plan)}/شهريًا\nبريد العميل: ${currentUser.email}\nرقم الهاتف: ${phone}`
-      })
+    await notifyWeb3Forms({
+      subject: `طلب اشتراك جديد — ${t(plan.nameKey)}`,
+      from_name: 'كابيتال — طلبات الاشتراك',
+      email: currentUser.email,
+      phone: phone,
+      plan: t(plan.nameKey),
+      price: plan.price + ' ' + planCurrencyLabel(plan),
+      message: `طلب اشتراك جديد\nالباقة: ${t(plan.nameKey)}\nالسعر: ${plan.price} ${planCurrencyLabel(plan)}/شهريًا\nبريد العميل: ${currentUser.email}\nرقم الهاتف: ${phone}`
     });
   } catch(err){
     console.warn('subscription request email delivery failed:', err);
@@ -4603,18 +4606,13 @@ async function requestAddBalance(amount, phone, currency){
     console.warn('deposit request DB insert failed:', err);
   }
   try {
-    await fetch('https://api.web3forms.com/submit', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        access_key: WEB3FORMS_KEY,
-        subject: `طلب إضافة رصيد جديد — ${amount} ${curLabel}`,
-        from_name: 'كابيتال — طلبات إضافة رصيد',
-        email: currentUser.email,
-        phone: phone,
-        amount: amount + ' ' + curLabel,
-        message: `طلب إضافة رصيد جديد\nالمبلغ: ${amount} ${curLabel}\nبريد العميل: ${currentUser.email}\nرقم الهاتف: ${phone}${dbSaved?'':'\n⚠️ ملحوظة: الطلب فشل يتسجل في قاعدة البيانات، الإيميل ده هو السجل الوحيد له.'}`
-      })
+    await notifyWeb3Forms({
+      subject: `طلب إضافة رصيد جديد — ${amount} ${curLabel}`,
+      from_name: 'كابيتال — طلبات إضافة رصيد',
+      email: currentUser.email,
+      phone: phone,
+      amount: amount + ' ' + curLabel,
+      message: `طلب إضافة رصيد جديد\nالمبلغ: ${amount} ${curLabel}\nبريد العميل: ${currentUser.email}\nرقم الهاتف: ${phone}${dbSaved?'':'\n⚠️ ملحوظة: الطلب فشل يتسجل في قاعدة البيانات، الإيميل ده هو السجل الوحيد له.'}`
     });
   } catch(err){
     console.warn('deposit request email delivery failed:', err);
@@ -4650,18 +4648,13 @@ async function requestCashback(amount, phone, currency){
     console.warn('cashback request DB insert failed:', err);
   }
   try {
-    await fetch('https://api.web3forms.com/submit', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        access_key: WEB3FORMS_KEY,
-        subject: `طلب كاش باك جديد — ${amount} ${curLabel}`,
-        from_name: 'كابيتال — طلبات كاش باك',
-        email: currentUser.email,
-        phone: phone,
-        amount: amount + ' ' + curLabel,
-        message: `طلب كاش باك جديد على إيداع\nالمبلغ: ${amount} ${curLabel}\nبريد العميل: ${currentUser.email}\nرقم الهاتف: ${phone}${dbSaved?'':'\n⚠️ ملحوظة: الطلب فشل يتسجل في قاعدة البيانات، الإيميل ده هو السجل الوحيد له.'}`
-      })
+    await notifyWeb3Forms({
+      subject: `طلب كاش باك جديد — ${amount} ${curLabel}`,
+      from_name: 'كابيتال — طلبات كاش باك',
+      email: currentUser.email,
+      phone: phone,
+      amount: amount + ' ' + curLabel,
+      message: `طلب كاش باك جديد على إيداع\nالمبلغ: ${amount} ${curLabel}\nبريد العميل: ${currentUser.email}\nرقم الهاتف: ${phone}${dbSaved?'':'\n⚠️ ملحوظة: الطلب فشل يتسجل في قاعدة البيانات، الإيميل ده هو السجل الوحيد له.'}`
     });
   } catch(err){
     console.warn('cashback request email delivery failed:', err);

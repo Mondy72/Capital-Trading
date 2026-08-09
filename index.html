@@ -320,35 +320,83 @@
   }
 
   /* ===== auth gate (professional login/signup/reset) ===== */
-  .auth-shell{min-height:100vh;width:100%;display:flex;background:var(--bg-void);}
+  .auth-shell{min-height:100vh;width:100%;display:flex;align-items:center;justify-content:center;padding:40px 20px;background:var(--bg-void);}
+  .auth-card-shell{
+    width:100%;max-width:900px;min-height:560px;background:var(--bg-panel);border-radius:28px;
+    box-shadow:0 24px 70px rgba(20,30,50,.14), 0 2px 10px rgba(20,30,50,.06);
+    display:flex;overflow:hidden;position:relative;
+    animation:authCardIn .38s cubic-bezier(.22,1,.36,1);
+  }
+  .auth-card-shell.auth-card-out{ animation:authCardOut .18s ease forwards; }
+  @keyframes authCardIn{from{opacity:0;transform:scale(.97) translateY(8px);}to{opacity:1;transform:scale(1) translateY(0);}}
+  @keyframes authCardOut{to{opacity:0;transform:scale(.98) translateY(4px);}}
+  @media (prefers-reduced-motion:reduce){ .auth-card-shell{animation:none;} .auth-card-shell.auth-card-out{animation:none;} }
+
   .auth-aside{
-    flex:0 0 42%;position:relative;overflow:hidden;display:flex;flex-direction:column;
-    justify-content:space-between;padding:44px 40px;
+    order:2;flex:0 0 44%;position:relative;overflow:hidden;display:flex;flex-direction:column;
+    justify-content:center;gap:34px;padding:44px 38px;
     background:radial-gradient(120% 140% at 15% 0%, #0E7A55 0%, #07231C 46%, #04120D 100%);
     color:#EAF6F1;
+    border-start-start-radius:150px;border-end-start-radius:150px;
+    border-start-end-radius:28px;border-end-end-radius:28px;
+    transition:border-radius .45s ease;
   }
+  .auth-card-shell[data-state="signup"] .auth-aside{
+    order:1;
+    border-start-end-radius:150px;border-end-end-radius:150px;
+    border-start-start-radius:28px;border-end-start-radius:28px;
+  }
+  .auth-card-shell[data-state="signup"] .auth-form-outer{ order:2; }
   .auth-aside-blob{position:absolute;border-radius:50%;filter:blur(60px);opacity:.35;pointer-events:none;}
   .auth-aside-blob.b1{width:340px;height:340px;background:#00E5A0;top:-120px;inset-inline-end:-100px;}
   .auth-aside-blob.b2{width:260px;height:260px;background:#0EA5E9;bottom:-100px;inset-inline-start:-80px;opacity:.22;}
-  .auth-aside-top,.auth-aside-bottom{position:relative;z-index:1;}
+  .auth-aside-top{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;text-align:center;}
+  .auth-aside-bottom{position:relative;z-index:1;text-align:center;}
   .auth-aside-brand{display:flex;align-items:center;gap:12px;}
   .auth-aside-brand .brand-name{font-size:24px;color:#fff;}
   .auth-aside-brand .brand-name span{color:#00E5A0;}
-  .auth-aside-headline{font-family:var(--font-display);font-weight:800;font-size:30px;line-height:1.42;margin-top:56px;max-width:380px;}
+  .auth-aside-headline{font-family:var(--font-display);font-weight:800;font-size:26px;line-height:1.42;margin-top:40px;max-width:380px;}
   .auth-aside-headline em{font-style:normal;color:#00E5A0;}
-  .auth-feature-list{display:flex;flex-direction:column;gap:16px;margin-top:32px;}
+  .auth-aside-toggle-btn{
+    margin-top:22px;padding:12px 32px;border:1.5px solid rgba(255,255,255,.55);border-radius:999px;
+    color:#fff;font-family:var(--font-display);font-weight:700;font-size:13.5px;background:transparent;
+    align-self:center;transition:background .15s, transform .08s;
+  }
+  .auth-aside-toggle-btn:hover{background:rgba(255,255,255,.14);}
+  .auth-aside-toggle-btn:active{transform:scale(.96);}
+  .auth-feature-list{display:flex;flex-direction:column;gap:16px;margin-top:30px;}
   .auth-feature-item{display:flex;align-items:flex-start;gap:12px;font-size:13.5px;color:#C9E6DA;line-height:1.6;}
   .auth-feature-icon{
     flex-shrink:0;width:28px;height:28px;border-radius:8px;background:rgba(0,229,160,.14);
     border:1px solid rgba(0,229,160,.3);display:flex;align-items:center;justify-content:center;color:#00E5A0;font-size:13px;
   }
   .auth-aside-quote{font-size:12.5px;color:#8FB8A9;font-family:var(--font-mono);line-height:1.7;}
-  @media (max-width:900px){ .auth-aside{display:none;} }
 
-  .auth-form-outer{flex:1;display:flex;align-items:center;justify-content:center;padding:32px 20px;min-width:0;}
-  .auth-card{width:100%;max-width:400px;}
+  /* ---- Mobile: stack instead of hide. The colored panel becomes a top banner
+     (curved bottom edge) that stays visible with a working toggle button, so
+     switching login/signup is felt on phones too, not just desktop. ---- */
+  @media (max-width:900px){
+    .auth-shell{padding:0;align-items:flex-start;}
+    .auth-card-shell{
+      flex-direction:column;min-height:0;border-radius:0;box-shadow:none;
+    }
+    .auth-card-shell[data-state="signup"] .auth-form-outer{ order:2; }
+    .auth-aside{
+      display:flex;order:1 !important;flex:0 0 auto;gap:18px;padding:30px 26px 40px;
+      border-start-start-radius:0 !important;border-start-end-radius:0 !important;
+      border-end-start-radius:36px !important;border-end-end-radius:36px !important;
+    }
+    .auth-card-shell[data-state="signup"] .auth-aside{ order:1 !important; }
+    .auth-aside-headline{font-size:20px;margin-top:0;}
+    .auth-feature-list{display:none;}
+    .auth-aside-quote{display:none;}
+    .auth-form-outer{ order:2 !important;padding:32px 22px 40px;align-items:flex-start;justify-content:flex-start; }
+    .auth-shell{ min-height:100vh; }
+  }
+
+  .auth-form-outer{order:1;flex:1 1 56%;display:flex;align-items:center;justify-content:center;padding:40px 40px;min-width:0;}
+  .auth-card{width:100%;max-width:380px;}
   .auth-card-mobile-brand{display:none;align-items:center;gap:10px;justify-content:center;margin-bottom:28px;}
-  @media (max-width:900px){ .auth-card-mobile-brand{display:flex;} }
   .auth-card-head{margin-bottom:26px;}
   .auth-card-title{font-family:var(--font-display);font-weight:800;font-size:24px;margin-bottom:8px;}
   .auth-card-sub{font-size:13.5px;color:var(--text-muted);line-height:1.6;}
@@ -412,7 +460,7 @@
   <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;text-align:center;font-family:sans-serif;direction:rtl;">
     <div>
       <div style="font-size:20px;font-weight:700;margin-bottom:8px;">كابيتال برو</div>
-      <div style="color:#666;">المنصة محتاجة JavaScript شغال عشان تفتح. افتح الملف من متصفح كامل زي Safari أو Chrome بدل معاينة داخل تطبيق تاني.</div>
+      <div style="color:#666;">تحتاج المنصة إلى تفعيل JavaScript كي تعمل. يُرجى فتح الملف من متصفح كامل مثل Safari أو Chrome بدلاً من المعاينة داخل تطبيق آخر.</div>
     </div>
   </div>
 </noscript>
@@ -500,7 +548,7 @@
             </tr>
           </thead>
           <tbody id="positionsBody">
-            <tr class="empty-row"><td colspan="6" data-i18n="noOpenPositions">مفيش صفقات مفتوحة — جرّب تفتح صفقة من اللوحة 👉</td></tr>
+            <tr class="empty-row"><td colspan="6" data-i18n="noOpenPositions">لا توجد صفقات مفتوحة — يمكنك فتح صفقة جديدة من اللوحة 👉</td></tr>
           </tbody>
         </table>
       </div>
@@ -513,7 +561,7 @@
             </tr>
           </thead>
           <tbody id="historyBody">
-            <tr class="empty-row"><td colspan="7" data-i18n="noHistory">لسه مفيش صفقات مقفولة</td></tr>
+            <tr class="empty-row"><td colspan="7" data-i18n="noHistory">لا توجد صفقات مغلقة بعد</td></tr>
           </tbody>
         </table>
       </div>
@@ -566,7 +614,7 @@
 
       <div class="divider"></div>
       <div class="spread-info"><span data-i18n="spread">الفرق (Spread)</span><span class="info-ico" data-info="infoSpread">؟</span><span id="spreadVal">0.00011</span></div>
-      <div class="spread-info"><span data-i18n="ownedLabel">اللي معاك</span><span id="ownedVal">0.00</span></div>
+      <div class="spread-info"><span data-i18n="ownedLabel">الكمية المملوكة</span><span id="ownedVal">0.00</span></div>
 
       <div class="trade-buttons">
         <button class="trade-btn sell" id="sellBtn"><span data-i18n="sell">بيع</span><small id="sellPrice">1.14189</small></button>
@@ -1020,8 +1068,8 @@ const translations = {
 "colClosePrice": "سعر الإغلاق",
 "colPnl": "الأرباح",
 "colTime": "الوقت",
-"noOpenPositions": "مفيش صفقات مفتوحة — جرّب تفتح صفقة من اللوحة 👉",
-"noHistory": "لسه مفيش صفقات مقفولة",
+"noOpenPositions": "لا توجد صفقات مفتوحة — يمكنك فتح صفقة جديدة من اللوحة 👉",
+"noHistory": "لا توجد صفقات مغلقة بعد",
 "fieldSymbol": "الرمز",
 "change": "تغيير ▾",
 "fieldVolume": "الحجم (لوت)",
@@ -1036,16 +1084,16 @@ const translations = {
 "usedMargin": "المبلغ المستثمر",
 "freeMargin": "الرصيد الحر للشراء",
 "marginLevel": "نسبة الاستثمار",
-"ownedLabel": "اللي معاك",
-"insufficientBalanceMsg": "رصيدك مش كافي لشراء الكمية دي.",
-"insufficientQtyMsg": "معندكش كمية كافية من الأداة دي عشان تبيعها.",
+"ownedLabel": "الكمية المملوكة",
+"insufficientBalanceMsg": "رصيدك غير كافٍ لشراء هذه الكمية.",
+"insufficientQtyMsg": "لا تمتلك كمية كافية من هذه الأداة لبيعها.",
 "invalidVolumeMsg": "أدخل حجم صحيح أكبر من صفر.",
 "volUnitLot": "الحجم (لوت)",
 "volUnitCoin": "الحجم (عملة)",
 "volUnitShare": "الحجم (سهم)",
 "volUnitContract": "الحجم (عقد)",
-"wholeShareMsg": "الأسهم بتتباع بالسهم الكامل بس (بدون كسور).",
-"persistFailedMsg": "حصلت مشكلة في حفظ العملية على السيرفر، حاول تاني بعد شوية.",
+"wholeShareMsg": "تُباع الأسهم بالسهم الكامل فقط (دون كسور).",
+"persistFailedMsg": "حدثت مشكلة أثناء حفظ العملية على الخادم، يُرجى المحاولة مرة أخرى بعد قليل.",
 "persistFailedRetryMsg": "فشل تحديث العملية على السيرفر. جرّب تعمل ريفريش وتاكد من صفقاتك.",
 "openedTrade": "تم فتح صفقة",
 "closedTrade": "تم إغلاق صفقة",
@@ -1054,7 +1102,7 @@ const translations = {
 "profitWord": "ربح",
 "lossWord": "خسارة",
 "notifications": "الإشعارات",
-"noNotifications": "مفيش إشعارات لسه",
+"noNotifications": "لا توجد إشعارات بعد",
 "menuProfile": "👤 الملف الشخصي",
 "menuSettingsLabel": "⚙️ الإعدادات",
 "menuHelpLabel": "❓ المساعدة",
@@ -1076,18 +1124,18 @@ const translations = {
 "alreadyHaveAccountQ": "عندك حساب بالفعل؟",
 "loginLinkBtn": "سجّل دخولك",
 "signupTitle": "إنشاء حساب جديد",
-"signupIntro": "📈 كابيتال برو — سجّل بياناتك عشان تنشئ حسابك.",
+"signupIntro": "📈 كابيتال برو — أدخل بياناتك لإنشاء حسابك.",
 "confirmPasswordLabel": "تأكيد كلمة المرور",
 "signupBtn": "إنشاء الحساب",
-"signupErrorMismatch": "كلمة المرور وتأكيدها لازم يكونوا متطابقين",
-"signupErrorWeak": "كلمة المرور لازم تحقق الشروط الموضحة تحت",
+"signupErrorMismatch": "يجب أن تتطابق كلمة المرور مع تأكيدها",
+"signupErrorWeak": "يجب أن تحقق كلمة المرور الشروط الموضحة أدناه",
 "pwRuleLength": "8 حروف على الأقل",
 "pwRuleUpper": "حرف كابيتال واحد على الأقل (A-Z)",
 "pwRuleLower": "حرف سمول واحد على الأقل (a-z)",
 "pwRuleSymbol": "رمز واحد على الأقل (!@#...)",
 "forgotPasswordLink": "نسيت كلمة المرور؟",
 "forgotTitle": "استعادة كلمة المرور",
-"forgotIntro": "أدخل بريدك الإلكتروني وهنبعتلك كود تحقق مكوّن من أرقام عشان تقدر تعمل كلمة مرور جديدة.",
+"forgotIntro": "أدخل بريدك الإلكتروني، وسنرسل إليك رمز تحقق مكوّنًا من أرقام لتتمكن من تعيين كلمة مرور جديدة.",
 "sendCodeBtn": "إرسال كود التحقق",
 "backToLoginLink": "الرجوع لتسجيل الدخول",
 "resetTitle": "كلمة مرور جديدة",
@@ -1100,7 +1148,7 @@ const translations = {
 "authAsideFeat3": "تنفيذ فوري وتتبع كامل لأرباحك وخسائرك",
 "authAsideFooter": "بياناتك محمية ومشفّرة بالكامل.",
 "verifyTitle": "تأكيد البريد الإلكتروني",
-"verifyIntro": "بعتنالك كود تحقق مكوّن من أرقام على بريدك الإلكتروني. اكتبه هنا عشان نفعّل حسابك.",
+"verifyIntro": "أرسلنا إليك رمز تحقق مكوّنًا من أرقام على بريدك الإلكتروني. أدخله هنا لتفعيل حسابك.",
 "verifyCodeLabel": "كود التحقق",
 "verifyBtn": "تأكيد الكود",
 "resendCodeLink": "لم يوصلني الكود — إعادة الإرسال",
@@ -1114,7 +1162,7 @@ const translations = {
 "welcomeWord": "مرحبًا",
 "realAccountActiveWord": "الحساب الحقيقي الآن نشط",
 "logoutTitle": "تسجيل الخروج",
-"logoutConfirm": "هل أنت متأكد إنك عايز تسجل خروج من منصة كابيتال برو؟",
+"logoutConfirm": "هل أنت متأكد من رغبتك في تسجيل الخروج من منصة كابيتال برو؟",
 "logoutBtn": "تسجيل الخروج",
 "cancelBtn": "تراجع",
 "loginScreenTitle": "تسجيل الدخول — كابيتال برو",
@@ -1127,14 +1175,14 @@ const translations = {
 "realWord": "مميز",
 "closeBtn": "إغلاق",
 "helpTitle": "المساعدة",
-"helpLine1": "1️⃣ اختر السوق والرمز اللي عايز تتداول عليه من القائمة أو شريط الأسعار اللي فوق.",
-"helpLine2": "2️⃣ حدد الكمية بالأزرار + / −، أو استخدم أزرار 25% / 50% / 75% / الكل عشان تحدد الكمية بسهولة على طول من غير ما تحسب يدويًا.",
-"helpLine3": "3️⃣ هتلاقي التكلفة التقريبية (أو العائد لو معاك السهم فعلًا) ظاهرة تحت الكمية على طول قبل ما تأكد.",
-"helpLine4": "4️⃣ اضغط \"شراء\" لفتح صفقة جديدة، أو \"بيع\" لو معاك رصيد من الرمز ده.",
-"helpLine5": "5️⃣ لو عايز تحدد مستوى تلقائي، فعّل \"جني الأرباح\" و/أو \"وقف الخسارة\" واكتب السعر اللي عايزه.",
+"helpLine1": "1️⃣ اختر السوق والرمز الذي ترغب في التداول عليه من القائمة أو شريط الأسعار أعلاه.",
+"helpLine2": "2️⃣ حدد الكمية باستخدام أزرار + / −، أو استخدم أزرار 25% / 50% / 75% / الكل لتحديد الكمية مباشرة دون الحاجة لحساب يدوي.",
+"helpLine3": "3️⃣ ستجد التكلفة التقريبية (أو العائد إذا كنت تملك السهم بالفعل) ظاهرة أسفل الكمية قبل التأكيد مباشرة.",
+"helpLine4": "4️⃣ اضغط \"شراء\" لفتح صفقة جديدة، أو \"بيع\" إذا كان لديك رصيد من هذا الرمز.",
+"helpLine5": "5️⃣ إذا رغبت في تحديد مستوى تلقائي، فعّل \"جني الأرباح\" و/أو \"وقف الخسارة\" وأدخل السعر الذي تريده.",
 "helpLine6": "6️⃣ تابع صفقاتك المفتوحة من تبويب \"الصفقات المفتوحة\"، والمقفولة من \"السجل\"، وأداءك العام من \"التقرير\".",
-"helpLine7": "7️⃣ من \"الملف الشخصي\" تقدر تشوف الباقة اللي مشترك فيها دلوقتي، ولو محتاج توسع الأسواق المتاحة ليك روح لـ \"خطط الاشتراك\".",
-"helpLine8": "8️⃣ لو واجهتك أي مشكلة، ابعتلنا من \"التواصل مع الدعم\" وهنرد عليك في أقرب وقت.",
+"helpLine7": "7️⃣ من \"الملف الشخصي\" يمكنك الاطلاع على الباقة المشترك بها حاليًا، وإذا احتجت توسيع الأسواق المتاحة لك فتوجّه إلى \"خطط الاشتراك\".",
+"helpLine8": "8️⃣ إذا واجهتك أي مشكلة، تواصل معنا عبر \"التواصل مع الدعم\" وسنرد عليك في أقرب وقت.",
 "gotIt": "تمام، فهمت",
 "maxWord": "الكل",
 "estimateLabel": "التكلفة التقريبية",
@@ -1146,7 +1194,7 @@ const translations = {
 "nameRequiredMsg": "من فضلك أدخل الاسم الأول واسم العائلة",
 "menuSupportLabel": "التواصل مع الدعم",
 "supportTitle": "التواصل مع الدعم",
-"supportIntro": "ابعتلنا مشكلتك أو استفسارك وفريق الدعم هيتواصل معاك في أقرب وقت.",
+"supportIntro": "أرسل إلينا مشكلتك أو استفسارك وسيتواصل معك فريق الدعم في أقرب وقت.",
 "supportSubjectLabel": "الموضوع",
 "supportSubjectPlaceholder": "مثال: مشكلة في السحب",
 "supportMessageLabel": "الرسالة",
@@ -1156,7 +1204,7 @@ const translations = {
 "supportDefaultSubject": "استفسار عام",
 "supportSuccessNotifTitle": "تم إرسال طلب الدعم",
 "supportSuccessTitle": "تم الإرسال",
-"supportSuccessMsg": "استلمنا طلبك وهنتواصل معاك على بريدك الإلكتروني في أقرب وقت ممكن.",
+"supportSuccessMsg": "استلمنا طلبك وسنتواصل معك على بريدك الإلكتروني في أقرب وقت ممكن.",
 "soundAlerts": "تنبيهات صوتية",
 "priceAlerts": "تنبيهات الأسعار",
 "compactTables": "عرض مضغوط للجداول",
@@ -1169,7 +1217,7 @@ const translations = {
 "depositBtn": "إيداع أموال",
 "subscribeBtn": "خطط الاشتراك",
 "subscriptionModalTitle": "خطط اشتراك كابيتال برو",
-"subscriptionIntro": "اختر الباقة المناسبة لك للوصول الكامل لأسواق كابيتال برو. هيتواصل معاك فريقنا لإتمام عملية الشحن والتفعيل.",
+"subscriptionIntro": "اختر الباقة المناسبة لك للوصول الكامل لأسواق كابيتال برو. سيتواصل معك فريقنا لإتمام عملية الشحن والتفعيل.",
 "planSaudiName": "السوق السعودي",
 "planSaudiDesc": "وصول كامل لكل الأسهم المدرجة في السوق السعودي (تداول)",
 "planUSName": "السوق الأمريكي",
@@ -1184,16 +1232,16 @@ const translations = {
 "planFundsDesc": "صناديق استثمار احترافية تتيح تنويع الأصول وإدارة المخاطر، مع استراتيجيات تهدف إلى تحقيق نمو مستدام لرأس المال",
 "menuAILabel": "🤖 توصيات الذكاء الاصطناعي",
 "aiRecsTitle": "توصيات الذكاء الاصطناعي",
-"aiRecsLockedMsg": "الميزة دي متاحة بس للمشتركين في باقة الذكاء الاصطناعي.",
+"aiRecsLockedMsg": "هذه الميزة متاحة فقط للمشتركين في باقة الذكاء الاصطناعي.",
 "aiRecsSubscribeCTA": "اشترك في باقة الذكاء الاصطناعي",
-"aiRecsIntro": "بناءً على تحليل الذكاء الاصطناعي لحركة الأسواق، دي أحدث التوصيات ليك:",
-"aiRecsDisclaimer": "التوصيات دي توضيحية وناتجة عن تحليل آلي، ومفيهاش أي ضمان لعائد معين. القرار الاستثماري النهائي مسؤوليتك.",
+"aiRecsIntro": "بناءً على تحليل الذكاء الاصطناعي لحركة الأسواق، إليك أحدث التوصيات:",
+"aiRecsDisclaimer": "هذه التوصيات توضيحية وناتجة عن تحليل آلي، ولا تتضمن أي ضمان لعائد معين. القرار الاستثماري النهائي مسؤوليتك.",
 "aiRecsSaudiHeader": "🇸🇦 السوق السعودي",
 "aiRecsUSHeader": "🇺🇸 السوق الأمريكي",
 "aiRecsGoldHeader": "🥇 السبائك",
 "aiRecsBuyLabel": "توصيات شراء",
 "aiRecsSellLabel": "توصيات بيع (لحاملي السهم حاليًا)",
-"aiRecsEmptyMsg": "مفيش توصيات متاحة دلوقتي.",
+"aiRecsEmptyMsg": "لا توجد توصيات متاحة حاليًا.",
 "loadingMsg": "جاري التحميل...",
 "menuAdminRecsLabel": "📊 التوصيات",
 "adminRecsTitle": "🎯 إدارة توصيات الذكاء الاصطناعي",
@@ -1203,24 +1251,24 @@ const translations = {
 "adminRecsActionLabel": "التوصية",
 "adminRecsAddBtn": "إضافة التوصية",
 "adminRecsCurrentTitle": "التوصيات الحالية",
-"adminRecsEmptyMsg": "لسه مفيش توصيات مضافة.",
+"adminRecsEmptyMsg": "لا توجد توصيات مضافة بعد.",
 "adminRecsAddedMsg": "تمت إضافة التوصية بنجاح.",
 "notifNewRecTitle": "🎯 توصية استثمارية جديدة",
 "adminRecsReplacedMsg": "السهم كان ليه توصية تانية، تم استبدالها بالتوصية الجديدة.",
 "adminRecsDeletedMsg": "تم حذف التوصية.",
 "adminRecsErrorMsg": "حصل خطأ، حاول تاني.",
-"adminRecsDuplicateMsg": "السهم ده أصلًا عليه نفس التوصية دي.",
-"adminRecsCurrentCallPrefix": "⚠️ السهم ده عليه حاليًا توصية:",
+"adminRecsDuplicateMsg": "هذا السهم عليه بالفعل نفس التوصية.",
+"adminRecsCurrentCallPrefix": "⚠️ هذا السهم عليه حاليًا توصية:",
 "aiRec1Title": "قطاع البنوك السعودي",
 "aiRec1Detail": "نموذج التحليل بيرصد زخم إيجابي نسبي في قطاع البنوك خلال الفترة الحالية.",
 "aiRec2Title": "مؤشرات التقنية الأمريكية",
 "aiRec2Detail": "تذبذب أعلى من المعتاد في قطاع التقنية — يفضّل تنويع المراكز وعدم التركيز.",
 "aiRec3Title": "الذهب كأداة تحوّط",
-"aiRec3Detail": "مع حالة عدم اليقين في الأسواق، الذهب بيفضل خيار شائع للتحوّط جزء من المحفظة.",
+"aiRec3Detail": "في ظل حالة عدم اليقين في الأسواق، يظل الذهب خيارًا شائعًا للتحوّط بجزء من المحفظة.",
 "currentPlanLabel": "الباقات الحالية",
-"noPlanMsg": "مش مشترك في أي باقة حاليًا",
-"tpInvalidMsg": "سعر جني الأرباح لازم يكون أعلى من سعر الشراء الحالي",
-"slInvalidMsg": "سعر وقف الخسارة لازم يكون أقل من سعر الشراء الحالي وأكبر من صفر",
+"noPlanMsg": "غير مشترك في أي باقة حاليًا",
+"tpInvalidMsg": "يجب أن يكون سعر جني الأرباح أعلى من سعر الشراء الحالي",
+"slInvalidMsg": "يجب أن يكون سعر وقف الخسارة أقل من سعر الشراء الحالي وأكبر من صفر",
 "tpTriggeredTitle": "تم تفعيل جني الأرباح",
 "slTriggeredTitle": "تم تفعيل وقف الخسارة",
 "planBestValue": "الأكثر شمولاً",
@@ -1228,12 +1276,12 @@ const translations = {
 "currencySAR": "ريال",
 "currencyUSD": "دولار",
 "requestSubBtn": "اطلب الاشتراك",
-"subLoginFirstMsg": "لازم تسجل دخولك الأول عشان نقدر نرسل طلب الاشتراك باسمك.",
+"subLoginFirstMsg": "يجب تسجيل الدخول أولًا حتى نتمكن من إرسال طلب الاشتراك باسمك.",
 "subSuccessTitle": "تم إرسال طلبك",
-"subSuccessMsg": "استلمنا طلب اشتراكك في باقة \"{plan}\". فريق كابيتال برو هيتواصل معاك على بريدك الإلكتروني خلال 24 ساعة لإتمام الشحن والتفعيل.",
+"subSuccessMsg": "استلمنا طلب اشتراكك في باقة \"{plan}\". سيتواصل معك فريق كابيتال برو على بريدك الإلكتروني خلال 24 ساعة لإتمام الشحن والتفعيل.",
 "subSuccessNotifTitle": "تم إرسال طلب الاشتراك",
 "subConfirmTitle": "تأكيد طلب الاشتراك",
-"subConfirmMsg": "هتطلب باقة \"{plan}\" بسعر {price} شهريًا. تأكد إنك عايز تكمل الطلب؟",
+"subConfirmMsg": "سيتم طلب باقة \"{plan}\" بسعر {price} شهريًا. هل أنت متأكد من رغبتك في إتمام الطلب؟",
 "yesBtn": "نعم، أكمل الطلب",
 "noBtn": "لا، رجوع",
 "phoneLabel": "رقم الهاتف",
@@ -1241,24 +1289,24 @@ const translations = {
 "cashbackMenuLabel": "اطلب كاش باك",
 "cashbackTitle": "طلب كاش باك على الإيداع",
 "cashbackIntro": "استمتع باسترداد نسبة من قيمة معاملاتك وفقًا لشروط وأحكام برنامج الكاش باك",
-"cashbackAmountLabel": "المبلغ اللي عايز تودّعه",
+"cashbackAmountLabel": "المبلغ الذي ترغب في إيداعه",
 "cashbackAmountErrorMsg": "من فضلك أدخل مبلغ صحيح أكبر من صفر",
 "cashbackSubmitBtn": "إرسال الطلب",
 "cashbackSuccessTitle": "تم إرسال طلبك",
-"cashbackSuccessMsg": "استلمنا طلبك. فريق كابيتال برو هيتواصل معاك على رقم هاتفك قريبًا بتفاصيل الكاش باك وإتمام الإيداع.",
+"cashbackSuccessMsg": "استلمنا طلبك. سيتواصل معك فريق كابيتال برو على رقم هاتفك قريبًا بتفاصيل الكاش باك وإتمام الإيداع.",
 "cashbackSuccessNotifTitle": "تم إرسال طلب كاش باك",
-"cashbackPartialFailMsg": "استلمنا طلبك عن طريق الإيميل، لكن حصلت مشكلة في حفظه في النظام. فريق كابيتال برو هيتواصل معاك برضو، بس لو مسمعتش خبر خلال يوم كلّمنا مباشرة.",
+"cashbackPartialFailMsg": "استلمنا طلبك عبر البريد الإلكتروني، لكن حدثت مشكلة في حفظه بالنظام. سيتواصل معك فريق كابيتال برو أيضًا، وإذا لم تصلك أي أخبار خلال يوم فيُرجى التواصل معنا مباشرة.",
 "depositTitle": "طلب إضافة رصيد",
-"depositIntro": "اكتب المبلغ اللي عايز تضيفه لرصيدك ورقم هاتفك، وفريق كابيتال برو هيتواصل معاك لإتمام عملية الإيداع.",
-"depositAmountLabel": "المبلغ اللي عايز تضيفه",
+"depositIntro": "أدخل المبلغ الذي ترغب في إضافته إلى رصيدك ورقم هاتفك، وسيتواصل معك فريق كابيتال برو لإتمام عملية الإيداع.",
+"depositAmountLabel": "المبلغ الذي ترغب في إضافته",
 "depositAmountErrorMsg": "من فضلك أدخل مبلغ صحيح أكبر من صفر",
 "depositSubmitBtn": "إرسال الطلب",
 "depositSuccessTitle": "تم إرسال طلبك",
-"depositSuccessMsg": "استلمنا طلبك. فريق كابيتال برو هيتواصل معاك على رقم هاتفك قريبًا لإتمام عملية إضافة الرصيد.",
+"depositSuccessMsg": "استلمنا طلبك. سيتواصل معك فريق كابيتال برو على رقم هاتفك قريبًا لإتمام عملية إضافة الرصيد.",
 "depositSuccessNotifTitle": "تم إرسال طلب إضافة رصيد",
-"depositPartialFailMsg": "استلمنا طلبك عن طريق الإيميل، لكن حصلت مشكلة في حفظه في النظام. فريق كابيتال برو هيتواصل معاك برضو، بس لو مسمعتش خبر خلال يوم كلّمنا مباشرة.",
-"depositNeedsPlanTitle": "لازم تشترك في باقة الأول",
-"depositNeedsPlanMsg": "إضافة الرصيد متاحة بس للحسابات المميزة. اشترك في أي باقة الأول عشان تقدر تضيف رصيد وتبدأ التداول الحقيقي.",
+"depositPartialFailMsg": "استلمنا طلبك عبر البريد الإلكتروني، لكن حدثت مشكلة في حفظه بالنظام. سيتواصل معك فريق كابيتال برو أيضًا، وإذا لم تصلك أي أخبار خلال يوم فيُرجى التواصل معنا مباشرة.",
+"depositNeedsPlanTitle": "يجب الاشتراك في باقة أولًا",
+"depositNeedsPlanMsg": "إضافة الرصيد متاحة فقط للحسابات المميزة. اشترك في إحدى الباقات أولًا حتى تتمكن من إضافة رصيد وبدء التداول الحقيقي.",
 "reportTotalTrades": "عدد الصفقات المقفولة",
 "reportWinRate": "نسبة الصفقات الرابحة",
 "reportNetPnl": "صافي الأرباح/الخسائر",
@@ -1270,7 +1318,7 @@ const translations = {
 "favTab": "★ المفضلة",
 "allTab": "الكل",
 "noFavYet": "لسه مضفتش أي أداة للمفضلة — دوس على النجمة بجانب أي أداة",
-"noResults": "مفيش نتائج",
+"noResults": "لا توجد نتائج",
 "moreInstruments": "＋ كل الأدوات",
 "catSaudi": "أسهم سعودية",
 "catGlobal": "أسهم عالمية",
@@ -1281,15 +1329,15 @@ const translations = {
 "catBars": "سبائك",
 "catFunds": "صناديق استثمار",
 "welcomeGateTitle": "أهلاً بيك في كابيتال برو",
-"welcomeGateNote": "سجّل الدخول عشان تبدأ التداول وتدير محفظتك.",
-"infoBalance": "الرصيد المتاح هو الفلوس اللي عندك كاش دلوقتي ومش مستثمرة في أي أداة. لما تشتري، سعر الأداة كامل بينخصم من هنا فورًا؛ ولما تبيع، الفلوس بترجع هنا تاني.",
-"infoFloatingPnl": "الأرباح العائمة هي الفرق بين قيمة اللي معاك دلوقتي في السوق وسعر الشراء اللي دفعته. بتتغيّر لحظة بلحظة مع تحرك السعر، ومش نهائية إلا لما تبيع.",
-"infoEquity": "الحقوق (Equity) = الرصيد المتاح + القيمة السوقية الحالية لكل اللي معاك. يعني صافي ثروتك دلوقتي لو بعت كل حاجة على طول.",
-"infoUsedMargin": "المبلغ المستثمر هو إجمالي الفلوس اللي دفعتها فعليًا وشريت بيها الأدوات اللي لسه معاك (بدون أي رافعة مالية).",
-"infoFreeMargin": "الرصيد الحر للشراء هو نفسه رصيدك المتاح كاش، وده اللي تقدر تشتري بيه أدوات جديدة.",
+"welcomeGateNote": "سجّل الدخول لتبدأ التداول وإدارة محفظتك.",
+"infoBalance": "الرصيد المتاح هو الأموال النقدية الموجودة لديك وغير المستثمرة في أي أداة. عند الشراء، يُخصم سعر الأداة كاملًا من هنا فورًا؛ وعند البيع، تعود الأموال إلى هنا مرة أخرى.",
+"infoFloatingPnl": "الأرباح العائمة هي الفرق بين القيمة الحالية لما تملكه في السوق وسعر الشراء الذي دفعته. تتغيّر لحظة بلحظة مع تحرك السعر، ولا تُعد نهائية إلا عند البيع.",
+"infoEquity": "الحقوق (Equity) = الرصيد المتاح + القيمة السوقية الحالية لكل ما تملكه. أي أنها صافي ثروتك الحالية لو تم بيع كل شيء فورًا.",
+"infoUsedMargin": "المبلغ المستثمر هو إجمالي الأموال التي دفعتها فعليًا لشراء الأدوات التي ما زلت تملكها (دون أي رافعة مالية).",
+"infoFreeMargin": "الرصيد الحر للشراء هو نفسه رصيدك المتاح نقدًا، وهو ما يمكنك استخدامه لشراء أدوات جديدة.",
 "infoMarginLevel": "نسبة الاستثمار = (المبلغ المستثمر ÷ الحقوق) × 100. بتوضحلك قد إيه من ثروتك محبوس في أدوات مقابل الكاش الحر.",
-"infoSpread": "الفرق (Spread) هو الفرق بين سعر البيع وسعر الشراء لنفس الأداة، وده أساسًا شكل من أشكال تكلفة التداول.",
-"infoPnl": "الرقم ده بيوضح ربحك أو خسارتك في الصفقة: أخضر = ربح، أحمر = خسارة. للصفقات المفتوحة بيتغيّر مع السعر، وللصفقات المقفولة بيبقى ثابت نهائي.",
+"infoSpread": "الفرق (Spread) هو الفرق بين سعر البيع وسعر الشراء لنفس الأداة، وهو أساسًا أحد أشكال تكلفة التداول.",
+"infoPnl": "يوضح هذا الرقم ربحك أو خسارتك في الصفقة: أخضر = ربح، أحمر = خسارة. يتغيّر مع السعر بالنسبة للصفقات المفتوحة، ويبقى ثابتًا نهائيًا للصفقات المغلقة.",
 "infoVolume": "الحجم هو حجم الصفقة بوحدة 'اللوت' — كل ما الحجم أكبر كل ما كل حركة في السعر أثرت أكتر في أرباحك أو خسائرك."
 },
 "en": {
@@ -2222,8 +2270,8 @@ async function buyPosition(){
   if(accountMode==='real'){
     const allowed = allowedCategoriesForUser();
     if(!allowed.includes(s.cat)){
-      openModal('🔒 السوق مش متاح في باقتك', `
-        <div class="modal-note">باقتك الحالية مش بتغطي هذا الرمز (${s.name}). ترقّى لباقة أشمل للتداول عليه.</div>
+      openModal('🔒 السوق غير متاح في باقتك', `
+        <div class="modal-note">باقتك الحالية لا تغطي هذا الرمز (${s.name}). يُرجى الترقية لباقة أشمل للتداول عليه.</div>
         <button class="modal-btn primary" id="planUpgradeBtn">${t('subscribeBtn')}</button>
         <button class="modal-btn ghost" id="planLockedClose">${t('closeBtn')}</button>
       `);
@@ -3366,7 +3414,12 @@ function openLoginModal(){
   showLoginGate('login', true);
 }
 
-function authAsideHTML(){
+function authAsideHTML(state){
+  const toggleBtnHTML = state === 'signup'
+    ? `<button type="button" class="auth-aside-toggle-btn" id="asideToggleBtn">${t('loginLinkBtn')}</button>`
+    : state === 'login'
+      ? `<button type="button" class="auth-aside-toggle-btn" id="asideToggleBtn">${t('signupLinkBtn')}</button>`
+      : '';
   return `
     <div class="auth-aside">
       <div class="auth-aside-blob b1"></div>
@@ -3382,6 +3435,7 @@ function authAsideHTML(){
           <div class="brand-name">كابيتال برو<span>.</span></div>
         </div>
         <div class="auth-aside-headline">${t('authAsideHeadline')}</div>
+        ${toggleBtnHTML}
         <div class="auth-feature-list">
           <div class="auth-feature-item"><span class="auth-feature-icon">◆</span>${t('authAsideFeat1')}</div>
           <div class="auth-feature-item"><span class="auth-feature-icon">◆</span>${t('authAsideFeat2')}</div>
@@ -3529,7 +3583,7 @@ function authGateHTML(state, canCancel){
       </div>`;
   }
 
-  return `${authAsideHTML()}<div class="auth-form-outer"><div class="auth-card">${authMobileBrandHTML()}${inner}</div></div>`;
+  return `<div class="auth-card-shell" data-state="${state}">${authAsideHTML(state)}<div class="auth-form-outer"><div class="auth-card">${authMobileBrandHTML()}${inner}</div></div></div>`;
 }
 
 
@@ -3558,6 +3612,16 @@ function setGateLoading(isLoading){
 
 function showLoginGate(state, canCancel){
   state = state || 'login';
+  const existing = document.getElementById('loggedOutScreen');
+  const oldCard = existing && existing.querySelector('.auth-card-shell');
+  if(oldCard){
+    oldCard.classList.add('auth-card-out');
+    setTimeout(()=>{ mountLoginGate(state, canCancel); }, 150);
+    return;
+  }
+  mountLoginGate(state, canCancel);
+}
+function mountLoginGate(state, canCancel){
   document.querySelector('.app').style.display = 'none';
   const existing = document.getElementById('loggedOutScreen');
   if(existing) existing.remove();
@@ -3569,6 +3633,9 @@ function showLoginGate(state, canCancel){
 
   const cancelBtn = document.getElementById('gateCancel');
   if(cancelBtn) cancelBtn.onclick = ()=>{ screen.remove(); document.querySelector('.app').style.display = ''; resizeCanvas(); drawChart(); };
+
+  const asideToggle = document.getElementById('asideToggleBtn');
+  if(asideToggle) asideToggle.onclick = (e)=>{ e.preventDefault(); showLoginGate(state === 'login' ? 'signup' : 'login', canCancel); };
 
   if(state === 'login'){
     wirePasswordToggle('gatePass','gatePassToggle');
@@ -3969,10 +4036,10 @@ function openLiveDataDiagModal(){
     const details = key==='twelveData' ? window.__liveErrors.twelveDataDetails : null;
     return `<div class="switch-row"><span>${labels[key]}</span><span style="color:${color};font-family:var(--font-mono);font-size:12px;">${status}</span></div>` +
       (err ? `<div style="font-size:11px;color:var(--sell);padding:0 0 8px;word-break:break-all;">${err}</div>` : '') +
-      (details && details.length ? `<div style="font-size:10.5px;color:var(--sell);padding:0 0 8px;word-break:break-all;">رموز مش راجعة سعر صحيح:<br>${details.join('<br>')}</div>` : '');
+      (details && details.length ? `<div style="font-size:10.5px;color:var(--sell);padding:0 0 8px;word-break:break-all;">رموز لم تُرجع سعرًا صحيحًا:<br>${details.join('<br>')}</div>` : '');
   }).join('');
   openModal('🔧 حالة الاتصال', `
-    <div class="modal-note">حالة كل مصدر بيانات لحظية دلوقتي، وآخر خطأ لو حصل.</div>
+    <div class="modal-note">حالة كل مصدر بيانات لحظيًا، وآخر خطأ إن وُجد.</div>
     ${rows}
     <button class="modal-btn ghost" id="diagClose" style="margin-top:10px;">${t('closeBtn')}</button>
   `);
@@ -4010,7 +4077,7 @@ async function loadPendingSubscriptions(){
     const { data, error } = await supabaseClient.rpc('admin_list_pending_subscriptions');
     if(error) throw error;
     if(!data || !data.length){
-      listEl.innerHTML = `<div class="modal-note">مفيش طلبات معلّقة دلوقتي.</div>`;
+      listEl.innerHTML = `<div class="modal-note">لا توجد طلبات معلّقة حاليًا.</div>`;
       return;
     }
     listEl.innerHTML = data.map((r,i)=>{
@@ -4060,7 +4127,7 @@ async function loadPendingCashback(){
     const { data, error } = await supabaseClient.rpc('admin_list_pending_cashback_requests');
     if(error) throw error;
     if(!data || !data.length){
-      listEl.innerHTML = `<div class="modal-note">مفيش طلبات كاش باك معلّقة دلوقتي.</div>`;
+      listEl.innerHTML = `<div class="modal-note">لا توجد طلبات كاش باك معلّقة حاليًا.</div>`;
       return;
     }
     listEl.innerHTML = data.map((r,i)=>{
@@ -4101,7 +4168,7 @@ async function loadPendingDeposits(){
     const { data, error } = await supabaseClient.rpc('admin_list_pending_deposit_requests');
     if(error) throw error;
     if(!data || !data.length){
-      listEl.innerHTML = `<div class="modal-note">مفيش طلبات إضافة رصيد معلّقة دلوقتي.</div>`;
+      listEl.innerHTML = `<div class="modal-note">لا توجد طلبات إضافة رصيد معلّقة حاليًا.</div>`;
       return;
     }
     listEl.innerHTML = data.map((r,i)=>{
@@ -4136,19 +4203,19 @@ async function loadPendingDeposits(){
 }
 function openAdminRequestsTrackingModal(){
   openModal('📥 متابعة الطلبات', `
-    <div class="modal-note">طلبات الاشتراك الجديدة (pending) مباشرة من الداتابيز — من غير ما تعتمد على وصول الإيميل.</div>
+    <div class="modal-note">طلبات الاشتراك الجديدة (pending) مباشرة من قاعدة البيانات — دون الاعتماد على وصول البريد الإلكتروني.</div>
     <button class="modal-btn ghost" id="refreshPendingBtn" style="margin-top:6px;">🔄 تحديث القائمة</button>
     <div id="pendingSubsList" style="margin-top:10px;display:flex;flex-direction:column;gap:10px;"></div>
 
     <div style="border-top:1px solid var(--border);margin:18px 0 14px;"></div>
 
-    <div class="modal-note">طلبات كاش باك على الإيداع — عملاء عايزين يودّعوا رصيد وسألوا عن نسبة الكاش باك.</div>
+    <div class="modal-note">طلبات كاش باك على الإيداع — عملاء يرغبون في إيداع رصيد واستفسروا عن نسبة الكاش باك.</div>
     <button class="modal-btn ghost" id="refreshCashbackBtn" style="margin-top:6px;">🔄 تحديث القائمة</button>
     <div id="pendingCashbackList" style="margin-top:10px;display:flex;flex-direction:column;gap:10px;"></div>
 
     <div style="border-top:1px solid var(--border);margin:18px 0 14px;"></div>
 
-    <div class="modal-note">طلبات إضافة رصيد — عملاء مميزون عايزين يضيفوا رصيد لحسابهم.</div>
+    <div class="modal-note">طلبات إضافة رصيد — عملاء مميزون يرغبون في إضافة رصيد لحسابهم.</div>
     <button class="modal-btn ghost" id="refreshDepositsBtn" style="margin-top:6px;">🔄 تحديث القائمة</button>
     <div id="pendingDepositsList" style="margin-top:10px;display:flex;flex-direction:column;gap:10px;"></div>
   `);
@@ -4165,7 +4232,7 @@ function openAdminModal(){
   openModal('🔑 لوحة الأدمن', `
     <datalist id="platformEmailsList"></datalist>
 
-    <div class="modal-note">تفعيل باقة لعميل: أدخل إيميله (لازم يكون سجّل حساب على المنصة قبل كده) واختار الباقة. لو هو مشترك فيها بالفعل، هنقولك من غير ما نكررها.</div>
+    <div class="modal-note">تفعيل باقة لعميل: أدخل بريده الإلكتروني (يجب أن يكون قد سجّل حسابًا على المنصة مسبقًا) واختر الباقة. إذا كان مشتركًا فيها بالفعل، سنُعلمك دون تكرارها.</div>
     <label style="display:block;margin-top:10px;font-size:13px;color:var(--text-dim);">إيميل العميل</label>
     <input type="email" id="adminPlanEmail" list="platformEmailsList" placeholder="client@example.com" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);margin-top:4px;box-sizing:border-box;">
     <label style="display:block;margin-top:12px;font-size:13px;color:var(--text-dim);">الباقة</label>
@@ -4175,17 +4242,17 @@ function openAdminModal(){
 
     <div style="border-top:1px solid var(--border);margin:18px 0 14px;"></div>
 
-    <div class="modal-note">إلغاء باقة معينة بس لعميل (بيفضل مشترك في أي باقات تانية عنده).</div>
+    <div class="modal-note">إلغاء باقة معينة فقط لعميل (يبقى مشتركًا في أي باقات أخرى لديه).</div>
     <label style="display:block;margin-top:10px;font-size:13px;color:var(--text-dim);">إيميل العميل</label>
     <input type="email" id="adminRevokePlanEmail" list="platformEmailsList" placeholder="client@example.com" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);margin-top:4px;box-sizing:border-box;">
     <label style="display:block;margin-top:12px;font-size:13px;color:var(--text-dim);">الباقة</label>
     <select id="adminRevokePlanSelect" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);margin-top:4px;box-sizing:border-box;">${planOptionsHTML}</select>
     <div id="adminRevokePlanMsg" style="margin-top:10px;font-size:13px;"></div>
-    <button class="modal-btn primary" id="adminRevokePlanSubmitBtn" style="margin-top:8px;background:var(--sell);">إلغاء الباقة دي بس</button>
+    <button class="modal-btn primary" id="adminRevokePlanSubmitBtn" style="margin-top:8px;background:var(--sell);">إلغاء هذه الباقة فقط</button>
 
     <div style="border-top:1px solid var(--border);margin:18px 0 14px;"></div>
 
-    <div class="modal-note">إلغاء كل اشتراكات عميل: بيرجعه حساب تجريبي تاني (من غير ما يتمسح حسابه).</div>
+    <div class="modal-note">إلغاء كل اشتراكات عميل: يُعيده إلى حساب تجريبي مرة أخرى (دون حذف حسابه).</div>
     <label style="display:block;margin-top:10px;font-size:13px;color:var(--text-dim);">إيميل العميل</label>
     <input type="email" id="adminRevokeEmail" list="platformEmailsList" placeholder="client@example.com" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);margin-top:4px;box-sizing:border-box;">
     <div id="adminRevokeMsg" style="margin-top:10px;font-size:13px;"></div>
@@ -4240,10 +4307,10 @@ function openAdminModal(){
       if(error) throw error;
       if(data === 'already_subscribed'){
         msgEl.style.color = 'var(--amber)';
-        msgEl.textContent = `${email} مشترك بالفعل في باقة "${t(plan.nameKey)}" - مفيش حاجة اتكررت.`;
+        msgEl.textContent = `${email} مشترك بالفعل في باقة "${t(plan.nameKey)}" - لم يتم تكرارها.`;
       } else {
         msgEl.style.color = 'var(--buy)';
-        msgEl.textContent = `تم تفعيل باقة "${t(plan.nameKey)}" لـ ${email}. هتتفعل عنده أول ما يسجّل دخول (أو يعمل ريفرش لو داخل بالفعل).`;
+        msgEl.textContent = `تم تفعيل باقة "${t(plan.nameKey)}" لـ ${email}. ستُفعَّل لديه فور تسجيل الدخول (أو تحديث الصفحة إذا كان داخلًا بالفعل).`;
       }
     } catch(err){
       msgEl.style.color = 'var(--sell)';
@@ -4267,10 +4334,10 @@ function openAdminModal(){
       if(error) throw error;
       if(data === 'not_subscribed'){
         msgEl.style.color = 'var(--amber)';
-        msgEl.textContent = `${email} مش مشترك في باقة "${t(plan.nameKey)}" أصلًا.`;
+        msgEl.textContent = `${email} غير مشترك في باقة "${t(plan.nameKey)}" أصلًا.`;
       } else {
         msgEl.style.color = 'var(--buy)';
-        msgEl.textContent = `تم إلغاء باقة "${t(plan.nameKey)}" لـ ${email}. هتتشال عنده أول ما يسجّل دخول (أو يعمل ريفرش لو داخل بالفعل).`;
+        msgEl.textContent = `تم إلغاء باقة "${t(plan.nameKey)}" لـ ${email}. ستُزال لديه فور تسجيل الدخول (أو تحديث الصفحة إذا كان داخلًا بالفعل).`;
         if(currentUser && currentUser.email===email && !isAdminEmail(currentUser.email)){
           const approvedRows = await checkApprovedPlans(currentUser.email);
           const marketRows = approvedRows.filter(r=> marketPlanIds.includes(r.plan));
@@ -4336,7 +4403,7 @@ function openAdminModal(){
       if(currentUser && currentUser.email===email){ balance = Number(data); updateSummary(); }
     } catch(err){
       msgEl.style.color = 'var(--sell)';
-      msgEl.textContent = 'فشل التنفيذ: ' + (err.message || 'تأكد إن العميل ده سجّل حساب على المنصة قبل كده.');
+      msgEl.textContent = 'فشل التنفيذ: ' + (err.message || 'تأكد من أن هذا العميل قد سجّل حسابًا على المنصة مسبقًا.');
     }
   };
   document.getElementById('adminDeductSubmitBtn').onclick = async ()=>{
@@ -4372,7 +4439,7 @@ function openAdminModal(){
       if(currentUser && currentUser.email===email){ balance = newBalance; updateSummary(); }
     } catch(err){
       msgEl.style.color = 'var(--sell)';
-      msgEl.textContent = 'فشل التنفيذ: ' + (err.message || 'تأكد إن العميل ده سجّل حساب على المنصة قبل كده.');
+      msgEl.textContent = 'فشل التنفيذ: ' + (err.message || 'تأكد من أن هذا العميل قد سجّل حسابًا على المنصة مسبقًا.');
     }
   };
 }
@@ -4612,7 +4679,7 @@ async function requestAddBalance(amount, phone, currency){
       email: currentUser.email,
       phone: phone,
       amount: amount + ' ' + curLabel,
-      message: `طلب إضافة رصيد جديد\nالمبلغ: ${amount} ${curLabel}\nبريد العميل: ${currentUser.email}\nرقم الهاتف: ${phone}${dbSaved?'':'\n⚠️ ملحوظة: الطلب فشل يتسجل في قاعدة البيانات، الإيميل ده هو السجل الوحيد له.'}`
+      message: `طلب إضافة رصيد جديد\nالمبلغ: ${amount} ${curLabel}\nبريد العميل: ${currentUser.email}\nرقم الهاتف: ${phone}${dbSaved?'':'\n⚠️ ملحوظة: فشل تسجيل الطلب في قاعدة البيانات، وهذا البريد الإلكتروني هو السجل الوحيد له.'}`
     });
   } catch(err){
     console.warn('deposit request email delivery failed:', err);
@@ -4654,7 +4721,7 @@ async function requestCashback(amount, phone, currency){
       email: currentUser.email,
       phone: phone,
       amount: amount + ' ' + curLabel,
-      message: `طلب كاش باك جديد على إيداع\nالمبلغ: ${amount} ${curLabel}\nبريد العميل: ${currentUser.email}\nرقم الهاتف: ${phone}${dbSaved?'':'\n⚠️ ملحوظة: الطلب فشل يتسجل في قاعدة البيانات، الإيميل ده هو السجل الوحيد له.'}`
+      message: `طلب كاش باك جديد على إيداع\nالمبلغ: ${amount} ${curLabel}\nبريد العميل: ${currentUser.email}\nرقم الهاتف: ${phone}${dbSaved?'':'\n⚠️ ملحوظة: فشل تسجيل الطلب في قاعدة البيانات، وهذا البريد الإلكتروني هو السجل الوحيد له.'}`
     });
   } catch(err){
     console.warn('cashback request email delivery failed:', err);
@@ -4930,10 +4997,10 @@ function renderAdminStockPricesModal(){
           </span>
         </div>`;
       }).join('')
-    : `<div class="modal-note" style="font-size:12.5px;">لسه مفيش أسعار متحددة يدويًا.</div>`;
+    : `<div class="modal-note" style="font-size:12.5px;">لا توجد أسعار محددة يدويًا بعد.</div>`;
 
   openModal('💰 أسعار الأسهم', `
-    <div class="modal-note">حدد سعر يدوي لأي سهم — سواء كان أصلاً لايف من مصدر خارجي أو محاكاة. السهم اللي تحط له سعر يدوي هيخرج فورًا من نظام تتبع الأسعار اللايف وهيفضل عليه (مع اهتزاز بسيط حواليه) لحد ما تدوس "رجّعه لايف" تحت.</div>
+    <div class="modal-note">حدد سعرًا يدويًا لأي سهم — سواء كان أصلًا مباشرًا من مصدر خارجي أو محاكاة. السهم الذي يُحدَّد له سعر يدوي سيخرج فورًا من نظام تتبع الأسعار المباشرة وسيبقى على هذا السعر (مع تذبذب بسيط حوله) إلى أن تضغط "إعادته إلى المباشر" أدناه.</div>
     <label style="display:block;margin-top:10px;font-size:13px;color:var(--text-dim);">الكاتيجوري</label>
     <select id="adminStockPriceCategory" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);margin-top:4px;box-sizing:border-box;">${manualPriceCategoryOptionsHTML()}</select>
     <label style="display:block;margin-top:12px;font-size:13px;color:var(--text-dim);">السهم</label>

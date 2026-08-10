@@ -968,6 +968,31 @@ const symbolIndexByName = {};
 symbols.forEach((s,i)=> symbolIndexByName[s.name] = i);
 const defaultFavNames = ['EUR/USD','GBP/USD','Gold','BTC/USD','SABIC','S&P 500'];
 symbols.forEach(s=> s.fav = defaultFavNames.includes(s.name));
+
+// ===== last-known live price cache (localStorage) =====
+// Live status itself is never persisted (a symbol is only "live" while its price was
+// actually confirmed this session) — but we do remember the last *price* we saw while it
+// was live, so a fresh page load can seed the display with something close to reality
+// instead of the hand-set fallback numbers above, until the live check catches up.
+const LAST_PRICE_PREFIX = 'capitalpro:lastPrice:';
+function persistLastPrice(s){
+  try {
+    localStorage.setItem(LAST_PRICE_PREFIX + s.name, JSON.stringify({ price: s.price, ts: Date.now() }));
+  } catch(err){ /* storage unavailable/full — safe to ignore, live fetch will still work */ }
+}
+function restoreLastPrices(){
+  try {
+    symbols.forEach(s=>{
+      const raw = localStorage.getItem(LAST_PRICE_PREFIX + s.name);
+      if(!raw) return;
+      const cached = JSON.parse(raw);
+      if(cached && typeof cached.price === 'number' && !isNaN(cached.price) && cached.price > 0){
+        s.price = cached.price;
+      }
+    });
+  } catch(err){ /* corrupted/blocked storage — just keep the hand-set fallback prices */ }
+}
+restoreLastPrices(); // run immediately — must happen before the first renderTickerStrip() below
 // baseStep is the "resting" spread for this symbol (from live data when available,
 // otherwise the hand-set fallback above). The spread shown to the user wobbles
 // around this base every tick — see jitterSpread() — instead of sitting frozen.
@@ -1850,7 +1875,7 @@ async function loadChartSeries(){
       s.price = latestReal;
       s.step = Math.max(latestReal*0.0004, latestReal>=1 ? 0.01 : 0.0001);
       s.baseStep = s.step;
-      s.liveAt = Date.now();
+      s.liveAt = Date.now(); persistLastPrice(s);
       s.liveSource = source;
       refreshLivePriceOnly();
       renderTickerStrip();
@@ -2618,7 +2643,7 @@ async function fetchLiveCryptoPrices(){
         s.price = real;
         s.step = Math.max(real*0.0006, real>=1 ? 0.01 : 0.0001);
         s.baseStep = s.step;
-        s.liveAt = Date.now(); s.liveSource = 'Binance';
+        s.liveAt = Date.now(); s.liveSource = 'Binance'; persistLastPrice(s);
         updated++;
       }
     });
@@ -2654,7 +2679,7 @@ async function fetchLiveCoinGeckoPrices(){
         s.price = real;
         s.step = Math.max(real*0.0006, real>=1 ? 0.01 : 0.0001);
         s.baseStep = s.step;
-        s.liveAt = Date.now(); s.liveSource = 'CoinGecko';
+        s.liveAt = Date.now(); s.liveSource = 'CoinGecko'; persistLastPrice(s);
         updated++;
       }
     });
@@ -2785,7 +2810,7 @@ async function fetchLiveTwelveData(){
         s.price = real;
         s.step = Math.max(real*0.0004, real>=1 ? 0.01 : 0.0001);
         s.baseStep = s.step;
-        s.liveAt = Date.now(); s.liveSource = 'Twelve Data';
+        s.liveAt = Date.now(); s.liveSource = 'Twelve Data'; persistLastPrice(s);
         updated++;
       } else {
         failedDetails.push(`${s.name} (${tdSym}): ${JSON.stringify(entry)}`);
@@ -2827,7 +2852,7 @@ async function fetchLiveSaudiPrices(){
         s.price = real;
         s.step = Math.max(real*0.0004, real>=1 ? 0.01 : 0.0001);
         s.baseStep = s.step;
-        s.liveAt = Date.now();
+        s.liveAt = Date.now(); persistLastPrice(s);
         // Tadawul quotes via this free route come slightly delayed, not tick-by-tick
         // real-time — labeled honestly, same as the Frankfurter forex rates.
         s.liveSource = 'Yahoo Finance (بيانات مؤجلة)';
@@ -2867,7 +2892,7 @@ async function fetchLiveYahooIndices(){
         s.price = real;
         s.step = Math.max(real*0.0004, real>=1 ? 0.01 : 0.0001);
         s.baseStep = s.step;
-        s.liveAt = Date.now();
+        s.liveAt = Date.now(); persistLastPrice(s);
         // Same honesty note as the Saudi/forex feeds — this free route is delayed, not tick-by-tick.
         s.liveSource = 'Yahoo Finance (بيانات مؤجلة)';
         updated++;
@@ -2906,7 +2931,7 @@ async function fetchLiveYahooCommodities(){
         s.price = real;
         s.step = Math.max(real*0.0004, real>=1 ? 0.01 : 0.0001);
         s.baseStep = s.step;
-        s.liveAt = Date.now();
+        s.liveAt = Date.now(); persistLastPrice(s);
         s.liveSource = 'Yahoo Finance (بيانات مؤجلة)';
         updated++;
       }
@@ -2944,7 +2969,7 @@ async function fetchLiveYahooGlobal(){
         s.price = real;
         s.step = Math.max(real*0.0004, real>=1 ? 0.01 : 0.0001);
         s.baseStep = s.step;
-        s.liveAt = Date.now();
+        s.liveAt = Date.now(); persistLastPrice(s);
         s.liveSource = 'Yahoo Finance (بيانات مؤجلة)';
         updated++;
       }
@@ -2986,7 +3011,7 @@ async function fetchLiveForexRates(){
           s.price = real;
           s.step = Math.max(real*0.0004, real>=1 ? 0.0002 : 0.00001);
           s.baseStep = s.step;
-          s.liveAt = Date.now(); s.liveSource = 'Frankfurter (ECB daily rate)';
+          s.liveAt = Date.now(); s.liveSource = 'Frankfurter (ECB daily rate)'; persistLastPrice(s);
           updated++;
         }
       });

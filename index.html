@@ -1270,7 +1270,7 @@ const translations = {
 "loadingMsg": "جاري التحميل...",
 "menuAdminRecsLabel": "📊 التوصيات",
 "adminRecsTitle": "🎯 إدارة توصيات الذكاء الاصطناعي",
-"adminRecsIntro": "ضيف توصية جديدة: اختار السوق، ثم السهم أو السبيكة، وحدد التوصية شراء ولا بيع. التوصية هتظهر فورًا لكل عملاء باقة الذكاء الاصطناعي.",
+"adminRecsIntro": "أضف توصية جديدة: اختر السوق، ثم السهم أو السبيكة، وحدد التوصية شراء أو بيع. ستظهر التوصية فورًا لجميع عملاء باقة الذكاء الاصطناعي.",
 "adminRecsMarketLabel": "السوق",
 "adminRecsSymbolLabel": "السهم / السبيكة",
 "adminRecsActionLabel": "التوصية",
@@ -1334,12 +1334,13 @@ const translations = {
 "depositNeedsPlanMsg": "إضافة الرصيد متاحة فقط للحسابات المميزة. اشترك في إحدى الباقات أولًا حتى تتمكن من إضافة رصيد وبدء التداول الحقيقي.",
 "withdrawBtn": "طلب سحب",
 "withdrawTitle": "طلب سحب أموال",
-"withdrawIntro": "أدخل بيانات حسابك البنكي والمبلغ اللي عايز تسحبه، وسيتواصل معك فريق كابيتال برو لإتمام عملية السحب.",
+"withdrawIntro": "أدخل بيانات حسابك البنكي والمبلغ الذي ترغب في سحبه، وسيتواصل معك فريق كابيتال برو لإتمام عملية السحب.",
 "bankNameLabel": "اسم البنك",
 "bankAccountLabel": "رقم الحساب البنكي",
 "ibanLabel": "الآيبان (IBAN)",
 "withdrawAmountLabel": "المبلغ الذي ترغب في سحبه",
 "withdrawAmountErrorMsg": "من فضلك أدخل مبلغ صحيح أكبر من صفر",
+"withdrawInsufficientBalanceMsg": "رصيدك الحالي {balance} — لا يمكنك سحب مبلغ أكبر منه.",
 "bankNameErrorMsg": "من فضلك أدخل اسم البنك",
 "bankAccountErrorMsg": "من فضلك أدخل رقم الحساب البنكي",
 "ibanErrorMsg": "من فضلك أدخل رقم آيبان صحيح",
@@ -1359,7 +1360,7 @@ const translations = {
 "searchPlaceholder": "ابحث عن أداة (مثلاً: يورو، بيتكوين، سابك)...",
 "favTab": "★ المفضلة",
 "allTab": "الكل",
-"noFavYet": "لسه مضفتش أي أداة للمفضلة — دوس على النجمة بجانب أي أداة",
+"noFavYet": "لم تقم بإضافة أي أداة إلى المفضلة بعد — اضغط على النجمة بجانب أي أداة",
 "noResults": "لا توجد نتائج",
 "moreInstruments": "＋ كل الأدوات",
 "catSaudi": "أسهم سعودية",
@@ -1649,6 +1650,7 @@ const translations = {
 "ibanLabel": "IBAN",
 "withdrawAmountLabel": "Amount to withdraw",
 "withdrawAmountErrorMsg": "Please enter a valid amount greater than zero",
+"withdrawInsufficientBalanceMsg": "Your current balance is {balance} — you can't withdraw more than that.",
 "bankNameErrorMsg": "Please enter the bank name",
 "bankAccountErrorMsg": "Please enter the bank account number",
 "ibanErrorMsg": "Please enter a valid IBAN",
@@ -4108,7 +4110,7 @@ function settingsBodyHTML(){
 function openLiveDataDiagModal(){
   const labels = { crypto:'كريبتو (Binance)', coingecko:'كريبتو (CoinGecko)', twelveData:'أسهم عالمية/فوركس (Twelve Data)', forex:'فوركس (Frankfurter)', saudi:'أسهم سعودية (Yahoo)', yahooIndices:'مؤشرات عالمية (Yahoo)', yahooCommodities:'سلع (Yahoo)', yahooGlobal:'أسهم أوروبية (Yahoo)' };
   const rows = Object.keys(labels).map(key=>{
-    const status = liveDataStatus[key] || 'لسه ماتصلش';
+    const status = liveDataStatus[key] || 'لم يتصل بعد';
     const color = status==='live' ? 'var(--buy)' : status==='error' ? 'var(--sell)' : 'var(--text-dim)';
     const err = window.__liveErrors[key];
     const details = key==='twelveData' ? window.__liveErrors.twelveDataDetails : null;
@@ -4559,7 +4561,7 @@ function openAdminModal(){
         const { error: revertError } = await supabaseClient.rpc('admin_add_balance', { target_email: email, amount: deduction });
         if(revertError) throw revertError;
         msgEl.style.color = 'var(--sell)';
-        msgEl.textContent = `مينفعش تخصم ${fmt(deduction,2)} ر.س — رصيد ${email} الحالي ${fmt(currentBalance,2)} ر.س بس.`;
+        msgEl.textContent = `لا يمكن خصم ${fmt(deduction,2)} ر.س — رصيد ${email} الحالي ${fmt(currentBalance,2)} ر.س فقط.`;
         if(currentUser && currentUser.email===email){ balance = currentBalance; updateSummary(); }
         return;
       }
@@ -4837,6 +4839,7 @@ function openWithdrawModal(){
   }
   openModal(t('withdrawTitle'), `
     <div class="modal-note">${t('withdrawIntro')}</div>
+    <div class="modal-note" style="color:var(--buy);font-weight:600;">${t('balance')}: ${fmt(balance,2)} ${t('currencySAR')}</div>
     <div class="form-row">
       <span class="field-label">${t('bankNameLabel')}</span>
       <input class="field-input" style="text-align:right;" id="withdrawBankNameInput" type="text" placeholder="بنك الراجحي">
@@ -4901,6 +4904,11 @@ function openWithdrawModal(){
     }
     if(!amount || amount<=0){
       errEl.textContent = t('withdrawAmountErrorMsg');
+      errEl.style.display = 'block';
+      return;
+    }
+    if(amount > balance){
+      errEl.textContent = t('withdrawInsufficientBalanceMsg').replace('{balance}', fmt(balance,2));
       errEl.style.display = 'block';
       return;
     }

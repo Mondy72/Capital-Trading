@@ -626,7 +626,7 @@
 
   <!-- Summary bar -->
   <div class="summary-bar">
-    <div class="summary-item"><div class="summary-label"><span data-i18n="balance">الرصيد</span><span class="info-ico" data-info="infoBalance">؟</span><span class="balance-add-ico" id="balanceAddBtn" title="إضافة رصيد">+</span></div><div class="summary-value"><span id="sumBalance">0.00</span></div></div>
+    <div class="summary-item"><div class="summary-label"><span data-i18n="balance">الرصيد</span><span class="info-ico" data-info="infoBalance">؟</span><span class="balance-add-ico" id="balanceAddBtn" title="إضافة رصيد">+</span><span class="balance-add-ico" id="balanceWithdrawBtn" title="طلب سحب">−</span></div><div class="summary-value"><span id="sumBalance">0.00</span></div></div>
     <div class="summary-item"><div class="summary-label"><span data-i18n="floatingPnl">الأرباح العائمة</span><span class="info-ico" data-info="infoFloatingPnl">؟</span></div><div class="summary-value" id="sumPnl">0.00</div></div>
     <div class="summary-item"><div class="summary-label"><span data-i18n="equity">الحقوق (Equity)</span><span class="info-ico" data-info="infoEquity">؟</span></div><div class="summary-value accent" id="sumEquity">0.00</div></div>
     <div class="summary-item"><div class="summary-label"><span data-i18n="usedMargin">الهامش المستخدم</span><span class="info-ico" data-info="infoUsedMargin">؟</span></div><div class="summary-value" id="sumMargin">0.00</div></div>
@@ -1332,6 +1332,23 @@ const translations = {
 "depositPartialFailMsg": "استلمنا طلبك عبر البريد الإلكتروني، لكن حدثت مشكلة في حفظه بالنظام. سيتواصل معك فريق كابيتال برو أيضًا، وإذا لم تصلك أي أخبار خلال يوم فيُرجى التواصل معنا مباشرة.",
 "depositNeedsPlanTitle": "يجب الاشتراك في باقة أولًا",
 "depositNeedsPlanMsg": "إضافة الرصيد متاحة فقط للحسابات المميزة. اشترك في إحدى الباقات أولًا حتى تتمكن من إضافة رصيد وبدء التداول الحقيقي.",
+"withdrawBtn": "طلب سحب",
+"withdrawTitle": "طلب سحب أموال",
+"withdrawIntro": "أدخل بيانات حسابك البنكي والمبلغ اللي عايز تسحبه، وسيتواصل معك فريق كابيتال برو لإتمام عملية السحب.",
+"bankNameLabel": "اسم البنك",
+"bankAccountLabel": "رقم الحساب البنكي",
+"ibanLabel": "الآيبان (IBAN)",
+"withdrawAmountLabel": "المبلغ الذي ترغب في سحبه",
+"withdrawAmountErrorMsg": "من فضلك أدخل مبلغ صحيح أكبر من صفر",
+"bankNameErrorMsg": "من فضلك أدخل اسم البنك",
+"bankAccountErrorMsg": "من فضلك أدخل رقم الحساب البنكي",
+"ibanErrorMsg": "من فضلك أدخل رقم آيبان صحيح",
+"withdrawSubmitBtn": "إرسال طلب السحب",
+"withdrawSuccessTitle": "تم إرسال طلبك",
+"withdrawSuccessMsg": "استلمنا طلب السحب. سيتواصل معك فريق كابيتال برو على رقم هاتفك قريبًا لإتمام عملية السحب.",
+"withdrawSuccessNotifTitle": "تم إرسال طلب سحب",
+"withdrawPartialFailMsg": "استلمنا طلبك عبر البريد الإلكتروني، لكن حدثت مشكلة في حفظه بالنظام. سيتواصل معك فريق كابيتال برو أيضًا، وإذا لم تصلك أي أخبار خلال يوم فيُرجى التواصل معنا مباشرة.",
+"withdrawNeedsPlanMsg": "طلب السحب متاح فقط للحسابات المميزة.",
 "reportTotalTrades": "عدد الصفقات المقفولة",
 "reportWinRate": "نسبة الصفقات الرابحة",
 "reportNetPnl": "صافي الأرباح/الخسائر",
@@ -1624,6 +1641,23 @@ const translations = {
 "depositPartialFailMsg": "We received your request by email, but there was a problem saving it in the system. The Capital Pro team will still reach out, but if you don't hear back within a day, please contact us directly.",
 "depositNeedsPlanTitle": "Subscribe to a plan first",
 "depositNeedsPlanMsg": "Adding balance is only available for premium accounts. Subscribe to any plan first so you can add balance and start real trading.",
+"withdrawBtn": "Withdraw",
+"withdrawTitle": "Withdrawal Request",
+"withdrawIntro": "Enter your bank account details and the amount you'd like to withdraw, and the Capital Pro team will contact you to complete the withdrawal.",
+"bankNameLabel": "Bank name",
+"bankAccountLabel": "Bank account number",
+"ibanLabel": "IBAN",
+"withdrawAmountLabel": "Amount to withdraw",
+"withdrawAmountErrorMsg": "Please enter a valid amount greater than zero",
+"bankNameErrorMsg": "Please enter the bank name",
+"bankAccountErrorMsg": "Please enter the bank account number",
+"ibanErrorMsg": "Please enter a valid IBAN",
+"withdrawSubmitBtn": "Submit Withdrawal Request",
+"withdrawSuccessTitle": "Your request has been sent",
+"withdrawSuccessMsg": "We received your withdrawal request. The Capital Pro team will contact you on your phone soon to complete the withdrawal.",
+"withdrawSuccessNotifTitle": "Withdrawal request sent",
+"withdrawPartialFailMsg": "We received your request by email, but there was a problem saving it in the system. The Capital Pro team will still reach out, but if you don't hear back within a day, please contact us directly.",
+"withdrawNeedsPlanMsg": "Withdrawal requests are only available for premium accounts.",
 "reportTotalTrades": "Closed Trades Count",
 "reportWinRate": "Win Rate",
 "reportNetPnl": "Net P/L",
@@ -3276,6 +3310,25 @@ if(balanceAddBtn){
   });
 }
 
+const balanceWithdrawBtn = document.getElementById('balanceWithdrawBtn');
+if(balanceWithdrawBtn){
+  balanceWithdrawBtn.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    if(!currentUser){ openLoginModal(); return; }
+    if(accountMode !== 'real'){
+      openModal(t('depositNeedsPlanTitle'), `
+        <div class="modal-note">${t('withdrawNeedsPlanMsg')}</div>
+        <button class="modal-btn primary" id="withdrawGoPlanBtn">${t('subscribeBtn')}</button>
+        <button class="modal-btn ghost" id="withdrawNeedsPlanClose">${t('closeBtn')}</button>
+      `);
+      document.getElementById('withdrawNeedsPlanClose').onclick = closeModal;
+      document.getElementById('withdrawGoPlanBtn').onclick = ()=>{ closeModal(); openSubscriptionModal(); };
+      return;
+    }
+    openWithdrawModal();
+  });
+}
+
 /* ============ Menu dropdown (☰) ============ */
 const menuBtn = document.getElementById('menuBtn');
 const menuDropdown = document.getElementById('menuDropdown');
@@ -4226,6 +4279,49 @@ async function loadPendingDeposits(){
     listEl.innerHTML = `<div class="modal-note" style="color:var(--sell);">تعذّر تحميل الطلبات: ${err.message || 'حاول تاني'}</div>`;
   }
 }
+async function loadPendingWithdrawals(){
+  const listEl = document.getElementById('pendingWithdrawalsList');
+  if(!listEl) return;
+  listEl.innerHTML = `<div class="modal-note">جاري التحميل...</div>`;
+  try {
+    const { data, error } = await supabaseClient.rpc('admin_list_pending_withdrawal_requests');
+    if(error) throw error;
+    if(!data || !data.length){
+      listEl.innerHTML = `<div class="modal-note">لا توجد طلبات سحب معلّقة حاليًا.</div>`;
+      return;
+    }
+    listEl.innerHTML = data.map((r,i)=>{
+      const dateLabel = new Date(r.created_at).toLocaleString('ar-EG');
+      return `
+        <div class="plan-card" style="text-align:right;">
+          <div class="plan-name">${r.email}</div>
+          <div class="plan-desc">المبلغ المطلوب سحبه: ${fmt(r.amount,2)} ${t(r.currency==='USD'?'currencyUSD':'currencySAR')}</div>
+          <div class="plan-desc">البنك: ${r.bank_name || '—'} · رقم الحساب: ${r.account_number || '—'}</div>
+          <div class="plan-desc">الآيبان: ${r.iban || '—'}</div>
+          <div class="plan-desc">الهاتف: ${r.phone || '—'} · ${dateLabel}</div>
+          <button class="modal-btn primary" style="margin-top:8px;" data-withdrawal-contacted-idx="${i}">📞 تواصلت مع العميل</button>
+        </div>`;
+    }).join('');
+    data.forEach((r,i)=>{
+      const btn = listEl.querySelector(`[data-withdrawal-contacted-idx="${i}"]`);
+      if(btn) btn.onclick = async ()=>{
+        btn.disabled = true;
+        btn.textContent = 'جاري التحديث...';
+        try {
+          const { error } = await supabaseClient.rpc('admin_mark_withdrawal_contacted', { request_id: r.id });
+          if(error) throw error;
+          btn.textContent = '✅ اتسجّل التواصل';
+        } catch(err){
+          btn.disabled = false;
+          btn.textContent = 'فشل — حاول تاني';
+          console.warn('markWithdrawalContacted failed:', err);
+        }
+      };
+    });
+  } catch(err){
+    listEl.innerHTML = `<div class="modal-note" style="color:var(--sell);">تعذّر تحميل الطلبات: ${err.message || 'حاول تاني'}</div>`;
+  }
+}
 function openAdminRequestsTrackingModal(){
   openModal('📥 متابعة الطلبات', `
     <div class="modal-note">طلبات الاشتراك الجديدة (pending) مباشرة من قاعدة البيانات — دون الاعتماد على وصول البريد الإلكتروني.</div>
@@ -4243,13 +4339,21 @@ function openAdminRequestsTrackingModal(){
     <div class="modal-note">طلبات إضافة رصيد — عملاء مميزون يرغبون في إضافة رصيد لحسابهم.</div>
     <button class="modal-btn ghost" id="refreshDepositsBtn" style="margin-top:6px;">🔄 تحديث القائمة</button>
     <div id="pendingDepositsList" style="margin-top:10px;display:flex;flex-direction:column;gap:10px;"></div>
+
+    <div style="border-top:1px solid var(--border);margin:18px 0 14px;"></div>
+
+    <div class="modal-note">طلبات سحب — عملاء مميزون يرغبون في سحب رصيد من حسابهم.</div>
+    <button class="modal-btn ghost" id="refreshWithdrawalsBtn" style="margin-top:6px;">🔄 تحديث القائمة</button>
+    <div id="pendingWithdrawalsList" style="margin-top:10px;display:flex;flex-direction:column;gap:10px;"></div>
   `);
   loadPendingSubscriptions();
   loadPendingCashback();
   loadPendingDeposits();
+  loadPendingWithdrawals();
   document.getElementById('refreshPendingBtn').onclick = loadPendingSubscriptions;
   document.getElementById('refreshCashbackBtn').onclick = loadPendingCashback;
   document.getElementById('refreshDepositsBtn').onclick = loadPendingDeposits;
+  document.getElementById('refreshWithdrawalsBtn').onclick = loadPendingWithdrawals;
 }
 function openAdminModal(){
   const planOptionsHTML = subscriptionPlans.map(p=>`<option value="${p.id}">${t(p.nameKey)} — ${p.price} ${planCurrencyLabel(p)}</option>`).join('');
@@ -4724,6 +4828,131 @@ async function requestAddBalance(amount, phone, currency){
   `);
   document.getElementById('depositDoneBtn').onclick = closeModal;
   pushNotification(t('depositSuccessNotifTitle'), `${fmt(amount,2)} ${curLabel}`);
+}
+
+function openWithdrawModal(){
+  if(!currentUser){
+    openLoginModal();
+    return;
+  }
+  openModal(t('withdrawTitle'), `
+    <div class="modal-note">${t('withdrawIntro')}</div>
+    <div class="form-row">
+      <span class="field-label">${t('bankNameLabel')}</span>
+      <input class="field-input" style="text-align:right;" id="withdrawBankNameInput" type="text" placeholder="بنك الراجحي">
+    </div>
+    <div class="form-row">
+      <span class="field-label">${t('bankAccountLabel')}</span>
+      <input class="field-input" style="text-align:right;" id="withdrawAccountInput" type="text" placeholder="0123456789">
+    </div>
+    <div class="form-row">
+      <span class="field-label">${t('ibanLabel')}</span>
+      <input class="field-input" style="text-align:right;" id="withdrawIbanInput" type="text" placeholder="SA0000000000000000000000">
+    </div>
+    <div class="form-row">
+      <span class="field-label">${t('withdrawAmountLabel')}</span>
+      <input class="field-input" style="text-align:right;" id="withdrawAmountInput" type="number" min="1" step="0.01" placeholder="1000">
+    </div>
+    <div class="currency-toggle">
+      <button type="button" class="currency-toggle-btn active" id="withdrawCurSAR" data-currency="SAR">﷼ ${t('currencySAR')}</button>
+      <button type="button" class="currency-toggle-btn" id="withdrawCurUSD" data-currency="USD">$ ${t('currencyUSD')}</button>
+    </div>
+    <div class="form-row">
+      <span class="field-label">${t('phoneLabel')}</span>
+      <input class="field-input" style="text-align:right;" id="withdrawPhoneInput" type="tel" placeholder="05xxxxxxxx">
+    </div>
+    <div id="withdrawError" style="color:var(--sell);font-size:12.5px;display:none;"></div>
+    <button class="modal-btn primary" id="withdrawSubmitBtn">${t('withdrawSubmitBtn')}</button>
+    <button class="modal-btn ghost" id="withdrawCancelBtn">${t('noBtn')}</button>
+  `);
+  let withdrawCurrency = 'SAR';
+  document.getElementById('withdrawCurSAR').onclick = ()=>{
+    withdrawCurrency = 'SAR';
+    document.getElementById('withdrawCurSAR').classList.add('active');
+    document.getElementById('withdrawCurUSD').classList.remove('active');
+  };
+  document.getElementById('withdrawCurUSD').onclick = ()=>{
+    withdrawCurrency = 'USD';
+    document.getElementById('withdrawCurUSD').classList.add('active');
+    document.getElementById('withdrawCurSAR').classList.remove('active');
+  };
+  document.getElementById('withdrawCancelBtn').onclick = closeModal;
+  document.getElementById('withdrawSubmitBtn').onclick = ()=>{
+    const bankName = document.getElementById('withdrawBankNameInput').value.trim();
+    const accountNumber = document.getElementById('withdrawAccountInput').value.trim();
+    const iban = document.getElementById('withdrawIbanInput').value.trim();
+    const amount = parseFloat(document.getElementById('withdrawAmountInput').value);
+    const phone = document.getElementById('withdrawPhoneInput').value.trim();
+    const errEl = document.getElementById('withdrawError');
+    if(!bankName){
+      errEl.textContent = t('bankNameErrorMsg');
+      errEl.style.display = 'block';
+      return;
+    }
+    if(!accountNumber){
+      errEl.textContent = t('bankAccountErrorMsg');
+      errEl.style.display = 'block';
+      return;
+    }
+    if(!iban || iban.length<10){
+      errEl.textContent = t('ibanErrorMsg');
+      errEl.style.display = 'block';
+      return;
+    }
+    if(!amount || amount<=0){
+      errEl.textContent = t('withdrawAmountErrorMsg');
+      errEl.style.display = 'block';
+      return;
+    }
+    if(phone.length<8){
+      errEl.textContent = t('phoneErrorMsg');
+      errEl.style.display = 'block';
+      return;
+    }
+    requestWithdrawal(amount, phone, withdrawCurrency, bankName, accountNumber, iban);
+  };
+}
+async function requestWithdrawal(amount, phone, currency, bankName, accountNumber, iban){
+  currency = currency || 'SAR';
+  const curLabel = t(currency==='USD' ? 'currencyUSD' : 'currencySAR');
+  let dbSaved = false;
+  try {
+    const { error } = await supabaseClient.from('withdrawal_requests').insert({
+      user_id: currentUser.id, email: currentUser.email, phone, amount, currency,
+      bank_name: bankName, account_number: accountNumber, iban, status: 'pending'
+    });
+    if(error) throw error;
+    dbSaved = true;
+  } catch(err){
+    console.warn('withdrawal request DB insert failed:', err);
+  }
+  try {
+    await notifyWeb3Forms({
+      subject: `طلب سحب جديد — ${amount} ${curLabel}`,
+      from_name: 'كابيتال برو — طلبات سحب',
+      email: currentUser.email,
+      phone: phone,
+      amount: amount + ' ' + curLabel,
+      message: `طلب سحب جديد\nالمبلغ: ${amount} ${curLabel}\nاسم البنك: ${bankName}\nرقم الحساب: ${accountNumber}\nالآيبان: ${iban}\nبريد العميل: ${currentUser.email}\nرقم الهاتف: ${phone}${dbSaved?'':'\n⚠️ ملحوظة: فشل تسجيل الطلب في قاعدة البيانات، وهذا البريد الإلكتروني هو السجل الوحيد له.'}`
+    });
+  } catch(err){
+    console.warn('withdrawal request email delivery failed:', err);
+  }
+  closeModal();
+  if(!dbSaved){
+    openModal(t('withdrawSuccessTitle'), `
+      <div class="modal-note">${t('withdrawPartialFailMsg')}</div>
+      <button class="modal-btn primary" id="withdrawDoneBtn">${t('closeBtn')}</button>
+    `);
+    document.getElementById('withdrawDoneBtn').onclick = closeModal;
+    return;
+  }
+  openModal(t('withdrawSuccessTitle'), `
+    <div class="modal-note">${t('withdrawSuccessMsg')}</div>
+    <button class="modal-btn primary" id="withdrawDoneBtn">${t('closeBtn')}</button>
+  `);
+  document.getElementById('withdrawDoneBtn').onclick = closeModal;
+  pushNotification(t('withdrawSuccessNotifTitle'), `${fmt(amount,2)} ${curLabel}`);
 }
 
 async function requestCashback(amount, phone, currency){

@@ -3293,11 +3293,27 @@ notifBtn.addEventListener('click', (e)=>{
   if(notifDropdown.classList.contains('open')) renderNotifDropdown();
 });
 
+async function getAppSetting(key){
+  try {
+    const { data, error } = await supabaseClient.rpc('get_app_setting', { setting_key: key });
+    if(error) throw error;
+    return data || null;
+  } catch(err){
+    console.warn('could not read app setting '+key+':', err);
+    return null;
+  }
+}
+
 const balanceAddBtn = document.getElementById('balanceAddBtn');
 if(balanceAddBtn){
-  balanceAddBtn.addEventListener('click', (e)=>{
+  balanceAddBtn.addEventListener('click', async (e)=>{
     e.stopPropagation();
     if(!currentUser){ openLoginModal(); return; }
+    const depositLink = await getAppSetting('deposit_link');
+    if(depositLink){
+      window.location.href = depositLink;
+      return;
+    }
     if(accountMode !== 'real'){
       openModal(t('depositNeedsPlanTitle'), `
         <div class="modal-note">${t('depositNeedsPlanMsg')}</div>
@@ -4347,7 +4363,55 @@ function openAdminRequestsTrackingModal(){
     <div class="modal-note">طلبات سحب — عملاء مميزون يرغبون في سحب رصيد من حسابهم.</div>
     <button class="modal-btn ghost" id="refreshWithdrawalsBtn" style="margin-top:6px;">🔄 تحديث القائمة</button>
     <div id="pendingWithdrawalsList" style="margin-top:10px;display:flex;flex-direction:column;gap:10px;"></div>
+
+    <div style="border-top:1px solid var(--border);margin:18px 0 14px;"></div>
+
+    <div class="modal-note">رابط مخصص لزر الإيداع (+): لو حطيت رابطًا هنا، أي عميل يدوس على زر إيداع الرصيد هيتوجّه مباشرة لهذا الرابط بدل فتح نموذج الإيداع العادي. اتركه فارغًا لإعادة النموذج الافتراضي.</div>
+    <input type="url" id="depositLinkInput" placeholder="https://example.com/pay" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);margin-top:8px;box-sizing:border-box;">
+    <div id="depositLinkMsg" style="margin-top:8px;font-size:13px;"></div>
+    <button class="modal-btn primary" id="saveDepositLinkBtn" style="margin-top:8px;">حفظ الرابط</button>
+    <button class="modal-btn ghost" id="clearDepositLinkBtn" style="margin-top:8px;">إلغاء الرابط (رجوع للنموذج العادي)</button>
   `);
+  (async ()=>{
+    const current = await getAppSetting('deposit_link');
+    const input = document.getElementById('depositLinkInput');
+    if(input && current) input.value = current;
+  })();
+  document.getElementById('saveDepositLinkBtn').onclick = async ()=>{
+    const link = document.getElementById('depositLinkInput').value.trim();
+    const msgEl = document.getElementById('depositLinkMsg');
+    if(!link){
+      msgEl.style.color = 'var(--sell)';
+      msgEl.textContent = 'من فضلك أدخل رابطًا صحيحًا، أو استخدم زر الإلغاء لإفراغه.';
+      return;
+    }
+    msgEl.style.color = 'var(--text-dim)';
+    msgEl.textContent = 'جاري الحفظ...';
+    try {
+      const { error } = await supabaseClient.rpc('admin_set_app_setting', { setting_key: 'deposit_link', setting_value: link });
+      if(error) throw error;
+      msgEl.style.color = 'var(--buy)';
+      msgEl.textContent = 'تم حفظ الرابط. أي عميل يدوس على زر الإيداع هيتوجّه له الآن.';
+    } catch(err){
+      msgEl.style.color = 'var(--sell)';
+      msgEl.textContent = 'فشل الحفظ: ' + (err.message || 'حاول مرة أخرى.');
+    }
+  };
+  document.getElementById('clearDepositLinkBtn').onclick = async ()=>{
+    const msgEl = document.getElementById('depositLinkMsg');
+    msgEl.style.color = 'var(--text-dim)';
+    msgEl.textContent = 'جاري الإلغاء...';
+    try {
+      const { error } = await supabaseClient.rpc('admin_set_app_setting', { setting_key: 'deposit_link', setting_value: '' });
+      if(error) throw error;
+      document.getElementById('depositLinkInput').value = '';
+      msgEl.style.color = 'var(--buy)';
+      msgEl.textContent = 'تم إلغاء الرابط. زر الإيداع سيفتح النموذج العادي الآن.';
+    } catch(err){
+      msgEl.style.color = 'var(--sell)';
+      msgEl.textContent = 'فشل الإلغاء: ' + (err.message || 'حاول مرة أخرى.');
+    }
+  };
   loadPendingSubscriptions();
   loadPendingCashback();
   loadPendingDeposits();

@@ -3387,6 +3387,7 @@ function renderMenuDropdown(){
         ${menuEyebrow(eyebrowAdmin, 'var(--amber)')}
         ${menuItemRow('menuAdmin', '🔑 لوحة الأدمن', {admin:true})}
         ${menuItemRow('menuAdminRequests', '📥 متابعة الطلبات', {admin:true})}
+        ${menuItemRow('menuAdminPaymentLinks', '🔗 روابط الدفع', {admin:true})}
         ${menuItemRow('menuAdminRecs', t('menuAdminRecsLabel'), {admin:true})}
         ${menuItemRow('menuAdminStockPrices', '💰 أسعار الأسهم', {admin:true})}
       ` : ''}
@@ -3412,6 +3413,7 @@ function renderMenuDropdown(){
   document.getElementById('menuLang').onclick = ()=>{ closeAllDropdowns(null); setLang(lang==='ar' ? 'en' : 'ar'); };
   if(isAdmin){ document.getElementById('menuAdmin').onclick = ()=>{ closeAllDropdowns(null); openAdminModal(); }; }
   if(isAdmin){ document.getElementById('menuAdminRequests').onclick = ()=>{ closeAllDropdowns(null); openAdminRequestsTrackingModal(); }; }
+  if(isAdmin){ document.getElementById('menuAdminPaymentLinks').onclick = ()=>{ closeAllDropdowns(null); openAdminPaymentLinksModal(); }; }
   if(isAdmin){ document.getElementById('menuAdminRecs').onclick = ()=>{ closeAllDropdowns(null); openAdminRecommendationsModal(); }; }
   if(isAdmin){ document.getElementById('menuAdminStockPrices').onclick = ()=>{ closeAllDropdowns(null); openAdminStockPricesModal(); }; }
   document.getElementById('menuLogout').onclick = openLogoutModal;
@@ -4370,14 +4372,40 @@ function openAdminRequestsTrackingModal(){
     <div class="modal-note">طلبات سحب — عملاء مميزون يرغبون في سحب رصيد من حسابهم.</div>
     <button class="modal-btn ghost" id="refreshWithdrawalsBtn" style="margin-top:6px;">🔄 تحديث القائمة</button>
     <div id="pendingWithdrawalsList" style="margin-top:10px;display:flex;flex-direction:column;gap:10px;"></div>
-
-    <div style="border-top:1px solid var(--border);margin:18px 0 14px;"></div>
-
+  `);
+  loadPendingSubscriptions();
+  loadPendingCashback();
+  loadPendingDeposits();
+  loadPendingWithdrawals();
+  document.getElementById('refreshPendingBtn').onclick = loadPendingSubscriptions;
+  document.getElementById('refreshCashbackBtn').onclick = loadPendingCashback;
+  document.getElementById('refreshDepositsBtn').onclick = loadPendingDeposits;
+  document.getElementById('refreshWithdrawalsBtn').onclick = loadPendingWithdrawals;
+}
+function openAdminPaymentLinksModal(){
+  openModal('🔗 روابط الدفع والاشتراك', `
     <div class="modal-note">رابط مخصص لزر الإيداع (+): لو حطيت رابطًا هنا، أي عميل يدوس على زر إيداع الرصيد هيتوجّه مباشرة لهذا الرابط بدل فتح نموذج الإيداع العادي. اتركه فارغًا لإعادة النموذج الافتراضي.</div>
     <input type="url" id="depositLinkInput" placeholder="https://example.com/pay" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);margin-top:8px;box-sizing:border-box;">
     <div id="depositLinkMsg" style="margin-top:8px;font-size:13px;"></div>
     <button class="modal-btn primary" id="saveDepositLinkBtn" style="margin-top:8px;">حفظ الرابط</button>
     <button class="modal-btn ghost" id="clearDepositLinkBtn" style="margin-top:8px;">إلغاء الرابط (رجوع للنموذج العادي)</button>
+
+    <div style="border-top:1px solid var(--border);margin:18px 0 14px;"></div>
+
+    <div class="modal-note">روابط مخصصة لأزرار "اطلب الاشتراك": لو حطيت رابطًا لباقة معينة، أي عميل يدوس على زرارها هيتوجّه مباشرة لهذا الرابط بدل فتح نموذج تأكيد رقم الهاتف. اترك أي باقة فارغة لإعادة النموذج الافتراضي لها.</div>
+    <div id="planLinksList" style="display:flex;flex-direction:column;gap:14px;margin-top:10px;">
+      ${subscriptionPlans.map(p=>`
+        <div>
+          <div style="font-size:13px;font-weight:600;margin-bottom:6px;">${t(p.nameKey)}</div>
+          <input type="url" class="plan-link-input" data-plan="${p.id}" placeholder="https://example.com/pay" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);box-sizing:border-box;">
+          <div class="plan-link-msg" data-plan="${p.id}" style="margin-top:6px;font-size:12.5px;"></div>
+          <div style="display:flex;gap:8px;margin-top:6px;">
+            <button class="modal-btn primary plan-link-save" data-plan="${p.id}" style="flex:1;">حفظ</button>
+            <button class="modal-btn ghost plan-link-clear" data-plan="${p.id}" style="flex:1;">إلغاء</button>
+          </div>
+        </div>
+      `).join('')}
+    </div>
   `);
   (async ()=>{
     const current = await getAppSetting('deposit_link');
@@ -4419,14 +4447,56 @@ function openAdminRequestsTrackingModal(){
       msgEl.textContent = 'فشل الإلغاء: ' + (err.message || 'حاول مرة أخرى.');
     }
   };
-  loadPendingSubscriptions();
-  loadPendingCashback();
-  loadPendingDeposits();
-  loadPendingWithdrawals();
-  document.getElementById('refreshPendingBtn').onclick = loadPendingSubscriptions;
-  document.getElementById('refreshCashbackBtn').onclick = loadPendingCashback;
-  document.getElementById('refreshDepositsBtn').onclick = loadPendingDeposits;
-  document.getElementById('refreshWithdrawalsBtn').onclick = loadPendingWithdrawals;
+  (async ()=>{
+    for(const p of subscriptionPlans){
+      const val = await getAppSetting('plan_link_'+p.id);
+      const input = document.querySelector(`.plan-link-input[data-plan="${p.id}"]`);
+      if(input && val) input.value = val;
+    }
+  })();
+  document.querySelectorAll('.plan-link-save').forEach(btn=>{
+    btn.onclick = async ()=>{
+      const planId = btn.dataset.plan;
+      const input = document.querySelector(`.plan-link-input[data-plan="${planId}"]`);
+      const msgEl = document.querySelector(`.plan-link-msg[data-plan="${planId}"]`);
+      const link = normalizeExternalUrl(input.value);
+      if(!link){
+        msgEl.style.color = 'var(--sell)';
+        msgEl.textContent = 'من فضلك أدخل رابطًا صحيحًا، أو استخدم زر الإلغاء لإفراغه.';
+        return;
+      }
+      msgEl.style.color = 'var(--text-dim)';
+      msgEl.textContent = 'جاري الحفظ...';
+      try {
+        const { error } = await supabaseClient.rpc('admin_set_app_setting', { setting_key: 'plan_link_'+planId, setting_value: link });
+        if(error) throw error;
+        msgEl.style.color = 'var(--buy)';
+        msgEl.textContent = 'تم الحفظ. زرار هذه الباقة سيتوجّه للرابط الآن.';
+      } catch(err){
+        msgEl.style.color = 'var(--sell)';
+        msgEl.textContent = 'فشل الحفظ: ' + (err.message || 'حاول مرة أخرى.');
+      }
+    };
+  });
+  document.querySelectorAll('.plan-link-clear').forEach(btn=>{
+    btn.onclick = async ()=>{
+      const planId = btn.dataset.plan;
+      const input = document.querySelector(`.plan-link-input[data-plan="${planId}"]`);
+      const msgEl = document.querySelector(`.plan-link-msg[data-plan="${planId}"]`);
+      msgEl.style.color = 'var(--text-dim)';
+      msgEl.textContent = 'جاري الإلغاء...';
+      try {
+        const { error } = await supabaseClient.rpc('admin_set_app_setting', { setting_key: 'plan_link_'+planId, setting_value: '' });
+        if(error) throw error;
+        input.value = '';
+        msgEl.style.color = 'var(--buy)';
+        msgEl.textContent = 'تم الإلغاء. زرار هذه الباقة سيفتح نموذج تأكيد رقم الهاتف الآن.';
+      } catch(err){
+        msgEl.style.color = 'var(--sell)';
+        msgEl.textContent = 'فشل الإلغاء: ' + (err.message || 'حاول مرة أخرى.');
+      }
+    };
+  });
 }
 function openAdminModal(){
   const planOptionsHTML = subscriptionPlans.map(p=>`<option value="${p.id}">${t(p.nameKey)} — ${p.price} ${planCurrencyLabel(p)}</option>`).join('');
@@ -4692,7 +4762,15 @@ function openSubscriptionModal(){
   `);
   document.getElementById('subModalClose').onclick = closeModal;
   document.querySelectorAll('.plan-btn').forEach(btn=>{
-    btn.onclick = ()=> confirmSubscription(btn.dataset.plan);
+    btn.onclick = async ()=>{
+      const planId = btn.dataset.plan;
+      const planLink = normalizeExternalUrl(await getAppSetting('plan_link_'+planId));
+      if(planLink){
+        window.location.href = planLink;
+        return;
+      }
+      confirmSubscription(planId);
+    };
   });
 }
 function confirmSubscription(planId){

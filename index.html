@@ -2250,6 +2250,40 @@ async function persistClosedTrade(tr){
     return { ok:false, error: err };
   }
 }
+/* ---- Secure trade RPCs: balance/positions/closed_trades are no longer
+   writable directly from the client (see security hardening). Opening and
+   closing trades now goes through server-side functions that verify
+   ownership and balance before touching anything. ---- */
+async function rpcOpenPosition(p){
+  if(!currentUser) return { ok:false, error:'no-user' };
+  const s = symbols[p.symIdx];
+  try {
+    const { data, error } = await supabaseClient.rpc('rpc_open_position', {
+      p_sym_name: s.name, p_type: p.type, p_vol: p.vol, p_entry: p.entry, p_unit: s.unit,
+      p_tp: p.tp ?? null, p_sl: p.sl ?? null
+    });
+    if(error){ console.warn('rpc_open_position failed:', error); return { ok:false, error }; }
+    const row = Array.isArray(data) ? data[0] : data;
+    return { ok:true, id: row.new_position_id, balance: Number(row.new_balance) };
+  } catch(err){
+    console.warn('rpc_open_position failed:', err);
+    return { ok:false, error: err };
+  }
+}
+async function rpcCloseLot(positionId, sellVol, exitPrice){
+  if(!currentUser) return { ok:false, error:'no-user' };
+  try {
+    const { data, error } = await supabaseClient.rpc('rpc_close_lot', {
+      p_position_id: positionId, p_sell_vol: sellVol, p_exit_price: exitPrice
+    });
+    if(error){ console.warn('rpc_close_lot failed:', error); return { ok:false, error }; }
+    const row = Array.isArray(data) ? data[0] : data;
+    return { ok:true, balance: Number(row.new_balance), pnl: Number(row.closed_pnl), soldVol: Number(row.sold_vol) };
+  } catch(err){
+    console.warn('rpc_close_lot failed:', err);
+    return { ok:false, error: err };
+  }
+}
 /* ---- Favorites (starred instruments), per logged-in user ---- */
 async function persistFavoriteAdd(symName){
   if(!currentUser) return { ok:false, error:'no-user' };
@@ -2419,24 +2453,16 @@ async function buyPosition(){
   if(buyBtnEl) buyBtnEl.disabled = true;
   const posRecord = { id: null, symIdx: activeSymbolIdx, type:'buy', vol, entry, cost, openedAt: new Date(), tp, sl };
   try {
-    // Write to the DB first. Only once this succeeds do we touch balance/UI,
-    // so a failed save can never leave a "ghost" position that disappears
-    // the moment the user refreshes. The DB assigns the real (bigint) id.
-    const posResult = await persistOpenPosition(posRecord);
+    // Opening the trade AND deducting the balance now happen together, on the
+    // server, inside one safe function — the server checks the balance is
+    // really enough before touching anything, so this can't be spoofed.
+    const posResult = await rpcOpenPosition(posRecord);
     if(!posResult.ok){
       showOrderMsg(t('persistFailedMsg'));
       return;
     }
-    posRecord.id = posResult.data.id;
-    const previousBalance = balance;
-    balance = round6(balance - cost);
-    const balResult = await persistBalance();
-    if(!balResult.ok){
-      // Position is already saved server-side; keep it, but restore the local
-      // balance display and let the next successful action / refresh reconcile it.
-      balance = previousBalance;
-      showOrderMsg(t('persistFailedMsg'));
-    }
+    posRecord.id = posResult.id;
+    balance = round6(posResult.balance);
     positions.push(posRecord);
     renderPositions();
     updateTradeButtonsState();
@@ -2474,30 +2500,22 @@ async function sellPosition(){
     for(const lot of lots){
       if(remaining <= EPS) break;
       const sellVol = Math.min(lot.vol, remaining);
-      const portionCost = lot.cost * (sellVol/lot.vol);
-      const proceeds = exitPrice * sellVol * s.unit;
-      const pnl = proceeds - portionCost;
-      const tr = { symIdx: lot.symIdx, type:'buy', vol: sellVol, entry: lot.entry, exit: exitPrice, pnl, closedAt: new Date() };
 
-      const newLotVol = round6(lot.vol - sellVol);
-      const newLotCost = Math.round((lot.cost - portionCost)*1e6)/1e6;
+      // One safe server-side call does all of it atomically: shrinks/deletes
+      // the position, records the closed trade, and credits the balance —
+      // all recomputed on the server from the lot's own stored entry price,
+      // never trusted blindly from the client.
+      const closeResult = await rpcCloseLot(lot.id, sellVol, exitPrice);
+      if(!closeResult.ok){ hadFailure = true; break; }
 
-      // Persist this lot's change to the DB first; only fold it into local
-      // state (and the running totals) once the write is confirmed.
-      const posResult = (newLotVol <= EPS)
-        ? await persistPositionDelete(lot.id)
-        : await persistPositionUpdate({ ...lot, vol:newLotVol, cost:newLotCost });
-      if(!posResult.ok){ hadFailure = true; break; }
-
-      const trResult = await persistClosedTrade(tr);
-      if(!trResult.ok){ hadFailure = true; break; }
-
+      const tr = { symIdx: lot.symIdx, type:'buy', vol: closeResult.soldVol, entry: lot.entry, exit: exitPrice, pnl: closeResult.pnl, closedAt: new Date() };
       closedTrades.unshift(tr);
-      totalPnl += pnl;
-      balance = round6(balance + proceeds);
+      totalPnl += closeResult.pnl;
+      balance = round6(closeResult.balance);
+      const newLotVol = round6(lot.vol - closeResult.soldVol);
       lot.vol = newLotVol;
-      lot.cost = newLotCost;
-      remaining = round6(remaining - sellVol);
+      lot.cost = lot.entry * newLotVol * s.unit; // keep in sync with vol for correct unrealized P&L display
+      remaining = round6(remaining - closeResult.soldVol);
     }
 
     positions = positions.filter(p=> p.vol > EPS);
@@ -2505,9 +2523,6 @@ async function sellPosition(){
     renderHistory();
     renderReport();
     updateTradeButtonsState();
-
-    const balResult = await persistBalance();
-    if(!balResult.ok) hadFailure = true;
 
     if(hadFailure){
       showOrderMsg(t('persistFailedRetryMsg'));
@@ -2529,22 +2544,18 @@ async function closePosition(id, reason){
   if(!p) return;
   const s = symbols[p.symIdx];
   const exitPrice = bidPrice(s);
-  const proceeds = exitPrice * p.vol * s.unit;
-  const pnl = proceeds - p.cost;
-  const tr = { ...p, exit: exitPrice, pnl, closedAt: new Date() };
 
-  // Persist the deletion + trade record first. Only remove the position from
-  // the UI once the server confirms it, so a failed close can't make a
-  // position vanish locally while it still exists (and reappears) in the DB.
-  const delResult = await persistPositionDelete(p.id);
-  if(!delResult.ok){
+  // Same safe server-side function as a partial sell, just for the whole
+  // remaining volume of this one position.
+  const closeResult = await rpcCloseLot(p.id, p.vol, exitPrice);
+  if(!closeResult.ok){
     showOrderMsg(t('persistFailedRetryMsg'));
     return;
   }
-  await persistClosedTrade(tr);
+  const pnl = closeResult.pnl;
+  const tr = { ...p, exit: exitPrice, pnl, closedAt: new Date() };
   closedTrades.unshift(tr);
-  balance = round6(balance + proceeds);
-  await persistBalance();
+  balance = round6(closeResult.balance);
   positions = positions.filter(x=>x.id!==id);
   renderPositions();
   renderHistory();

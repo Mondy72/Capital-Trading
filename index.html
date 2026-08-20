@@ -235,7 +235,7 @@
   .badge-count{background:var(--sell);color:#fff;font-size:10px;font-weight:700;border-radius:20px;padding:1px 6px;min-width:16px;text-align:center;}
 
   /* ===== modal ===== */
-  .modal-overlay{position:fixed;inset:0;background:rgba(15,20,28,.55);display:none;align-items:center;justify-content:center;z-index:100;padding:20px;}
+  .modal-overlay{position:fixed;inset:0;background:rgba(15,20,28,.55);display:none;align-items:center;justify-content:center;z-index:600;padding:20px;}
   .modal-overlay.open{display:flex;}
   .modal-box{background:var(--bg-panel);border-radius:16px;width:100%;max-width:420px;max-height:86vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.35);}
   .modal-head{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border-soft);}
@@ -270,6 +270,55 @@
   .plan-card.featured .plan-btn{background:var(--accent);color:#04140D;border-color:var(--accent);}
   .acc-option.active{border-color:var(--accent);background:var(--accent-dim);}
   .nav-links a{cursor:pointer;}
+
+  /* ===== admin dashboard (full-page) ===== */
+  .admin-dash-overlay{position:fixed;inset:0;background:var(--bg-void);z-index:400;display:flex;flex-direction:column;overflow:hidden;}
+  .admin-dash-top{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:var(--bg-panel);border-bottom:1px solid var(--border);flex-shrink:0;}
+  .admin-dash-top-left{display:flex;align-items:center;gap:10px;}
+  .admin-dash-title{font-family:var(--font-display);font-weight:800;font-size:18px;}
+  .admin-dash-badge{background:var(--accent-dim);color:var(--accent);font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;display:flex;align-items:center;gap:5px;}
+  .admin-dash-badge::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--accent);box-shadow:0 0 6px var(--accent);}
+  .admin-dash-close{width:34px;height:34px;border-radius:9px;background:var(--bg-panel-raised);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:16px;}
+  .admin-dash-close:hover{color:var(--sell);border-color:var(--sell-dim);}
+  .admin-dash-tabs{display:flex;gap:4px;padding:0 20px;background:var(--bg-panel);border-bottom:1px solid var(--border);overflow-x:auto;flex-shrink:0;}
+  .admin-dash-tab{padding:13px 6px;font-size:13.5px;font-weight:600;color:var(--text-muted);white-space:nowrap;position:relative;display:flex;align-items:center;gap:6px;}
+  .admin-dash-tab.active{color:var(--accent);}
+  .admin-dash-tab.active::after{content:'';position:absolute;bottom:-1px;left:0;right:0;height:2px;background:var(--accent);border-radius:2px 2px 0 0;}
+  .admin-dash-body{flex:1;overflow-y:auto;padding:18px 20px 60px;}
+  .admin-stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:18px;}
+  .admin-stat-card{background:var(--bg-panel);border:1px solid var(--border);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:2px;}
+  .admin-stat-card .num{font-family:var(--font-mono);font-weight:800;font-size:24px;}
+  .admin-stat-card .num.warn{color:var(--amber);}
+  .admin-stat-card .num.danger{color:var(--sell);}
+  .admin-stat-card .lbl{font-size:12px;color:var(--text-dim);}
+  .admin-toolbar{display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap;}
+  .admin-search{flex:1;min-width:180px;padding:9px 12px;border-radius:9px;border:1px solid var(--border);background:var(--bg-input);font-size:13px;}
+  .admin-chip{padding:7px 13px;border-radius:20px;border:1px solid var(--border);font-size:12.5px;font-weight:600;color:var(--text-muted);background:var(--bg-panel);white-space:nowrap;}
+  .admin-chip.active{background:var(--accent);color:#04140D;border-color:var(--accent);}
+  .admin-table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:12px;background:var(--bg-panel);}
+  table.admin-table{width:100%;border-collapse:collapse;font-size:13px;min-width:640px;}
+  table.admin-table th{text-align:right;padding:10px 12px;font-size:11px;color:var(--text-dim);font-weight:600;border-bottom:1px solid var(--border);white-space:nowrap;}
+  table.admin-table td{padding:9px 12px;border-bottom:1px solid var(--border-soft);white-space:nowrap;font-family:var(--font-mono);}
+  table.admin-table td.name-cell{font-family:var(--font-body);white-space:normal;}
+  table.admin-table tr:last-child td{border-bottom:none;}
+  table.admin-table tr:hover td{background:var(--bg-panel-raised);}
+  .src-badge{font-size:10px;font-weight:700;padding:2px 7px;border-radius:5px;letter-spacing:.3px;}
+  .src-badge.live{color:var(--buy);background:var(--buy-dim);}
+  .src-badge.dly{color:var(--amber);background:rgba(184,134,11,0.10);}
+  .src-badge.sim{color:var(--text-dim);background:var(--bg-panel-raised);}
+  .admin-price-edit{width:78px;padding:5px 7px;border-radius:6px;border:1px solid var(--border);font-family:var(--font-mono);font-size:12.5px;background:var(--bg-input);}
+  .admin-mini-btn{padding:5px 9px;border-radius:6px;font-size:11px;font-weight:600;background:var(--bg-panel-raised);border:1px solid var(--border);color:var(--text-muted);}
+  .admin-mini-btn:hover{color:var(--accent);border-color:var(--accent-glow);}
+  .admin-mini-btn.danger:hover{color:var(--sell);border-color:var(--sell-dim);}
+  .admin-rec-card{border:1.5px solid var(--border);border-radius:12px;padding:14px;background:var(--bg-panel);}
+  .admin-rec-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
+  .admin-section-title{font-family:var(--font-display);font-weight:700;font-size:15px;margin:22px 0 10px;display:flex;align-items:center;gap:6px;}
+  .admin-section-title:first-child{margin-top:0;}
+  .admin-avatar{width:32px;height:32px;border-radius:50%;background:var(--accent-dim);color:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0;}
+  @media (max-width:640px){
+    table.admin-table{font-size:12px;}
+    .admin-dash-body{padding:14px 12px 60px;}
+  }
 
   /* ===== instrument browser ===== */
   .browser-box{max-width:480px;}
@@ -660,8 +709,6 @@ async function notifyWeb3Forms(payload){
 }
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 let currentUser = null;
-const ADMIN_EMAIL = 'mondyfattouh72@gmail.com';
-function isAdminEmail(email){ return !!(email && email.trim().toLowerCase() === ADMIN_EMAIL); }
 let currentIsAdmin = false;
 async function checkIsAdmin(){
   if(!currentUser){ currentIsAdmin = false; return; }
@@ -3385,11 +3432,7 @@ function renderMenuDropdown(){
       ${isAdmin ? `
         <div class="menu-divider"></div>
         ${menuEyebrow(eyebrowAdmin, 'var(--amber)')}
-        ${menuItemRow('menuAdmin', '🔑 لوحة الأدمن', {admin:true})}
-        ${menuItemRow('menuAdminRequests', '📥 متابعة الطلبات', {admin:true})}
-        ${menuItemRow('menuAdminPaymentLinks', '🔗 روابط الدفع', {admin:true})}
-        ${menuItemRow('menuAdminRecs', t('menuAdminRecsLabel'), {admin:true})}
-        ${menuItemRow('menuAdminStockPrices', '💰 أسعار الأسهم', {admin:true})}
+        ${menuItemRow('menuAdminDash', '🔑 لوحة الإدارة', {admin:true})}
       ` : ''}
       <div class="menu-divider"></div>
       ${menuEyebrow(eyebrowApp, 'var(--text-dim)')}
@@ -3411,11 +3454,7 @@ function renderMenuDropdown(){
   document.getElementById('menuHelp').onclick = openHelpModal;
   document.getElementById('menuSupport').onclick = openSupportModal;
   document.getElementById('menuLang').onclick = ()=>{ closeAllDropdowns(null); setLang(lang==='ar' ? 'en' : 'ar'); };
-  if(isAdmin){ document.getElementById('menuAdmin').onclick = ()=>{ closeAllDropdowns(null); openAdminModal(); }; }
-  if(isAdmin){ document.getElementById('menuAdminRequests').onclick = ()=>{ closeAllDropdowns(null); openAdminRequestsTrackingModal(); }; }
-  if(isAdmin){ document.getElementById('menuAdminPaymentLinks').onclick = ()=>{ closeAllDropdowns(null); openAdminPaymentLinksModal(); }; }
-  if(isAdmin){ document.getElementById('menuAdminRecs').onclick = ()=>{ closeAllDropdowns(null); openAdminRecommendationsModal(); }; }
-  if(isAdmin){ document.getElementById('menuAdminStockPrices').onclick = ()=>{ closeAllDropdowns(null); openAdminStockPricesModal(); }; }
+  if(isAdmin){ document.getElementById('menuAdminDash').onclick = ()=>{ closeAllDropdowns(null); openAdminDashboardPage('overview'); }; }
   document.getElementById('menuLogout').onclick = openLogoutModal;
 }
 renderMenuDropdown();
@@ -3914,13 +3953,90 @@ async function checkApprovedPlans(email){
   }
 }
 
+function showFrozenAccountScreen(reason){
+  document.querySelector('.app').style.display = 'none';
+  const gate = document.getElementById('loggedOutScreen');
+  if(gate) gate.remove();
+  const existing = document.getElementById('frozenAccountScreen');
+  if(existing) existing.remove();
+  const el = document.createElement('div');
+  el.id = 'frozenAccountScreen';
+  el.style.cssText = 'position:fixed;inset:0;background:var(--bg-void);z-index:500;display:flex;align-items:center;justify-content:center;padding:24px;';
+  el.innerHTML = `
+    <div style="max-width:380px;text-align:center;background:var(--bg-panel);border:1px solid var(--border);border-radius:16px;padding:28px 24px;">
+      <div style="font-size:40px;margin-bottom:10px;">🔒</div>
+      <div style="font-family:var(--font-display);font-weight:800;font-size:18px;margin-bottom:8px;">تم تجميد هذا الحساب</div>
+      <div style="font-size:13.5px;color:var(--text-muted);line-height:1.7;">${reason ? reason : 'تم إيقاف الوصول لهذا الحساب مؤقتًا. من فضلك تواصل مع الدعم الفني لمزيد من التفاصيل.'}</div>
+      <button class="modal-btn primary" id="frozenContactSupportBtn" style="margin-top:18px;width:100%;">💬 تواصل مع الدعم بخصوص التجميد</button>
+      <button class="modal-btn ghost" id="frozenScreenCloseBtn" style="margin-top:10px;width:100%;">تسجيل الخروج</button>
+    </div>
+  `;
+  document.body.appendChild(el);
+  document.getElementById('frozenScreenCloseBtn').onclick = async ()=>{
+    stopFrozenPolling();
+    await authSignOut();
+    currentUser = null;
+    el.remove();
+    location.reload();
+  };
+  document.getElementById('frozenContactSupportBtn').onclick = ()=>{
+    openSupportModal({
+      subject: 'استفسار عن سبب تجميد الحساب',
+      message: reason ? `تم تجميد حسابي وظهرت لي هذه الرسالة: "${reason}"\n\nممكن أعرف السبب بالتفصيل؟` : 'تم تجميد حسابي من غير ما أعرف السبب. ممكن أعرف السبب بالتفصيل؟'
+    });
+  };
+}
+let frozenPollTimer = null;
+function stopFrozenPolling(){
+  if(frozenPollTimer){ clearInterval(frozenPollTimer); frozenPollTimer = null; }
+}
+// While the app is open and the account isn't frozen, keep checking every
+// couple of minutes — if the admin freezes the account mid-session, the
+// customer gets locked out without needing to refresh first.
+function startFrozenPolling(){
+  stopFrozenPolling();
+  frozenPollTimer = setInterval(async ()=>{
+    if(!currentUser || currentIsAdmin) return;
+    try {
+      const { data: frozenInfo, error: frozenErr } = await supabaseClient.rpc('am_i_frozen');
+      if(!frozenErr && frozenInfo && frozenInfo.frozen){
+        stopFrozenPolling();
+        showFrozenAccountScreen(frozenInfo.reason);
+      }
+    } catch(err){
+      console.warn('periodic frozen-account check failed:', err);
+    }
+  }, 120000);
+}
 async function onAuthSuccess(user){
   currentUser = user;
   pendingVerifyEmail = null;
+  // Single source of truth for admin status, checked once up front (against
+  // the real admin_users table via the am_i_admin RPC) so every gate below
+  // — frozen-check skip, full market access, polling — agrees with each
+  // other and with the admin dashboard's own access check.
+  await checkIsAdmin();
+  // Frozen-account check runs before anything else loads — a frozen customer
+  // never sees the trading app, just a blocking message. Skipped for the
+  // admin account itself (admins can't freeze themselves out). The session
+  // is kept alive (no sign-out) so the frozen screen can still let them send
+  // a support request while locked out.
+  if(!currentIsAdmin){
+    try {
+      const { data: frozenInfo, error: frozenErr } = await supabaseClient.rpc('am_i_frozen');
+      if(!frozenErr && frozenInfo && frozenInfo.frozen){
+        showFrozenAccountScreen(frozenInfo.reason);
+        startFrozenPolling();
+        return;
+      }
+    } catch(err){
+      console.warn('frozen-account check failed, proceeding normally:', err);
+    }
+  }
   const gate = document.getElementById('loggedOutScreen');
   if(gate) gate.remove();
   document.querySelector('.app').style.display = '';
-  if(isAdminEmail(user.email)){
+  if(currentIsAdmin){
     // the admin account always has full real-mode access — never gated
     // behind a subscription request, regardless of what's in subscription_requests.
     accountMode = 'real';
@@ -3941,7 +4057,6 @@ async function onAuthSuccess(user){
   }
   const chip = document.getElementById('accountChipLabel');
   if(chip) chip.textContent = t(accountMode==='real' ? 'accountReal' : 'accountDemo');
-  await checkIsAdmin();
   renderMenuDropdown();
   try {
     await loadFinancialsForMode(accountMode);
@@ -3963,6 +4078,7 @@ async function onAuthSuccess(user){
   closeModal();
   resizeCanvas();
   drawChart();
+  if(!currentIsAdmin) startFrozenPolling();
 }
 
 /* ---- Logout flow ---- */
@@ -3976,6 +4092,7 @@ function openLogoutModal(){
   document.getElementById('cancelLogout').onclick = closeModal;
   document.getElementById('confirmLogout').onclick = async ()=>{
     closeModal();
+    stopFrozenPolling();
     await authSignOut();
     currentUser = null;
     currentIsAdmin = false;
@@ -4048,17 +4165,18 @@ function openProfileModal(){
 }
 
 /* ---- Support / contact-admin modal ---- */
-function openSupportModal(){
+function openSupportModal(prefill){
+  prefill = prefill || {};
   closeAllDropdowns(null);
   openModal(t('supportTitle'), `
     <div class="modal-note">${t('supportIntro')}</div>
     <div class="form-row">
       <span class="field-label">${t('supportSubjectLabel')}</span>
-      <input class="field-input" style="text-align:right;" id="supportSubject" placeholder="${t('supportSubjectPlaceholder')}">
+      <input class="field-input" style="text-align:right;" id="supportSubject" placeholder="${t('supportSubjectPlaceholder')}" value="${prefill.subject ? prefill.subject.replace(/"/g,'&quot;') : ''}">
     </div>
     <div class="form-row">
       <span class="field-label">${t('supportMessageLabel')}</span>
-      <textarea class="field-input" style="text-align:right;min-height:110px;resize:vertical;font-family:var(--font-body);" id="supportMessage" placeholder="${t('supportMessagePlaceholder')}"></textarea>
+      <textarea class="field-input" style="text-align:right;min-height:110px;resize:vertical;font-family:var(--font-body);" id="supportMessage" placeholder="${t('supportMessagePlaceholder')}">${prefill.message || ''}</textarea>
     </div>
     <div id="supportError" style="color:var(--sell);font-size:12.5px;display:none;"></div>
     <button class="modal-btn primary" id="supportSubmitBtn">${t('supportSendBtn')}</button>
@@ -4079,12 +4197,10 @@ function openSupportModal(){
     const clientEmail = currentUser ? currentUser.email : 'unknown';
     const clientName = displayUserName();
     try {
-      await supabaseClient.from('support_requests').insert({
-        user_id: currentUser ? currentUser.id : null,
-        email: clientEmail, name: clientName, subject, message
-      });
+      const { error } = await supabaseClient.rpc('submit_support_request', { subject, message });
+      if(error) throw error;
     } catch(err){
-      console.warn('support request DB insert skipped/failed (table may not exist yet):', err);
+      console.warn('support request DB insert failed:', err);
     }
     try {
       await notifyWeb3Forms({
@@ -4174,6 +4290,11 @@ function wireQuickAmountButtons(){
     };
   });
 }
+let pendingSubsData = [];
+let pendingCashbackData = [];
+let pendingDepositsData = [];
+let pendingWithdrawalsData = [];
+let pendingSupportData = [];
 async function loadPendingSubscriptions(){
   const listEl = document.getElementById('pendingSubsList');
   if(!listEl) return;
@@ -4181,6 +4302,7 @@ async function loadPendingSubscriptions(){
   try {
     const { data, error } = await supabaseClient.rpc('admin_list_pending_subscriptions');
     if(error) throw error;
+    pendingSubsData = data || [];
     if(!data || !data.length){
       listEl.innerHTML = `<div class="modal-note">لا توجد طلبات معلّقة حاليًا.</div>`;
       return;
@@ -4218,6 +4340,7 @@ async function approvePendingRequest(row, btn){
     });
     if(error) throw error;
     btn.textContent = data === 'already_subscribed' ? '✅ مفعّلة بالفعل' : '✅ اتفعّلت';
+    logAdmin('approve_subscription_request', row.email, { plan: row.plan });
   } catch(err){
     btn.disabled = false;
     btn.textContent = 'فشل — حاول تاني';
@@ -4231,6 +4354,7 @@ async function loadPendingCashback(){
   try {
     const { data, error } = await supabaseClient.rpc('admin_list_pending_cashback_requests');
     if(error) throw error;
+    pendingCashbackData = data || [];
     if(!data || !data.length){
       listEl.innerHTML = `<div class="modal-note">لا توجد طلبات كاش باك معلّقة حاليًا.</div>`;
       return;
@@ -4254,6 +4378,7 @@ async function loadPendingCashback(){
           const { error } = await supabaseClient.rpc('admin_mark_cashback_contacted', { request_id: r.id });
           if(error) throw error;
           btn.textContent = '✅ اتسجّل التواصل';
+          logAdmin('mark_contacted', r.email, { type:'cashback', amount:r.amount });
         } catch(err){
           btn.disabled = false;
           btn.textContent = 'فشل — حاول تاني';
@@ -4272,6 +4397,7 @@ async function loadPendingDeposits(){
   try {
     const { data, error } = await supabaseClient.rpc('admin_list_pending_deposit_requests');
     if(error) throw error;
+    pendingDepositsData = data || [];
     if(!data || !data.length){
       listEl.innerHTML = `<div class="modal-note">لا توجد طلبات إضافة رصيد معلّقة حاليًا.</div>`;
       return;
@@ -4295,6 +4421,7 @@ async function loadPendingDeposits(){
           const { error } = await supabaseClient.rpc('admin_mark_deposit_contacted', { request_id: r.id });
           if(error) throw error;
           btn.textContent = '✅ اتسجّل التواصل';
+          logAdmin('mark_contacted', r.email, { type:'deposit', amount:r.amount });
         } catch(err){
           btn.disabled = false;
           btn.textContent = 'فشل — حاول تاني';
@@ -4313,6 +4440,7 @@ async function loadPendingWithdrawals(){
   try {
     const { data, error } = await supabaseClient.rpc('admin_list_pending_withdrawal_requests');
     if(error) throw error;
+    pendingWithdrawalsData = data || [];
     if(!data || !data.length){
       listEl.innerHTML = `<div class="modal-note">لا توجد طلبات سحب معلّقة حاليًا.</div>`;
       return;
@@ -4338,6 +4466,7 @@ async function loadPendingWithdrawals(){
           const { error } = await supabaseClient.rpc('admin_mark_withdrawal_contacted', { request_id: r.id });
           if(error) throw error;
           btn.textContent = '✅ اتسجّل التواصل';
+          logAdmin('mark_contacted', r.email, { type:'withdrawal', amount:r.amount });
         } catch(err){
           btn.disabled = false;
           btn.textContent = 'فشل — حاول تاني';
@@ -4347,6 +4476,51 @@ async function loadPendingWithdrawals(){
     });
   } catch(err){
     listEl.innerHTML = `<div class="modal-note" style="color:var(--sell);">تعذّر تحميل الطلبات: ${err.message || 'حاول تاني'}</div>`;
+  }
+}
+async function loadPendingSupportRequests(){
+  const listEl = document.getElementById('pendingSupportList');
+  if(!listEl) return;
+  listEl.innerHTML = `<div class="modal-note">جاري التحميل...</div>`;
+  try {
+    const { data, error } = await supabaseClient.rpc('admin_list_support_requests', { status_filter: 'open' });
+    if(error) throw error;
+    pendingSupportData = data || [];
+    if(!data || !data.length){
+      listEl.innerHTML = `<div class="modal-note">لا توجد طلبات دعم مفتوحة حاليًا.</div>`;
+      return;
+    }
+    listEl.innerHTML = data.map((r,i)=>{
+      const dateLabel = new Date(r.created_at).toLocaleString('ar-EG');
+      return `
+        <div class="plan-card" style="text-align:right;">
+          <div class="plan-name">${r.email}</div>
+          <div class="plan-desc"><b>${r.subject || 'استفسار عام'}</b></div>
+          <div class="plan-desc" style="white-space:pre-wrap;">${r.message}</div>
+          <div class="plan-desc">${dateLabel}</div>
+          <button class="modal-btn primary" style="margin-top:8px;" data-support-resolve-idx="${i}">✅ تم الرد — إغلاق الطلب</button>
+        </div>`;
+    }).join('');
+    data.forEach((r,i)=>{
+      const btn = listEl.querySelector(`[data-support-resolve-idx="${i}"]`);
+      if(btn) btn.onclick = async ()=>{
+        btn.disabled = true;
+        btn.textContent = 'جاري التحديث...';
+        try {
+          const { error } = await supabaseClient.rpc('admin_resolve_support_request', { request_id: r.id });
+          if(error) throw error;
+          btn.textContent = '✅ اتقفل الطلب';
+          logAdmin('resolve_support_request', r.email, { subject:r.subject });
+          setTimeout(()=> loadPendingSupportRequests().then(updateAdminReqStats), 600);
+        } catch(err){
+          btn.disabled = false;
+          btn.textContent = 'فشل — حاول تاني';
+          console.warn('resolveSupportRequest failed:', err);
+        }
+      };
+    });
+  } catch(err){
+    listEl.innerHTML = `<div class="modal-note" style="color:var(--sell);">تعذّر تحميل طلبات الدعم: ${err.message || 'حاول تاني'}</div>`;
   }
 }
 function openAdminRequestsTrackingModal(){
@@ -4498,6 +4672,989 @@ function openAdminPaymentLinksModal(){
     };
   });
 }
+/* ============ Admin: unified full-page dashboard (prices/recs/links/requests/users) ============ */
+const ADMIN_DASH_TABS = [
+  { key:'overview', label:'نظرة عامة',   icon:'📊' },
+  { key:'prices',   label:'أسعار الأسهم',  icon:'💰' },
+  { key:'recs',     label:'التوصيات',      icon:'💡' },
+  { key:'links',    label:'روابط الدفع',   icon:'🔗' },
+  { key:'requests', label:'الطلبات',       icon:'📥' },
+  { key:'users',    label:'اللوحة',        icon:'👥' },
+  { key:'broadcast',label:'إشعار جماعي',   icon:'📣' },
+  { key:'log',      label:'السجل',         icon:'📜' },
+];
+// Fire-and-forget audit logging — never blocks or fails the admin's actual
+// action if logging itself has a hiccup.
+async function logAdmin(action, targetEmail, detail){
+  try { await supabaseClient.rpc('admin_log_action', { action, target_email: targetEmail||null, detail: detail||null }); }
+  catch(err){ console.warn('admin_log_action failed (non-blocking):', err); }
+}
+
+/* ============ CSV export (used by the admin dashboard's Users & Requests tabs) ============ */
+function csvEscape(val){
+  const s = (val===null || val===undefined) ? '' : String(val);
+  return /["\n,]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
+}
+function downloadCSV(filename, headers, rows){
+  // UTF-8 BOM so Excel opens Arabic text correctly instead of as garbled characters.
+  const lines = [headers.map(csvEscape).join(','), ...rows.map(row=> row.map(csvEscape).join(','))];
+  const blob = new Blob(['\uFEFF' + lines.join('\r\n')], { type:'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(()=> URL.revokeObjectURL(url), 1000);
+}
+
+let adminDashActiveTab = 'prices';
+let adminDashPriceFilter = 'all';
+let adminDashPriceSearch = '';
+
+function ensureAdminDashOverlay(){
+  let el = document.getElementById('adminDashOverlay');
+  if(el) return el;
+  el = document.createElement('div');
+  el.id = 'adminDashOverlay';
+  el.className = 'admin-dash-overlay';
+  el.style.display = 'none';
+  el.innerHTML = `
+    <div class="admin-dash-top">
+      <div class="admin-dash-top-left">
+        <span class="admin-dash-title">لوحة الإدارة</span>
+        <span class="admin-dash-badge">وضع الأدمن نشط</span>
+      </div>
+      <button class="admin-dash-close" id="adminDashCloseBtn">✕</button>
+    </div>
+    <div class="admin-dash-tabs" id="adminDashTabs"></div>
+    <div class="admin-dash-body" id="adminDashBody"></div>
+  `;
+  document.body.appendChild(el);
+  document.getElementById('adminDashCloseBtn').onclick = closeAdminDashboardPage;
+  return el;
+}
+function openAdminDashboardPage(initialTab){
+  const el = ensureAdminDashOverlay();
+  el.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+  switchAdminDashTab(initialTab || adminDashActiveTab || 'overview');
+}
+function closeAdminDashboardPage(){
+  const el = document.getElementById('adminDashOverlay');
+  if(el) el.style.display = 'none';
+  document.body.style.overflow = '';
+}
+function switchAdminDashTab(key){
+  adminDashActiveTab = key;
+  const tabsEl = document.getElementById('adminDashTabs');
+  tabsEl.innerHTML = ADMIN_DASH_TABS.map(tb=>
+    `<button class="admin-dash-tab ${tb.key===key?'active':''}" data-tabkey="${tb.key}">${tb.icon} ${tb.label}</button>`
+  ).join('');
+  tabsEl.querySelectorAll('[data-tabkey]').forEach(btn=>{
+    btn.onclick = ()=> switchAdminDashTab(btn.dataset.tabkey);
+  });
+  const body = document.getElementById('adminDashBody');
+  body.innerHTML = `<div class="modal-note">${t('loadingMsg')}</div>`;
+  if(key==='overview') renderAdminDashOverview();
+  else if(key==='prices') renderAdminDashPrices();
+  else if(key==='recs') renderAdminDashRecs();
+  else if(key==='links') renderAdminDashLinks();
+  else if(key==='requests') renderAdminDashRequests();
+  else if(key==='users') renderAdminDashUsers();
+  else if(key==='broadcast') renderAdminDashBroadcast();
+  else if(key==='log') renderAdminDashLog();
+}
+
+/* ---- Tab: نظرة عامة (Dashboard overview) ----
+   Pulls entirely from the existing admin_dashboard_overview() RPC — total client
+   balances, client count, new signups this week, deposit/withdrawal volume, open
+   position count, and the most-traded symbols across all clients. */
+async function renderAdminDashOverview(){
+  const body = document.getElementById('adminDashBody');
+  if(!body || adminDashActiveTab!=='overview') return;
+  body.innerHTML = `<div class="modal-note">${t('loadingMsg')}</div>`;
+  try {
+    const { data, error } = await supabaseClient.rpc('admin_dashboard_overview');
+    if(error) throw error;
+    paintAdminDashOverview(data);
+  } catch(err){
+    body.innerHTML = `<div class="modal-note" style="color:var(--sell);">تعذّر تحميل النظرة العامة: ${err.message||'حاول تاني'}</div>`;
+  }
+}
+function paintAdminDashOverview(d){
+  const body = document.getElementById('adminDashBody');
+  if(!body || adminDashActiveTab!=='overview') return;
+  const statCard = (num, lbl, cls='') => `<div class="admin-stat-card"><span class="num ${cls}">${num}</span><span class="lbl">${lbl}</span></div>`;
+  const topSymbolsHTML = (d.top_traded_symbols && d.top_traded_symbols.length)
+    ? `<div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>السهم</th><th>عدد المرات (مفتوحة + مقفولة)</th></tr></thead><tbody>
+        ${d.top_traded_symbols.map(r=>`<tr><td class="name-cell">${r.symbol}</td><td>${r.cnt}</td></tr>`).join('')}
+       </tbody></table></div>`
+    : `<div style="font-size:12px;color:var(--text-dim);">لسه مفيش صفقات كفاية لعرض ترتيب.</div>`;
+  body.innerHTML = `
+    <div class="admin-stat-grid" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));">
+      ${statCard(d.total_users, 'إجمالي العملاء')}
+      ${statCard(fmt(Number(d.total_balances),2), 'إجمالي أرصدة العملاء')}
+      ${statCard(d.new_signups_7d, 'تسجيلات جديدة (٧ أيام)')}
+      ${statCard(d.open_positions_count, 'صفقات مفتوحة حاليًا')}
+      ${statCard(fmt(Number(d.deposit_volume),2), 'إجمالي طلبات الإيداع')}
+      ${statCard(fmt(Number(d.withdrawal_volume),2), 'إجمالي طلبات السحب')}
+    </div>
+    <div class="admin-section-title">🏆 الأسهم الأكتر تداولًا (كل العملاء)</div>
+    ${topSymbolsHTML}
+  `;
+}
+
+/* ---- Tab: بث إشعار جماعي (broadcast) ---- */
+function renderAdminDashBroadcast(){
+  const body = document.getElementById('adminDashBody');
+  if(!body || adminDashActiveTab!=='broadcast') return;
+  const planOptionsHTML = subscriptionPlans.map(p=>`<option value="${p.id}">مشتركين "${t(p.nameKey)}" فقط</option>`).join('');
+  body.innerHTML = `
+    <div class="admin-section-title">📣 إرسال إشعار لمجموعة من العملاء</div>
+    <div style="background:var(--bg-panel);border:1px solid var(--border);border-radius:12px;padding:16px;max-width:480px;">
+      <label style="font-size:12.5px;font-weight:600;">الجمهور المستهدف</label>
+      <select id="broadcastSegment" style="width:100%;padding:9px;border-radius:8px;border:1px solid var(--border);margin-top:6px;margin-bottom:12px;box-sizing:border-box;">
+        <option value="everyone">كل العملاء المسجّلين</option>
+        ${planOptionsHTML}
+      </select>
+      <label style="font-size:12.5px;font-weight:600;">عنوان الإشعار</label>
+      <input type="text" id="broadcastTitle" placeholder="مثال: تحديث في التوصيات" style="width:100%;padding:9px;border-radius:8px;border:1px solid var(--border);margin-top:6px;margin-bottom:12px;box-sizing:border-box;">
+      <label style="font-size:12.5px;font-weight:600;">نص الرسالة</label>
+      <textarea id="broadcastDetail" rows="4" placeholder="اكتب رسالتك هنا..." style="width:100%;padding:9px;border-radius:8px;border:1px solid var(--border);margin-top:6px;margin-bottom:12px;box-sizing:border-box;resize:vertical;font-family:inherit;"></textarea>
+      <div id="broadcastMsg" style="font-size:12.5px;margin-bottom:8px;"></div>
+      <button class="modal-btn primary" id="broadcastSendBtn" style="width:100%;">📤 إرسال الإشعار</button>
+    </div>
+  `;
+  document.getElementById('broadcastSendBtn').onclick = async ()=>{
+    const title = document.getElementById('broadcastTitle').value.trim();
+    const detail = document.getElementById('broadcastDetail').value.trim();
+    const segment = document.getElementById('broadcastSegment').value;
+    const msgEl = document.getElementById('broadcastMsg');
+    if(!title || !detail){ msgEl.style.color='var(--sell)'; msgEl.textContent='لازم تكتب عنوان ونص للرسالة.'; return; }
+    msgEl.style.color='var(--text-dim)'; msgEl.textContent='جاري الإرسال...';
+    document.getElementById('broadcastSendBtn').disabled = true;
+    try {
+      const { data, error } = await supabaseClient.rpc('admin_broadcast_notification', {
+        segment, notif_title: title, notif_detail: detail
+      });
+      if(error) throw error;
+      msgEl.style.color='var(--buy)'; msgEl.textContent = `تم الإرسال إلى ${data} عميل.`;
+      document.getElementById('broadcastTitle').value='';
+      document.getElementById('broadcastDetail').value='';
+    } catch(err){
+      msgEl.style.color='var(--sell)'; msgEl.textContent='فشل الإرسال: '+(err.message||'حاول تاني.');
+    } finally {
+      document.getElementById('broadcastSendBtn').disabled = false;
+    }
+  };
+}
+
+/* ---- Tab: أسعار الأسهم ---- */
+function adminDashSourceInfo(s){
+  // Classifies where this instrument's price actually comes from right now, for the
+  // Source column badge — mirrors the real feed wiring (see the various fetchLive*
+  // functions above), it does not invent a status.
+  if(s.anchorPrice) return { code:'SIM', cls:'sim', title:'سعر يدوي من الأدمن' };
+  if(s.cat==='crypto' && (binanceSymbolMap[s.name] || coingeckoIdMap[s.name])) return { code:'LIVE', cls:'live', title:'لايف حقيقي (Binance/CoinGecko)' };
+  if(s.cat==='forex') return { code:'DLY', cls:'dly', title:'سعر بنكي يومي (Frankfurter)' };
+  if(s.cat==='saudi' && saudiTickerMap[s.name]) return { code:'DLY', cls:'dly', title:'بيانات مؤجلة (Yahoo Finance)' };
+  if(s.cat==='indices' && yahooIndexMap[s.name]) return { code:'DLY', cls:'dly', title:'بيانات مؤجلة (Yahoo Finance)' };
+  if(s.cat==='commodities' && yahooCommodityMap[s.name]) return { code:'DLY', cls:'dly', title:'بيانات مؤجلة (Yahoo Finance)' };
+  if(s.cat==='global' && yahooGlobalMap[s.name]) return { code:'DLY', cls:'dly', title:'بيانات مؤجلة (Yahoo Finance)' };
+  if(tdSymbolMap[s.name]) return { code:'DLY', cls:'dly', title:'بيانات مؤجلة (Twelve Data)' };
+  return { code:'SIM', cls:'sim', title:'محاكاة بالكامل — لا يوجد مصدر حقيقي' };
+}
+async function renderAdminDashPrices(){
+  await loadStockPriceOverrides();
+  paintAdminDashPrices();
+}
+function paintAdminDashPrices(){
+  const body = document.getElementById('adminDashBody');
+  if(!body || adminDashActiveTab!=='prices') return;
+  const simCount = symbols.filter(s=> adminDashSourceInfo(s).code==='SIM').length;
+  const manualCount = stockPriceOverridesList.length;
+  const cats = [{key:'all',label:'الكل'}, ...Object.keys(catKeys).filter(c=>symbols.some(s=>s.cat===c)).map(c=>({key:c,label:catNameFor(c)}))];
+  const q = adminDashPriceSearch.trim().toLowerCase();
+  const rows = symbols.filter(s=>{
+    if(adminDashPriceFilter!=='all' && s.cat!==adminDashPriceFilter) return false;
+    if(q && !s.name.toLowerCase().includes(q) && !(s.short||'').toLowerCase().includes(q)) return false;
+    return true;
+  });
+  body.innerHTML = `
+    <div class="admin-stat-grid">
+      <div class="admin-stat-card"><span class="num">${symbols.length}</span><span class="lbl">إجمالي الأدوات</span></div>
+      <div class="admin-stat-card"><span class="num ${simCount?'warn':''}">${simCount}</span><span class="lbl">تعمل بمحاكاة بحتة</span></div>
+      <div class="admin-stat-card"><span class="num">${manualCount}</span><span class="lbl">أسعار يدوية من الأدمن</span></div>
+    </div>
+    <div class="admin-toolbar">
+      <input type="text" class="admin-search" id="adminDashPriceSearch" placeholder="ابحث بالاسم أو الرمز..." value="${adminDashPriceSearch}">
+      ${cats.map(c=>`<button class="admin-chip ${adminDashPriceFilter===c.key?'active':''}" data-catf="${c.key}">${c.label}</button>`).join('')}
+    </div>
+    <div class="admin-table-wrap"><table class="admin-table">
+      <thead><tr>
+        <th>السبريد</th><th>سعر الشراء</th><th>السعر</th><th>سعر البيع</th><th>المصدر</th><th>الاسم</th><th>الرمز</th>
+      </tr></thead>
+      <tbody>
+        ${rows.map(s=>{
+          const src = adminDashSourceInfo(s);
+          const ask = askPrice(s), bid = bidPrice(s);
+          return `<tr data-rowsym="${s.name}">
+            <td>${(ask-bid).toFixed(s.decimals)}</td>
+            <td style="color:var(--buy);">${ask.toFixed(s.decimals)}</td>
+            <td>
+              <span class="price-display" data-pricedisp="${s.name}">${s.price.toFixed(s.decimals)}</span>
+              <input type="number" class="admin-price-edit" data-priceinput="${s.name}" style="display:none;" value="${s.price.toFixed(s.decimals)}" step="0.01">
+            </td>
+            <td style="color:var(--sell);">${bid.toFixed(s.decimals)}</td>
+            <td><span class="src-badge ${src.cls}" title="${src.title}">${src.code}</span></td>
+            <td class="name-cell">${s.icon||'📈'} ${s.name}</td>
+            <td>
+              <span data-symlabel="${s.name}">${s.short||s.name}</span>
+              <button class="admin-mini-btn" data-editbtn="${s.name}" style="margin-inline-start:6px;">✏️</button>
+              ${s.anchorPrice ? `<button class="admin-mini-btn danger" data-livebtn="${s.name}" title="رجّعه لايف">🔄</button>` : ''}
+            </td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table></div>
+  `;
+  document.getElementById('adminDashPriceSearch').oninput = (e)=>{ adminDashPriceSearch = e.target.value; paintAdminDashPrices(); };
+  document.querySelectorAll('[data-catf]').forEach(btn=>{
+    btn.onclick = ()=>{ adminDashPriceFilter = btn.dataset.catf; paintAdminDashPrices(); };
+  });
+  document.querySelectorAll('[data-editbtn]').forEach(btn=>{
+    btn.onclick = ()=>{
+      const name = btn.dataset.editbtn;
+      const disp = document.querySelector(`[data-pricedisp="${CSS.escape(name)}"]`);
+      const input = document.querySelector(`[data-priceinput="${CSS.escape(name)}"]`);
+      if(!disp || !input) return;
+      const editing = input.style.display !== 'none';
+      if(editing){
+        // second click on the pencil = confirm & save
+        commitAdminDashPrice(name, input.value);
+      } else {
+        disp.style.display = 'none';
+        input.style.display = 'inline-block';
+        input.focus(); input.select();
+        btn.textContent = '💾';
+      }
+    };
+  });
+  document.querySelectorAll('[data-priceinput]').forEach(input=>{
+    input.onkeydown = (e)=>{ if(e.key==='Enter') commitAdminDashPrice(input.dataset.priceinput, input.value); };
+  });
+  document.querySelectorAll('[data-livebtn]').forEach(btn=>{
+    btn.onclick = async ()=>{
+      const name = btn.dataset.livebtn;
+      try {
+        const { error } = await supabaseClient.from('stock_price_overrides').delete().eq('symbol', name);
+        if(error) throw error;
+        const s = findSymbolByName(name);
+        if(s){ delete s.anchorPrice; scheduleImmediateLiveCheck(s); }
+        logAdmin('clear_manual_price', null, { symbol:name });
+        await renderAdminDashPrices();
+      } catch(err){ console.warn('could not clear manual price:', err); }
+    };
+  });
+}
+async function commitAdminDashPrice(name, rawVal){
+  const priceVal = parseFloat(rawVal);
+  if(isNaN(priceVal) || priceVal<=0) return;
+  try {
+    const { error } = await supabaseClient.from('stock_price_overrides')
+      .upsert({ symbol:name, price:priceVal, updated_at:new Date().toISOString() });
+    if(error) throw error;
+    const s = findSymbolByName(name);
+    if(s){ s.anchorPrice=priceVal; s.price=priceVal; delete s.liveAt; delete s.liveSource; refreshLivePriceOnly(); }
+    logAdmin('set_manual_price', null, { symbol:name, price:priceVal });
+    await renderAdminDashPrices();
+  } catch(err){
+    console.warn('could not save manual price:', err);
+    alert('فشل حفظ السعر: ' + (err.message||'حاول تاني'));
+  }
+}
+
+/* ---- Tab: التوصيات ---- */
+async function renderAdminDashRecs(){
+  await loadAIRecommendations();
+  paintAdminDashRecs();
+}
+function paintAdminDashRecs(){
+  const body = document.getElementById('adminDashBody');
+  if(!body || adminDashActiveTab!=='recs') return;
+  const marketOptionsHTML = Object.entries(recMarketConfig).map(([key,cfg])=>`<option value="${key}">${t(cfg.headerKey)}</option>`).join('');
+  const initialMarket = Object.keys(recMarketConfig)[0];
+  const cardsHTML = aiRecommendations.length ? aiRecommendations.map(r=>{
+    const cfg = recMarketConfig[r.market];
+    const s = findSymbolByName(r.symbol);
+    const icon = s ? s.icon : '📈';
+    return `
+      <div class="admin-rec-card">
+        <div class="admin-rec-head">
+          <span style="font-weight:700;">${icon} ${r.symbol}</span>
+          <span class="type-badge ${r.action}">${t(r.action)}</span>
+        </div>
+        <div style="font-size:12px;color:var(--text-dim);">${cfg?t(cfg.headerKey):r.market}</div>
+        <button class="admin-mini-btn danger" data-recid="${r.id}" style="margin-top:8px;">🗑️ حذف التوصية</button>
+      </div>`;
+  }).join('') : `<div class="modal-note">${t('adminRecsEmptyMsg')}</div>`;
+
+  body.innerHTML = `
+    <div class="admin-section-title">💡 إضافة توصية جديدة</div>
+    <div style="background:var(--bg-panel);border:1px solid var(--border);border-radius:12px;padding:16px;max-width:420px;">
+      <label style="display:block;font-size:13px;color:var(--text-dim);">${t('adminRecsMarketLabel')}</label>
+      <select id="adminRecMarket" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);margin-top:4px;box-sizing:border-box;">${marketOptionsHTML}</select>
+      <label style="display:block;margin-top:12px;font-size:13px;color:var(--text-dim);">${t('adminRecsSymbolLabel')}</label>
+      <select id="adminRecSymbol" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);margin-top:4px;box-sizing:border-box;">${symbolOptionsForMarket(initialMarket)}</select>
+      <div id="adminRecCurrentHint" style="margin-top:6px;font-size:12px;color:var(--text-dim);"></div>
+      <label style="display:block;margin-top:12px;font-size:13px;color:var(--text-dim);">${t('adminRecsActionLabel')}</label>
+      <select id="adminRecAction" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);margin-top:4px;box-sizing:border-box;">
+        <option value="buy">${t('buy')}</option><option value="sell">${t('sell')}</option>
+      </select>
+      <div id="adminRecMsg" style="margin-top:10px;font-size:13px;"></div>
+      <button class="modal-btn primary" id="adminRecAddBtn" style="margin-top:8px;">${t('adminRecsAddBtn')}</button>
+    </div>
+    <div class="admin-section-title">${t('adminRecsCurrentTitle')} <span style="color:var(--text-dim);font-weight:400;font-size:12px;">(${aiRecommendations.length})</span></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;">${cardsHTML}</div>
+  `;
+  function updateHint(){
+    const market = document.getElementById('adminRecMarket').value;
+    const symbol = document.getElementById('adminRecSymbol').value;
+    const existing = aiRecommendations.find(r=>r.market===market && r.symbol===symbol);
+    document.getElementById('adminRecCurrentHint').textContent = existing ? `${t('adminRecsCurrentCallPrefix')} ${t(existing.action)}` : '';
+  }
+  updateHint();
+  document.getElementById('adminRecMarket').onchange = (e)=>{
+    document.getElementById('adminRecSymbol').innerHTML = symbolOptionsForMarket(e.target.value);
+    updateHint();
+  };
+  document.getElementById('adminRecSymbol').onchange = updateHint;
+  document.getElementById('adminRecAddBtn').onclick = async ()=>{
+    const market = document.getElementById('adminRecMarket').value;
+    const symbol = document.getElementById('adminRecSymbol').value;
+    const action = document.getElementById('adminRecAction').value;
+    const msgEl = document.getElementById('adminRecMsg');
+    const existing = aiRecommendations.find(r=>r.market===market && r.symbol===symbol);
+    if(existing && existing.action===action){
+      msgEl.style.color = 'var(--amber)'; msgEl.textContent = t('adminRecsDuplicateMsg'); return;
+    }
+    msgEl.style.color = 'var(--text-dim)'; msgEl.textContent = t('loadingMsg');
+    try {
+      const { error } = await supabaseClient.from('ai_recommendations')
+        .upsert({ market, symbol, action, created_at:new Date().toISOString() }, { onConflict:'market,symbol' });
+      if(error) throw error;
+      try {
+        await supabaseClient.rpc('notify_ai_subscribers', {
+          notif_title: t('notifNewRecTitle'), notif_detail: `${symbol} — ${t(action)}`,
+          p_market: market, p_symbol: symbol, p_action: action
+        });
+      } catch(notifyEx){ console.warn('recommendation notification fan-out failed:', notifyEx); }
+      logAdmin(existing ? 'add_recommendation' : 'add_recommendation', symbol, { market, action });
+      await renderAdminDashRecs();
+    } catch(err){
+      console.warn('could not add AI recommendation:', err);
+      msgEl.style.color = 'var(--sell)'; msgEl.textContent = t('adminRecsErrorMsg');
+    }
+  };
+  document.querySelectorAll('[data-recid]').forEach(btn=>{
+    btn.onclick = async ()=>{
+      try {
+        const { error } = await supabaseClient.from('ai_recommendations').delete().eq('id', btn.dataset.recid);
+        if(error) throw error;
+        logAdmin('delete_recommendation', null, { id: btn.dataset.recid });
+        await renderAdminDashRecs();
+      } catch(err){ console.warn('could not delete AI recommendation:', err); }
+    };
+  });
+}
+
+/* ---- Tab: روابط الدفع ---- */
+function renderAdminDashLinks(){
+  const body = document.getElementById('adminDashBody');
+  if(!body || adminDashActiveTab!=='links') return;
+  body.innerHTML = `
+    <div class="admin-section-title">🔗 رابط زر الإيداع</div>
+    <div style="background:var(--bg-panel);border:1px solid var(--border);border-radius:12px;padding:16px;max-width:520px;">
+      <div class="modal-note">لو حطيت رابطًا هنا، أي عميل يدوس على زر إيداع الرصيد هيتوجّه مباشرة لهذا الرابط بدل فتح نموذج الإيداع العادي.</div>
+      <input type="url" id="depositLinkInput" placeholder="https://example.com/pay" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);margin-top:8px;box-sizing:border-box;">
+      <div id="depositLinkMsg" style="margin-top:8px;font-size:13px;"></div>
+      <div style="display:flex;gap:8px;margin-top:8px;">
+        <button class="modal-btn primary" id="saveDepositLinkBtn" style="flex:1;">حفظ الرابط</button>
+        <button class="modal-btn ghost" id="clearDepositLinkBtn" style="flex:1;">إلغاء الرابط</button>
+      </div>
+    </div>
+    <div class="admin-section-title">روابط أزرار الاشتراك</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;">
+      ${subscriptionPlans.map(p=>`
+        <div style="background:var(--bg-panel);border:1px solid var(--border);border-radius:12px;padding:14px;">
+          <div style="font-size:13.5px;font-weight:700;margin-bottom:8px;">${t(p.nameKey)}</div>
+          <input type="url" class="plan-link-input" data-plan="${p.id}" placeholder="https://example.com/pay" style="width:100%;padding:9px;border-radius:8px;border:1px solid var(--border);box-sizing:border-box;font-size:12.5px;">
+          <div class="plan-link-msg" data-plan="${p.id}" style="margin-top:6px;font-size:12px;"></div>
+          <div style="display:flex;gap:6px;margin-top:8px;">
+            <button class="admin-mini-btn plan-link-save" data-plan="${p.id}" style="flex:1;">حفظ</button>
+            <button class="admin-mini-btn plan-link-clear" data-plan="${p.id}" style="flex:1;">إلغاء</button>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+  (async ()=>{
+    const current = await getAppSetting('deposit_link');
+    const input = document.getElementById('depositLinkInput');
+    if(input && current) input.value = current;
+  })();
+  document.getElementById('saveDepositLinkBtn').onclick = async ()=>{
+    const link = normalizeExternalUrl(document.getElementById('depositLinkInput').value);
+    const msgEl = document.getElementById('depositLinkMsg');
+    if(!link){ msgEl.style.color='var(--sell)'; msgEl.textContent='من فضلك أدخل رابطًا صحيحًا.'; return; }
+    msgEl.style.color='var(--text-dim)'; msgEl.textContent='جاري الحفظ...';
+    try {
+      const { error } = await supabaseClient.rpc('admin_set_app_setting', { setting_key:'deposit_link', setting_value:link });
+      if(error) throw error;
+      msgEl.style.color='var(--buy)'; msgEl.textContent='تم الحفظ.';
+      logAdmin('set_deposit_link', null, { link });
+    } catch(err){ msgEl.style.color='var(--sell)'; msgEl.textContent='فشل الحفظ: '+(err.message||'حاول تاني.'); }
+  };
+  document.getElementById('clearDepositLinkBtn').onclick = async ()=>{
+    const msgEl = document.getElementById('depositLinkMsg');
+    msgEl.style.color='var(--text-dim)'; msgEl.textContent='جاري الإلغاء...';
+    try {
+      const { error } = await supabaseClient.rpc('admin_set_app_setting', { setting_key:'deposit_link', setting_value:'' });
+      if(error) throw error;
+      document.getElementById('depositLinkInput').value='';
+      msgEl.style.color='var(--buy)'; msgEl.textContent='تم الإلغاء.';
+      logAdmin('clear_deposit_link', null, null);
+    } catch(err){ msgEl.style.color='var(--sell)'; msgEl.textContent='فشل: '+(err.message||'حاول تاني.'); }
+  };
+  (async ()=>{
+    for(const p of subscriptionPlans){
+      const val = await getAppSetting('plan_link_'+p.id);
+      const input = document.querySelector(`.plan-link-input[data-plan="${p.id}"]`);
+      if(input && val) input.value = val;
+    }
+  })();
+  document.querySelectorAll('.plan-link-save').forEach(btn=>{
+    btn.onclick = async ()=>{
+      const planId = btn.dataset.plan;
+      const input = document.querySelector(`.plan-link-input[data-plan="${planId}"]`);
+      const msgEl = document.querySelector(`.plan-link-msg[data-plan="${planId}"]`);
+      const link = normalizeExternalUrl(input.value);
+      if(!link){ msgEl.style.color='var(--sell)'; msgEl.textContent='رابط غير صحيح.'; return; }
+      msgEl.style.color='var(--text-dim)'; msgEl.textContent='جاري الحفظ...';
+      try {
+        const { error } = await supabaseClient.rpc('admin_set_app_setting', { setting_key:'plan_link_'+planId, setting_value:link });
+        if(error) throw error;
+        msgEl.style.color='var(--buy)'; msgEl.textContent='تم الحفظ.';
+        logAdmin('set_plan_link', null, { plan:planId, link });
+      } catch(err){ msgEl.style.color='var(--sell)'; msgEl.textContent='فشل: '+(err.message||'حاول تاني.'); }
+    };
+  });
+  document.querySelectorAll('.plan-link-clear').forEach(btn=>{
+    btn.onclick = async ()=>{
+      const planId = btn.dataset.plan;
+      const input = document.querySelector(`.plan-link-input[data-plan="${planId}"]`);
+      const msgEl = document.querySelector(`.plan-link-msg[data-plan="${planId}"]`);
+      msgEl.style.color='var(--text-dim)'; msgEl.textContent='جاري الإلغاء...';
+      try {
+        const { error } = await supabaseClient.rpc('admin_set_app_setting', { setting_key:'plan_link_'+planId, setting_value:'' });
+        if(error) throw error;
+        input.value=''; msgEl.style.color='var(--buy)'; msgEl.textContent='تم الإلغاء.';
+        logAdmin('clear_plan_link', null, { plan:planId });
+      } catch(err){ msgEl.style.color='var(--sell)'; msgEl.textContent='فشل: '+(err.message||'حاول تاني.'); }
+    };
+  });
+}
+
+/* ---- Tab: الطلبات ---- */
+async function renderAdminDashRequests(){
+  const body = document.getElementById('adminDashBody');
+  if(!body || adminDashActiveTab!=='requests') return;
+  body.innerHTML = `
+    <div class="admin-toolbar">
+      <span style="font-size:12px;color:var(--text-dim);">كل الطلبات المعلّقة حاليًا</span>
+      <button class="modal-btn ghost" id="exportRequestsCSVBtn" style="width:auto;padding:8px 14px;">⬇️ تصدير CSV</button>
+    </div>
+    <div class="admin-stat-grid" id="adminReqStatGrid">
+      <div class="admin-stat-card"><span class="num" id="statSubsNum">—</span><span class="lbl">طلبات اشتراك معلّقة</span></div>
+      <div class="admin-stat-card"><span class="num" id="statCashbackNum">—</span><span class="lbl">طلبات كاش باك معلّقة</span></div>
+      <div class="admin-stat-card"><span class="num" id="statDepositsNum">—</span><span class="lbl">طلبات إيداع معلّقة</span></div>
+      <div class="admin-stat-card"><span class="num" id="statWithdrawalsNum">—</span><span class="lbl">طلبات سحب معلّقة</span></div>
+      <div class="admin-stat-card"><span class="num" id="statSupportNum">—</span><span class="lbl">طلبات دعم مفتوحة</span></div>
+    </div>
+    <div class="admin-section-title">📥 طلبات الاشتراك</div>
+    <div id="pendingSubsList" style="display:flex;flex-direction:column;gap:10px;"></div>
+    <div class="admin-section-title">🎁 طلبات كاش باك</div>
+    <div id="pendingCashbackList" style="display:flex;flex-direction:column;gap:10px;"></div>
+    <div class="admin-section-title">📈 طلبات إيداع</div>
+    <div id="pendingDepositsList" style="display:flex;flex-direction:column;gap:10px;"></div>
+    <div class="admin-section-title">📉 طلبات سحب</div>
+    <div id="pendingWithdrawalsList" style="display:flex;flex-direction:column;gap:10px;"></div>
+    <div class="admin-section-title">💬 طلبات الدعم</div>
+    <div id="pendingSupportList" style="display:flex;flex-direction:column;gap:10px;"></div>
+  `;
+  await Promise.all([loadPendingSubscriptions(), loadPendingCashback(), loadPendingDeposits(), loadPendingWithdrawals(), loadPendingSupportRequests()]);
+  updateAdminReqStats();
+  document.getElementById('exportRequestsCSVBtn').onclick = ()=>{
+    const dateLabel = (iso)=> new Date(iso).toLocaleString('ar-EG');
+    const headers = ['النوع','الإيميل','التفاصيل','المبلغ','العملة','الهاتف','معلومات إضافية','التاريخ'];
+    const rows = [
+      ...pendingSubsData.map(r=>{
+        const plan = subscriptionPlans.find(p=>p.id===r.plan);
+        return ['اشتراك', r.email, plan ? t(plan.nameKey) : r.plan, r.price, r.currency||'', r.phone||'', '', dateLabel(r.created_at)];
+      }),
+      ...pendingCashbackData.map(r=> ['كاش باك', r.email, '', r.amount, r.currency||'', r.phone||'', '', dateLabel(r.created_at)]),
+      ...pendingDepositsData.map(r=> ['إيداع', r.email, '', r.amount, r.currency||'', r.phone||'', '', dateLabel(r.created_at)]),
+      ...pendingWithdrawalsData.map(r=> ['سحب', r.email, '', r.amount, r.currency||'', r.phone||'', `بنك: ${r.bank_name||'—'} · حساب: ${r.account_number||'—'} · آيبان: ${r.iban||'—'}`, dateLabel(r.created_at)]),
+      ...pendingSupportData.map(r=> ['دعم', r.email, r.subject||'', '', '', '', r.message||'', dateLabel(r.created_at)])
+    ];
+    if(!rows.length){ pushNotification('لا يوجد شيء للتصدير', 'مفيش طلبات معلّقة حاليًا.'); return; }
+    downloadCSV(`الطلبات_المعلّقة_${new Date().toISOString().slice(0,10)}.csv`, headers, rows);
+    logAdmin('export_csv', null, { type:'pending_requests', count: rows.length });
+  };
+}
+function updateAdminReqStats(){
+  const countCards = (containerId)=>{
+    const el = document.getElementById(containerId);
+    if(!el) return 0;
+    return el.querySelectorAll('.plan-card').length;
+  };
+  const subsEl = document.getElementById('statSubsNum');
+  if(subsEl){
+    subsEl.textContent = countCards('pendingSubsList');
+    document.getElementById('statCashbackNum').textContent = countCards('pendingCashbackList');
+    document.getElementById('statDepositsNum').textContent = countCards('pendingDepositsList');
+    document.getElementById('statWithdrawalsNum').textContent = countCards('pendingWithdrawalsList');
+    document.getElementById('statSupportNum').textContent = countCards('pendingSupportList');
+    ['statSubsNum','statCashbackNum','statDepositsNum','statWithdrawalsNum','statSupportNum'].forEach(id=>{
+      const e = document.getElementById(id);
+      if(e) e.className = 'num ' + (Number(e.textContent)>0 ? 'warn' : '');
+    });
+  }
+}
+
+/* ---- Tab: اللوحة (Users) ---- */
+let adminDashUsersList = [];
+let adminDashUsersSearch = '';
+async function renderAdminDashUsers(){
+  const body = document.getElementById('adminDashBody');
+  if(!body || adminDashActiveTab!=='users') return;
+  try {
+    const { data, error } = await supabaseClient.rpc('admin_list_users_overview');
+    if(error) throw error;
+    adminDashUsersList = data || [];
+  } catch(err){
+    console.warn('could not load users overview:', err);
+    adminDashUsersList = [];
+  }
+  paintAdminDashUsers();
+}
+function paintAdminDashUsers(){
+  const body = document.getElementById('adminDashBody');
+  if(!body || adminDashActiveTab!=='users') return;
+  const q = adminDashUsersSearch.trim().toLowerCase();
+  const rows = adminDashUsersList.filter(u=> !q || u.email.toLowerCase().includes(q));
+  const planOptionsHTML = subscriptionPlans.map(p=>`<option value="${p.id}">${t(p.nameKey)} — ${p.price} ${planCurrencyLabel(p)}</option>`).join('');
+  const quickAmounts = [100,500,1000,5000,10000];
+  body.innerHTML = `
+    <div class="admin-toolbar">
+      <input type="text" class="admin-search" id="adminDashUsersSearch" placeholder="ابحث بالإيميل..." value="${adminDashUsersSearch}">
+      <span style="font-size:12px;color:var(--text-dim);">إجمالي ${adminDashUsersList.length} مستخدم</span>
+      <button class="modal-btn ghost" id="exportUsersCSVBtn" style="width:auto;padding:8px 14px;">⬇️ تصدير CSV</button>
+    </div>
+    <div class="admin-table-wrap"><table class="admin-table">
+      <thead><tr><th></th><th>الإيميل</th><th>الرصيد</th><th>عدد الباقات</th><th></th></tr></thead>
+      <tbody>
+        ${rows.map(u=>{
+          const letter = (u.email||'?').charAt(0).toUpperCase();
+          return `<tr data-userrow="${u.email}" style="cursor:pointer;">
+            <td><div class="admin-avatar">${letter}</div></td>
+            <td class="name-cell">${u.email}</td>
+            <td style="color:var(--buy);">${fmt(u.balance,2)}</td>
+            <td>${u.plan_count}</td>
+            <td>${u.frozen ? `<span class="src-badge dly" style="color:var(--sell);background:var(--sell-dim);">🔒 مجمّد</span>` : ''}</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table></div>
+    <div style="font-size:11.5px;color:var(--text-dim);margin-top:6px;">اضغط على أي عميل لعرض تفاصيله الكاملة (الرصيد، الباقات، الصفقات، وتجميد الحساب).</div>
+    <datalist id="platformEmailsList">${adminDashUsersList.map(u=>`<option value="${u.email}"></option>`).join('')}</datalist>
+
+    <div class="admin-section-title">💳 تعديل الرصيد</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;">
+      <div style="background:var(--bg-panel);border:1px solid var(--border);border-radius:12px;padding:16px;">
+        <div style="font-weight:700;font-size:13.5px;margin-bottom:8px;">➕ إضافة رصيد</div>
+        <input type="email" id="adminTargetEmail" list="platformEmailsList" placeholder="client@example.com" style="width:100%;padding:9px;border-radius:8px;border:1px solid var(--border);box-sizing:border-box;">
+        <input type="number" id="adminAmount" placeholder="1000" min="0.01" step="0.01" style="width:100%;padding:9px;border-radius:8px;border:1px solid var(--border);margin-top:8px;box-sizing:border-box;">
+        ${quickAmountButtonsHTML('adminAmount', quickAmounts)}
+        <div id="adminMsg" style="margin-top:8px;font-size:12.5px;"></div>
+        <button class="modal-btn primary" id="adminSubmitBtn" style="margin-top:8px;width:100%;">إضافة الرصيد</button>
+      </div>
+      <div style="background:var(--bg-panel);border:1px solid var(--border);border-radius:12px;padding:16px;">
+        <div style="font-weight:700;font-size:13.5px;margin-bottom:8px;">➖ خصم رصيد</div>
+        <input type="email" id="adminDeductEmail" list="platformEmailsList" placeholder="client@example.com" style="width:100%;padding:9px;border-radius:8px;border:1px solid var(--border);box-sizing:border-box;">
+        <input type="number" id="adminDeductAmount" placeholder="500" min="0.01" step="0.01" style="width:100%;padding:9px;border-radius:8px;border:1px solid var(--border);margin-top:8px;box-sizing:border-box;">
+        ${quickAmountButtonsHTML('adminDeductAmount', quickAmounts)}
+        <div id="adminDeductMsg" style="margin-top:8px;font-size:12.5px;"></div>
+        <button class="modal-btn primary" id="adminDeductSubmitBtn" style="margin-top:8px;width:100%;background:var(--sell);">خصم الرصيد</button>
+      </div>
+    </div>
+
+    <div class="admin-section-title">📦 إدارة الباقات</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;">
+      <div style="background:var(--bg-panel);border:1px solid var(--border);border-radius:12px;padding:16px;">
+        <div style="font-weight:700;font-size:13.5px;margin-bottom:8px;">✅ تفعيل باقة</div>
+        <input type="email" id="adminPlanEmail" list="platformEmailsList" placeholder="client@example.com" style="width:100%;padding:9px;border-radius:8px;border:1px solid var(--border);box-sizing:border-box;">
+        <select id="adminPlanSelect" style="width:100%;padding:9px;border-radius:8px;border:1px solid var(--border);margin-top:8px;box-sizing:border-box;">${planOptionsHTML}</select>
+        <div id="adminPlanMsg" style="margin-top:8px;font-size:12.5px;"></div>
+        <button class="modal-btn primary" id="adminPlanSubmitBtn" style="margin-top:8px;width:100%;">تفعيل الباقة</button>
+      </div>
+      <div style="background:var(--bg-panel);border:1px solid var(--border);border-radius:12px;padding:16px;">
+        <div style="font-weight:700;font-size:13.5px;margin-bottom:8px;">❌ إلغاء باقة معينة</div>
+        <input type="email" id="adminRevokePlanEmail" list="platformEmailsList" placeholder="client@example.com" style="width:100%;padding:9px;border-radius:8px;border:1px solid var(--border);box-sizing:border-box;">
+        <select id="adminRevokePlanSelect" style="width:100%;padding:9px;border-radius:8px;border:1px solid var(--border);margin-top:8px;box-sizing:border-box;">${planOptionsHTML}</select>
+        <div id="adminRevokePlanMsg" style="margin-top:8px;font-size:12.5px;"></div>
+        <button class="modal-btn primary" id="adminRevokePlanSubmitBtn" style="margin-top:8px;width:100%;background:var(--sell);">إلغاء هذه الباقة</button>
+      </div>
+      <div style="background:var(--bg-panel);border:1px solid var(--border);border-radius:12px;padding:16px;">
+        <div style="font-weight:700;font-size:13.5px;margin-bottom:8px;">🚫 إلغاء كل اشتراكات عميل</div>
+        <input type="email" id="adminRevokeEmail" list="platformEmailsList" placeholder="client@example.com" style="width:100%;padding:9px;border-radius:8px;border:1px solid var(--border);box-sizing:border-box;">
+        <div id="adminRevokeMsg" style="margin-top:8px;font-size:12.5px;"></div>
+        <button class="modal-btn primary" id="adminRevokeSubmitBtn" style="margin-top:8px;width:100%;background:var(--sell);">إلغاء كل الاشتراكات</button>
+      </div>
+    </div>
+  `;
+  document.getElementById('adminDashUsersSearch').oninput = (e)=>{ adminDashUsersSearch = e.target.value; paintAdminDashUsers(); };
+  document.getElementById('exportUsersCSVBtn').onclick = ()=>{
+    if(!adminDashUsersList.length){ pushNotification('لا يوجد شيء للتصدير', 'مفيش عملاء لسه.'); return; }
+    const headers = ['الإيميل','الرصيد','عدد الباقات','مجمّد؟'];
+    const dataRows = adminDashUsersList.map(u=> [u.email, u.balance, u.plan_count, u.frozen ? 'نعم' : 'لا']);
+    downloadCSV(`قائمة_العملاء_${new Date().toISOString().slice(0,10)}.csv`, headers, dataRows);
+    logAdmin('export_csv', null, { type:'users', count: adminDashUsersList.length });
+  };
+  document.querySelectorAll('[data-userrow]').forEach(row=>{
+    row.onclick = ()=> openAdminUserDetail(row.dataset.userrow);
+  });
+  wireQuickAmountButtons();
+
+  document.getElementById('adminSubmitBtn').onclick = async ()=>{
+    const email = document.getElementById('adminTargetEmail').value.trim();
+    const amount = parseFloat(document.getElementById('adminAmount').value);
+    const msgEl = document.getElementById('adminMsg');
+    if(!email.includes('@') || !amount || amount<=0){ msgEl.style.color='var(--sell)'; msgEl.textContent='إيميل صحيح ومبلغ أكبر من صفر.'; return; }
+    msgEl.style.color='var(--text-dim)'; msgEl.textContent='جاري التنفيذ...';
+    try {
+      const { data, error } = await supabaseClient.rpc('admin_add_balance', { target_email: email, amount });
+      if(error) throw error;
+      msgEl.style.color='var(--buy)'; msgEl.textContent = `تم! الرصيد الجديد: ${fmt(data,2)} ر.س`;
+      if(currentUser && currentUser.email===email){ balance = Number(data); updateSummary(); }
+      logAdmin('add_balance', email, { amount });
+      await renderAdminDashUsers();
+    } catch(err){ msgEl.style.color='var(--sell)'; msgEl.textContent='فشل: '+(err.message||'تأكد أن العميل مسجّل.'); }
+  };
+  document.getElementById('adminDeductSubmitBtn').onclick = async ()=>{
+    const email = document.getElementById('adminDeductEmail').value.trim();
+    const amount = parseFloat(document.getElementById('adminDeductAmount').value);
+    const msgEl = document.getElementById('adminDeductMsg');
+    if(!email.includes('@') || !amount || amount<=0){ msgEl.style.color='var(--sell)'; msgEl.textContent='إيميل صحيح ومبلغ أكبر من صفر.'; return; }
+    msgEl.style.color='var(--text-dim)'; msgEl.textContent='جاري التنفيذ...';
+    try {
+      const { data, error } = await supabaseClient.rpc('admin_add_balance', { target_email: email, amount: -Math.abs(amount) });
+      if(error) throw error;
+      const newBalance = Number(data);
+      if(newBalance < 0){
+        await supabaseClient.rpc('admin_add_balance', { target_email: email, amount: Math.abs(amount) });
+        msgEl.style.color='var(--sell)'; msgEl.textContent='رصيد العميل أقل من المبلغ المطلوب خصمه — لم يتم التنفيذ.';
+        return;
+      }
+      msgEl.style.color='var(--buy)'; msgEl.textContent = `تم! الرصيد الجديد: ${fmt(newBalance,2)} ر.س`;
+      if(currentUser && currentUser.email===email){ balance = newBalance; updateSummary(); }
+      logAdmin('deduct_balance', email, { amount });
+      await renderAdminDashUsers();
+    } catch(err){ msgEl.style.color='var(--sell)'; msgEl.textContent='فشل: '+(err.message||'تأكد أن العميل مسجّل.'); }
+  };
+  document.getElementById('adminPlanSubmitBtn').onclick = async ()=>{
+    const email = document.getElementById('adminPlanEmail').value.trim();
+    const planId = document.getElementById('adminPlanSelect').value;
+    const plan = subscriptionPlans.find(p=>p.id===planId);
+    const msgEl = document.getElementById('adminPlanMsg');
+    if(!email.includes('@')){ msgEl.style.color='var(--sell)'; msgEl.textContent='إيميل غير صحيح.'; return; }
+    msgEl.style.color='var(--text-dim)'; msgEl.textContent='جاري التنفيذ...';
+    try {
+      const { data, error } = await supabaseClient.rpc('admin_set_subscription', { target_email: email, plan_id: planId, plan_price: plan.price, plan_currency: plan.currency });
+      if(error) throw error;
+      msgEl.style.color = data==='already_subscribed' ? 'var(--amber)' : 'var(--buy)';
+      msgEl.textContent = data==='already_subscribed' ? `${email} مشترك بالفعل.` : `تم تفعيل "${t(plan.nameKey)}" لـ ${email}.`;
+      if(data!=='already_subscribed') logAdmin('activate_plan', email, { plan: planId });
+      await renderAdminDashUsers();
+    } catch(err){ msgEl.style.color='var(--sell)'; msgEl.textContent='فشل: '+(err.message||'حاول تاني.'); }
+  };
+  document.getElementById('adminRevokePlanSubmitBtn').onclick = async ()=>{
+    const email = document.getElementById('adminRevokePlanEmail').value.trim();
+    const planId = document.getElementById('adminRevokePlanSelect').value;
+    const plan = subscriptionPlans.find(p=>p.id===planId);
+    const msgEl = document.getElementById('adminRevokePlanMsg');
+    if(!email.includes('@')){ msgEl.style.color='var(--sell)'; msgEl.textContent='إيميل غير صحيح.'; return; }
+    msgEl.style.color='var(--text-dim)'; msgEl.textContent='جاري التنفيذ...';
+    try {
+      const { data, error } = await supabaseClient.rpc('admin_revoke_plan', { target_email: email, plan_id: planId });
+      if(error) throw error;
+      msgEl.style.color = data==='not_subscribed' ? 'var(--amber)' : 'var(--buy)';
+      msgEl.textContent = data==='not_subscribed' ? `${email} غير مشترك في "${t(plan.nameKey)}" أصلًا.` : `تم إلغاء "${t(plan.nameKey)}" لـ ${email}.`;
+      if(data!=='not_subscribed') logAdmin('revoke_plan', email, { plan: planId });
+      if(currentUser && currentUser.email===email && !currentIsAdmin){
+        const approvedRows = await checkApprovedPlans(currentUser.email);
+        const marketRows = approvedRows.filter(r=> marketPlanIds.includes(r.plan));
+        accountMode = approvedRows.length ? 'real' : 'demo';
+        currentMarketPlanIds = [...new Set(marketRows.map(r=>r.plan))];
+        userHasAI = approvedRows.some(r=> r.plan==='ai');
+        userHasGold = approvedRows.some(r=> r.plan==='gold');
+        userHasFunds = approvedRows.some(r=> r.plan==='funds');
+        userHasAnyPlan = approvedRows.length > 0;
+        await loadFinancialsForMode(accountMode);
+        const chip = document.getElementById('accountChipLabel');
+        if(chip) chip.textContent = t(accountMode==='real' ? 'accountReal' : 'accountDemo');
+      }
+      await renderAdminDashUsers();
+    } catch(err){ msgEl.style.color='var(--sell)'; msgEl.textContent='فشل: '+(err.message||'حاول تاني.'); }
+  };
+  document.getElementById('adminRevokeSubmitBtn').onclick = async ()=>{
+    const email = document.getElementById('adminRevokeEmail').value.trim();
+    const msgEl = document.getElementById('adminRevokeMsg');
+    if(!email.includes('@')){ msgEl.style.color='var(--sell)'; msgEl.textContent='إيميل غير صحيح.'; return; }
+    msgEl.style.color='var(--text-dim)'; msgEl.textContent='جاري التنفيذ...';
+    try {
+      const { error } = await supabaseClient.rpc('admin_revoke_subscription', { target_email: email });
+      if(error) throw error;
+      msgEl.style.color='var(--buy)'; msgEl.textContent = `تم إلغاء اشتراك ${email}.`;
+      logAdmin('revoke_all_subscriptions', email, null);
+      if(currentUser && currentUser.email===email && !currentIsAdmin){
+        accountMode = 'demo'; currentMarketPlanIds = [];
+        await loadFinancialsForMode('demo');
+        const chip = document.getElementById('accountChipLabel');
+        if(chip) chip.textContent = t('accountDemo');
+      }
+      await renderAdminDashUsers();
+    } catch(err){ msgEl.style.color='var(--sell)'; msgEl.textContent='فشل: '+(err.message||'حاول تاني.'); }
+  };
+}
+
+/* ---- Tab: السجل (audit log) ---- */
+async function renderAdminDashLog(){
+  const body = document.getElementById('adminDashBody');
+  if(!body || adminDashActiveTab!=='log') return;
+  body.innerHTML = `<div class="modal-note">${t('loadingMsg')}</div>`;
+  let rows = [];
+  try {
+    const { data, error } = await supabaseClient.rpc('admin_list_audit_log', { limit_count: 150 });
+    if(error) throw error;
+    rows = data || [];
+  } catch(err){
+    body.innerHTML = `<div class="modal-note" style="color:var(--sell);">تعذّر تحميل السجل: ${err.message||'حاول تاني'}</div>`;
+    return;
+  }
+  if(!rows.length){
+    body.innerHTML = `<div class="modal-note">لا يوجد أي نشاط مسجّل بعد.</div>`;
+    return;
+  }
+  const actionLabels = {
+    set_manual_price:'تحديد سعر يدوي', clear_manual_price:'إعادة سعر إلى اللايف',
+    add_recommendation:'إضافة توصية', delete_recommendation:'حذف توصية',
+    set_deposit_link:'تعديل رابط الإيداع', clear_deposit_link:'إلغاء رابط الإيداع',
+    set_plan_link:'تعديل رابط باقة', clear_plan_link:'إلغاء رابط باقة',
+    approve_subscription_request:'تفعيل طلب اشتراك', mark_contacted:'تسجيل تواصل مع عميل',
+    add_balance:'إضافة رصيد', deduct_balance:'خصم رصيد',
+    activate_plan:'تفعيل باقة', revoke_plan:'إلغاء باقة', revoke_all_subscriptions:'إلغاء كل الاشتراكات',
+    freeze_account:'تجميد حساب', unfreeze_account:'إلغاء تجميد حساب',
+  };
+  body.innerHTML = `
+    <div class="admin-toolbar"><span style="font-size:12px;color:var(--text-dim);">آخر ${rows.length} نشاط — الأحدث أولًا</span></div>
+    <div class="admin-table-wrap"><table class="admin-table">
+      <thead><tr><th>الوقت</th><th>الأدمن</th><th>الإجراء</th><th>العميل المستهدف</th><th>التفاصيل</th></tr></thead>
+      <tbody>
+        ${rows.map(r=>{
+          const dateLabel = new Date(r.created_at).toLocaleString('ar-EG');
+          const label = actionLabels[r.action] || r.action;
+          const detailStr = r.detail ? Object.entries(r.detail).map(([k,v])=>`${k}: ${v}`).join(' · ') : '';
+          return `<tr>
+            <td style="font-size:11.5px;">${dateLabel}</td>
+            <td class="name-cell">${r.admin_email}</td>
+            <td class="name-cell">${label}</td>
+            <td class="name-cell">${r.target_email||'—'}</td>
+            <td class="name-cell" style="font-size:11.5px;color:var(--text-dim);">${detailStr}</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table></div>
+  `;
+}
+
+/* ---- Customer detail panel (opened from the Users tab table) ---- */
+function ensureAdminUserDetailOverlay(){
+  let el = document.getElementById('adminUserDetailOverlay');
+  if(el) return el;
+  el = document.createElement('div');
+  el.id = 'adminUserDetailOverlay';
+  el.style.cssText = 'position:fixed;inset:0;background:rgba(15,20,28,.55);z-index:450;display:none;align-items:flex-start;justify-content:center;padding:24px 16px;overflow-y:auto;';
+  el.innerHTML = `
+    <div style="background:var(--bg-panel);border-radius:16px;max-width:560px;width:100%;padding:0;margin-top:20px;">
+      <div id="adminUserDetailBody" style="padding:20px;"></div>
+    </div>
+  `;
+  document.body.appendChild(el);
+  el.addEventListener('click', (e)=>{ if(e.target===el) closeAdminUserDetail(); });
+  return el;
+}
+function closeAdminUserDetail(){
+  const el = document.getElementById('adminUserDetailOverlay');
+  if(el) el.style.display = 'none';
+}
+async function openAdminUserDetail(email){
+  const overlay = ensureAdminUserDetailOverlay();
+  overlay.style.display = 'flex';
+  const bodyEl = document.getElementById('adminUserDetailBody');
+  bodyEl.innerHTML = `<div class="modal-note">${t('loadingMsg')}</div>`;
+  try {
+    const { data, error } = await supabaseClient.rpc('admin_get_user_detail', { target_email: email });
+    if(error) throw error;
+    paintAdminUserDetail(data);
+  } catch(err){
+    bodyEl.innerHTML = `<div class="modal-note" style="color:var(--sell);">تعذّر تحميل بيانات العميل: ${err.message||'حاول تاني'}</div>
+      <button class="modal-btn ghost" onclick="closeAdminUserDetail()" style="margin-top:10px;">إغلاق</button>`;
+  }
+}
+function paintAdminUserDetail(d){
+  const bodyEl = document.getElementById('adminUserDetailBody');
+  if(!bodyEl) return;
+  const joined = d.created_at ? new Date(d.created_at).toLocaleDateString('ar-EG') : '—';
+  const plansHTML = d.plans && d.plans.length
+    ? d.plans.map(p=>{ const plan = subscriptionPlans.find(sp=>sp.id===p.plan); return `<span class="admin-chip active" style="cursor:default;">${plan?t(plan.nameKey):p.plan}</span>`; }).join('')
+    : `<span style="font-size:12px;color:var(--text-dim);">لا توجد باقات مفعّلة</span>`;
+  const posHTML = d.open_positions && d.open_positions.length
+    ? `<div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>السهم</th><th>النوع</th><th>الحجم</th><th>الدخول</th><th></th></tr></thead><tbody>
+        ${d.open_positions.map(p=>`<tr><td class="name-cell">${p.symbol}</td><td><span class="type-badge ${p.type}">${t(p.type)}</span></td><td>${fmt(p.vol,2)}</td><td>${fmt(p.entry,2)}</td><td style="white-space:nowrap;"><button class="close-btn" data-admin-edit-pos="${p.id}" data-admin-edit-symbol="${p.symbol}" data-admin-edit-entry="${p.entry}" title="تعديل سعر الدخول" style="margin-inline-end:4px;">✎</button><button class="close-btn" data-admin-close-pos="${p.id}" data-admin-close-symbol="${p.symbol}" data-admin-close-vol="${p.vol}" title="إغلاق يدوي">✕</button></td></tr>`).join('')}
+       </tbody></table></div>`
+    : `<div style="font-size:12px;color:var(--text-dim);">لا توجد صفقات مفتوحة</div>`;
+  const tradesHTML = d.closed_trades && d.closed_trades.length
+    ? `<div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>السهم</th><th>الحجم</th><th>الدخول</th><th>الخروج</th><th>الربح/الخسارة</th></tr></thead><tbody>
+        ${d.closed_trades.map(tr=>`<tr><td class="name-cell">${tr.symbol}</td><td>${fmt(tr.vol,2)}</td><td>${fmt(tr.entry,2)}</td><td>${fmt(tr.exit,2)}</td><td style="color:${tr.pnl>=0?'var(--buy)':'var(--sell)'};">${fmt(tr.pnl,2)}</td></tr>`).join('')}
+       </tbody></table></div>`
+    : `<div style="font-size:12px;color:var(--text-dim);">لا يوجد صفقات مقفولة بعد</div>`;
+
+  bodyEl.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+      <div>
+        <div style="font-family:var(--font-display);font-weight:800;font-size:16px;">${d.email}</div>
+        <div style="font-size:11.5px;color:var(--text-dim);">عضو منذ ${joined}</div>
+      </div>
+      <button class="admin-dash-close" onclick="closeAdminUserDetail()">✕</button>
+    </div>
+    ${d.frozen ? `<div style="background:var(--sell-dim);color:var(--sell);border-radius:8px;padding:8px 12px;font-size:12.5px;margin-bottom:12px;">🔒 هذا الحساب مجمّد حاليًا${d.frozen_reason?' — '+d.frozen_reason:''}</div>` : ''}
+    <div class="admin-stat-grid" style="grid-template-columns:1fr 1fr;">
+      <div class="admin-stat-card"><span class="num" style="color:var(--buy);">${fmt(d.balance,2)}</span><span class="lbl">الرصيد الحالي</span></div>
+      <div class="admin-stat-card"><span class="num">${(d.plans||[]).length}</span><span class="lbl">باقات مفعّلة</span></div>
+    </div>
+    <div class="admin-section-title" style="margin-top:16px;">📦 الباقات</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;">${plansHTML}</div>
+    <div class="admin-section-title">📊 الصفقات المفتوحة</div>
+    ${posHTML}
+    <div class="admin-section-title">📁 آخر الصفقات المقفولة</div>
+    ${tradesHTML}
+    <button class="modal-btn primary" id="userDetailFreezeBtn" style="margin-top:18px;width:100%;background:${d.frozen?'var(--accent)':'var(--sell)'};">
+      ${d.frozen ? '🔓 إلغاء تجميد الحساب' : '🔒 تجميد الحساب'}
+    </button>
+  `;
+  document.getElementById('userDetailFreezeBtn').onclick = async ()=>{
+    if(d.frozen){
+      try {
+        await supabaseClient.rpc('admin_set_user_frozen', { target_email: d.email, is_frozen: false, reason: null });
+        await openAdminUserDetail(d.email);
+        renderAdminDashUsers();
+      } catch(err){ alert('فشل إلغاء التجميد: '+(err.message||'حاول تاني')); }
+    } else {
+      const reason = prompt('سبب التجميد (اختياري، هيظهر للعميل):', '');
+      if(reason===null) return; // cancelled
+      try {
+        await supabaseClient.rpc('admin_set_user_frozen', { target_email: d.email, is_frozen: true, reason: reason||null });
+        await openAdminUserDetail(d.email);
+        renderAdminDashUsers();
+      } catch(err){ alert('فشل التجميد: '+(err.message||'حاول تاني')); }
+    }
+  };
+  bodyEl.querySelectorAll('[data-admin-close-pos]').forEach(btn=>{
+    btn.onclick = ()=> openAdminManualCloseModal(d.email, btn.dataset.adminClosePos, btn.dataset.adminCloseSymbol, parseFloat(btn.dataset.adminCloseVol));
+  });
+  bodyEl.querySelectorAll('[data-admin-edit-pos]').forEach(btn=>{
+    btn.onclick = ()=> openAdminEditEntryModal(d.email, btn.dataset.adminEditPos, btn.dataset.adminEditSymbol, parseFloat(btn.dataset.adminEditEntry));
+  });
+}
+/* Lets an admin force-close a client's open position at a chosen price — for
+   cases like "the trade executed at a wrong price" or a client who needs a
+   trade closed manually. Calls the existing admin_force_close_position RPC
+   (it already computes proceeds/PnL, credits the wallet, and logs the action
+   server-side — nothing to duplicate here). */
+function openAdminManualCloseModal(email, positionId, symbol, vol){
+  openModal(`✕ إغلاق يدوي — ${symbol}`, `
+    <div class="modal-note">هتقفل صفقة "${symbol}" الخاصة بـ ${email} بالكامل. الكمية: ${fmt(vol,2)}.</div>
+    <label style="font-size:12.5px;font-weight:600;display:block;margin-top:10px;">سعر الإغلاق</label>
+    <input type="number" id="adminCloseExitPrice" step="0.00001" placeholder="سعر التنفيذ" style="width:100%;padding:9px;border-radius:8px;border:1px solid var(--border);margin-top:6px;box-sizing:border-box;">
+    <div id="adminCloseMsg" style="margin-top:10px;font-size:12.5px;"></div>
+    <button class="modal-btn primary" id="adminCloseConfirmBtn" style="margin-top:10px;width:100%;background:var(--sell);">تأكيد الإغلاق</button>
+    <button class="modal-btn ghost" id="adminCloseCancelBtn" style="margin-top:8px;width:100%;">إلغاء</button>
+  `);
+  document.getElementById('adminCloseCancelBtn').onclick = closeModal;
+  document.getElementById('adminCloseConfirmBtn').onclick = async ()=>{
+    const exitPrice = parseFloat(document.getElementById('adminCloseExitPrice').value);
+    const msgEl = document.getElementById('adminCloseMsg');
+    if(!(exitPrice > 0)){ msgEl.style.color='var(--sell)'; msgEl.textContent='أدخل سعر إغلاق صحيح أكبر من صفر.'; return; }
+    msgEl.style.color='var(--text-dim)'; msgEl.textContent='جاري التنفيذ...';
+    document.getElementById('adminCloseConfirmBtn').disabled = true;
+    try {
+      const { error } = await supabaseClient.rpc('admin_force_close_position', {
+        position_id: Number(positionId), exit_price: exitPrice
+      });
+      if(error) throw error;
+      closeModal();
+      await openAdminUserDetail(email);
+      renderAdminDashUsers();
+    } catch(err){
+      msgEl.style.color='var(--sell)'; msgEl.textContent='فشل: '+(err.message||'حاول تاني.');
+      document.getElementById('adminCloseConfirmBtn').disabled = false;
+    }
+  };
+}
+/* Lets an admin correct a client's entry price on a still-open position (e.g.
+   "the trade executed at a wrong price" but the client wants to keep holding
+   it rather than close it). Calls admin_edit_position_entry, which notifies
+   the client and logs the change server-side. */
+function openAdminEditEntryModal(email, positionId, symbol, currentEntry){
+  openModal(`✎ تعديل سعر الدخول — ${symbol}`, `
+    <div class="modal-note">السعر الحالي المسجّل: ${fmt(currentEntry,5)}</div>
+    <label style="font-size:12.5px;font-weight:600;display:block;margin-top:10px;">السعر الصحيح</label>
+    <input type="number" id="adminEditEntryPrice" step="0.00001" value="${currentEntry}" style="width:100%;padding:9px;border-radius:8px;border:1px solid var(--border);margin-top:6px;box-sizing:border-box;">
+    <div id="adminEditEntryMsg" style="margin-top:10px;font-size:12.5px;"></div>
+    <button class="modal-btn primary" id="adminEditEntryConfirmBtn" style="margin-top:10px;width:100%;">تأكيد التعديل</button>
+    <button class="modal-btn ghost" id="adminEditEntryCancelBtn" style="margin-top:8px;width:100%;">إلغاء</button>
+  `);
+  document.getElementById('adminEditEntryCancelBtn').onclick = closeModal;
+  document.getElementById('adminEditEntryConfirmBtn').onclick = async ()=>{
+    const newEntry = parseFloat(document.getElementById('adminEditEntryPrice').value);
+    const msgEl = document.getElementById('adminEditEntryMsg');
+    if(!(newEntry > 0)){ msgEl.style.color='var(--sell)'; msgEl.textContent='أدخل سعر صحيح أكبر من صفر.'; return; }
+    msgEl.style.color='var(--text-dim)'; msgEl.textContent='جاري التنفيذ...';
+    document.getElementById('adminEditEntryConfirmBtn').disabled = true;
+    try {
+      const { error } = await supabaseClient.rpc('admin_edit_position_entry', {
+        position_id: Number(positionId), new_entry: newEntry
+      });
+      if(error) throw error;
+      closeModal();
+      await openAdminUserDetail(email);
+    } catch(err){
+      msgEl.style.color='var(--sell)'; msgEl.textContent='فشل: '+(err.message||'حاول تاني.');
+      document.getElementById('adminEditEntryConfirmBtn').disabled = false;
+    }
+  };
+}
+
 function openAdminModal(){
   const planOptionsHTML = subscriptionPlans.map(p=>`<option value="${p.id}">${t(p.nameKey)} — ${p.price} ${planCurrencyLabel(p)}</option>`).join('');
   const quickAmounts = [100,500,1000,5000,10000];
@@ -4610,7 +5767,7 @@ function openAdminModal(){
       } else {
         msgEl.style.color = 'var(--buy)';
         msgEl.textContent = `تم إلغاء باقة "${t(plan.nameKey)}" لـ ${email}. ستُزال لديه فور تسجيل الدخول (أو تحديث الصفحة إذا كان داخلًا بالفعل).`;
-        if(currentUser && currentUser.email===email && !isAdminEmail(currentUser.email)){
+        if(currentUser && currentUser.email===email && !currentIsAdmin){
           const approvedRows = await checkApprovedPlans(currentUser.email);
           const marketRows = approvedRows.filter(r=> marketPlanIds.includes(r.plan));
           accountMode = approvedRows.length ? 'real' : 'demo';
@@ -4644,7 +5801,7 @@ function openAdminModal(){
       if(error) throw error;
       msgEl.style.color = 'var(--buy)';
       msgEl.textContent = `تم إلغاء اشتراك ${email}. هيرجع حساب تجريبي أول ما يسجّل دخول (أو يعمل ريفرش لو داخل بالفعل).`;
-      if(currentUser && currentUser.email===email && !isAdminEmail(currentUser.email)){
+      if(currentUser && currentUser.email===email && !currentIsAdmin){
         accountMode = 'demo';
         currentMarketPlanIds = [];
         await loadFinancialsForMode('demo');
@@ -5500,7 +6657,22 @@ function renderAdminStockPricesModal(){
     const { data } = await supabaseClient.auth.getSession();
     if(data && data.session && data.session.user){
       currentUser = data.session.user;
-      if(isAdminEmail(currentUser.email)){
+      await checkIsAdmin();
+      // Same frozen-account gate as fresh logins — a refreshed page must not
+      // slip a frozen customer back into the app.
+      if(!currentIsAdmin){
+        try {
+          const { data: frozenInfo, error: frozenErr } = await supabaseClient.rpc('am_i_frozen');
+          if(!frozenErr && frozenInfo && frozenInfo.frozen){
+            showFrozenAccountScreen(frozenInfo.reason);
+            startFrozenPolling();
+            return;
+          }
+        } catch(err){
+          console.warn('frozen-account check failed on load, proceeding normally:', err);
+        }
+      }
+      if(currentIsAdmin){
         accountMode = 'real';
         currentMarketPlanIds = ['all'];
         userHasAI = true;
@@ -5520,7 +6692,6 @@ function renderAdminStockPricesModal(){
       document.querySelector('.app').style.display = '';
       const chip = document.getElementById('accountChipLabel');
       if(chip) chip.textContent = t(accountMode==='real' ? 'accountReal' : 'accountDemo');
-      await checkIsAdmin();
       renderMenuDropdown();
       try {
         await loadFinancialsForMode(accountMode);
@@ -5542,6 +6713,7 @@ function renderAdminStockPricesModal(){
       renderMenuDropdown();
       resizeCanvas();
       drawChart();
+      if(!currentIsAdmin) startFrozenPolling();
     } else {
       showLoginGate('login', false);
     }

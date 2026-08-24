@@ -7,7 +7,9 @@
 <script>
 (function(){
   var qs = new URLSearchParams(location.search);
-  var lang = qs.get('lang')==='en' ? 'en' : 'ar';
+  var saved = null;
+  try { saved = localStorage.getItem('capitalProLang'); } catch(err){}
+  var lang = qs.get('lang')==='ar' ? 'ar' : (qs.get('lang')==='en' ? 'en' : (saved==='ar' || saved==='en') ? saved : 'en');
   document.documentElement.lang = lang;
   document.documentElement.dir = lang==='ar' ? 'rtl' : 'ltr';
   window.__capitalLang = lang;
@@ -154,6 +156,12 @@
     padding:11px 12px;color:var(--text-primary);font-family:var(--font-mono);font-size:14px;text-align:center;
   }
   .field-input:focus{border-color:var(--accent);}
+  .pd-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  @media (max-width:520px){ .pd-grid{grid-template-columns:1fr;} }
+  .pd-dial-badge{display:flex;align-items:center;justify-content:center;padding:0 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg-panel-raised);font-family:var(--font-mono);font-size:13px;color:var(--text-dim);white-space:nowrap;}
+  .field-input.pd-text{text-align:start;font-family:var(--font-body);font-size:14.5px;}
+  .auth-body .field-input{border-radius:10px;padding:13px 14px;border-width:1.5px;}
+  .auth-body .field-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-dim);}
   .stepper{display:flex;align-items:center;gap:8px;}
   .step-btn{width:36px;height:40px;border-radius:8px;background:var(--bg-panel-raised);border:1px solid var(--border);font-size:16px;color:var(--text-muted);flex-shrink:0;}
   .step-btn:hover{color:var(--accent);}
@@ -322,7 +330,7 @@
 
   /* ===== instrument browser ===== */
   .browser-box{max-width:480px;}
-  .browser-search{width:100%;background:var(--bg-input);border:1px solid var(--border);border-radius:9px;padding:11px 14px;color:var(--text-primary);font-size:14px;text-align:right;}
+  .browser-search{width:100%;background:var(--bg-input);border:1px solid var(--border);border-radius:9px;padding:11px 14px;color:var(--text-primary);font-size:14px;text-align:start;}
   .browser-tabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none;overscroll-behavior-x:contain;}
   .browser-tabs::-webkit-scrollbar{display:none;}
   .browser-tab{flex-shrink:0;padding:7px 13px;border-radius:20px;font-size:12.5px;color:var(--text-muted);background:var(--bg-panel-raised);border:1px solid var(--border);white-space:nowrap;}
@@ -399,6 +407,17 @@
   .auth-aside-blob{position:absolute;border-radius:50%;filter:blur(60px);opacity:.35;pointer-events:none;}
   .auth-aside-blob.b1{width:340px;height:340px;background:#00E5A0;top:-120px;inset-inline-end:-100px;}
   .auth-aside-blob.b2{width:260px;height:260px;background:#0EA5E9;bottom:-100px;inset-inline-start:-80px;opacity:.22;}
+  .lang-toggle{position:relative;z-index:3;width:64px;height:28px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:20px;display:flex;align-items:center;padding:2px;cursor:pointer;flex-shrink:0;box-sizing:border-box;}
+  .lang-toggle .lang-pill{position:absolute;inset-inline-start:2px;top:2px;width:30px;height:22px;background:#00E5A0;border-radius:16px;box-shadow:0 1px 4px rgba(0,0,0,.25);transition:transform .25s cubic-bezier(.22,1,.36,1);}
+  .lang-toggle[data-active="en"] .lang-pill{transform:translateX(30px);}
+  html[dir="rtl"] .lang-toggle[data-active="en"] .lang-pill{transform:translateX(-30px);}
+  .lang-toggle span{position:relative;z-index:2;flex:1;text-align:center;font-size:10px;font-weight:800;font-family:var(--font-display);color:#EAF6F1;transition:color .2s;}
+  .lang-toggle[data-active="ar"] span:first-child{color:#07231C;}
+  .lang-toggle[data-active="en"] span:last-child{color:#07231C;}
+  .lang-toggle-light{background:var(--bg-panel-raised);border-color:var(--border);}
+  .lang-toggle-light span{color:var(--text-primary);}
+  .lang-toggle-light[data-active="ar"] span:first-child,.lang-toggle-light[data-active="en"] span:last-child{color:#07231C;}
+  .auth-aside-top-row{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;}
   .auth-aside-top{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;text-align:center;}
   .auth-aside-bottom{position:relative;z-index:1;text-align:center;}
   .auth-aside-brand{display:flex;align-items:center;gap:12px;}
@@ -508,8 +527,8 @@
 <noscript>
   <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;text-align:center;font-family:sans-serif;direction:rtl;">
     <div>
-      <div style="font-size:20px;font-weight:700;margin-bottom:8px;">كابيتال برو</div>
-      <div style="color:#666;">تحتاج المنصة إلى تفعيل JavaScript كي تعمل. يُرجى فتح الملف من متصفح كامل مثل Safari أو Chrome بدلاً من المعاينة داخل تطبيق آخر.</div>
+      <div style="font-size:20px;font-weight:700;margin-bottom:8px;">Capital Pro — كابيتال برو</div>
+      <div style="color:#666;">This platform needs JavaScript enabled to work. Please open it in a full browser like Safari or Chrome.<br>تحتاج المنصة إلى تفعيل JavaScript كي تعمل. يُرجى فتح الملف من متصفح كامل مثل Safari أو Chrome.</div>
     </div>
   </div>
 </noscript>
@@ -530,7 +549,7 @@
         <path d="M8.5 23 L23.5 9" stroke="#00E5A0" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
         <path d="M23.5 9 H17.5 M23.5 9 V15" stroke="#00E5A0" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
-      <div class="brand-name">كابيتال برو<span>.</span></div>
+      <div class="brand-name"><span data-i18n="brandName">كابيتال برو</span><span>.</span></div>
     </div>
     <div class="topbar-right">
       <div class="dropdown-anchor">
@@ -721,6 +740,7 @@ async function checkIsAdmin(){
   }
 }
 let pendingVerifyEmail = null;
+let pendingCompleteProfileUser = null;
 let pendingResetEmail = null;
 
 async function authSignUp(email, password, firstName, lastName){
@@ -1166,7 +1186,7 @@ const translations = {
 "volUnitContract": "الحجم (عقد)",
 "wholeShareMsg": "تُباع الأسهم بالسهم الكامل فقط (دون كسور).",
 "persistFailedMsg": "حدثت مشكلة أثناء حفظ العملية على الخادم، يُرجى المحاولة مرة أخرى بعد قليل.",
-"persistFailedRetryMsg": "فشل تحديث العملية على السيرفر. جرّب تعمل ريفريش وتاكد من صفقاتك.",
+"persistFailedRetryMsg": "فشل تحديث العملية على الخادم. يرجى تحديث الصفحة والتأكد من صفقاتك.",
 "openedTrade": "تم فتح صفقة",
 "closedTrade": "تم إغلاق صفقة",
 "volumeWord": "حجم",
@@ -1193,7 +1213,7 @@ const translations = {
 "loginBtn": "دخول",
 "noAccountQ": "ليس لديك حساب بعد؟",
 "signupLinkBtn": "أنشئ حساب جديد",
-"alreadyHaveAccountQ": "عندك حساب بالفعل؟",
+"alreadyHaveAccountQ": "هل لديك حساب بالفعل؟",
 "loginLinkBtn": "سجّل دخولك",
 "signupTitle": "إنشاء حساب جديد",
 "signupIntro": "📈 كابيتال برو — أدخل بياناتك لإنشاء حسابك.",
@@ -1202,8 +1222,8 @@ const translations = {
 "signupErrorMismatch": "يجب أن تتطابق كلمة المرور مع تأكيدها",
 "signupErrorWeak": "يجب أن تحقق كلمة المرور الشروط الموضحة أدناه",
 "pwRuleLength": "8 حروف على الأقل",
-"pwRuleUpper": "حرف كابيتال واحد على الأقل (A-Z)",
-"pwRuleLower": "حرف سمول واحد على الأقل (a-z)",
+"pwRuleUpper": "حرف كبير واحد على الأقل (A-Z)",
+"pwRuleLower": "حرف صغير واحد على الأقل (a-z)",
 "pwRuleSymbol": "رمز واحد على الأقل (!@#...)",
 "forgotPasswordLink": "نسيت كلمة المرور؟",
 "forgotTitle": "استعادة كلمة المرور",
@@ -1211,7 +1231,7 @@ const translations = {
 "sendCodeBtn": "إرسال كود التحقق",
 "backToLoginLink": "الرجوع لتسجيل الدخول",
 "resetTitle": "كلمة مرور جديدة",
-"resetIntro": "بعتنا كود التحقق على",
+"resetIntro": "أرسلنا رمز التحقق إلى",
 "newPasswordLabel": "كلمة المرور الجديدة",
 "resetBtn": "تأكيد كلمة المرور الجديدة",
 "authAsideHeadline": "تداول الأسهم السعودية والعالمية <em>بثقة</em>، من مكان واحد.",
@@ -1225,8 +1245,8 @@ const translations = {
 "verifyBtn": "تأكيد الكود",
 "resendCodeLink": "لم يوصلني الكود — إعادة الإرسال",
 "resendSentMsg": "تم إرسال كود جديد إلى بريدك",
-"verifyErrorMsg": "الكود غلط أو منتهي، جرّب تاني",
-"authGenericError": "حصل خطأ، تأكد من البيانات وحاول تاني",
+"verifyErrorMsg": "الرمز غير صحيح أو منتهي الصلاحية، يرجى المحاولة مرة أخرى",
+"authGenericError": "حدث خطأ، يرجى التأكد من البيانات والمحاولة مرة أخرى",
 "authLoadingWord": "جاري التحميل...",
 "signupSuccessNotifTitle": "تم إنشاء الحساب",
 "cancelStayDemo": "إلغاء والبقاء في الحساب التجريبي",
@@ -1239,6 +1259,34 @@ const translations = {
 "cancelBtn": "تراجع",
 "loginScreenTitle": "تسجيل الدخول — كابيتال برو",
 "loginScreenNote": "سجّلت خروجك بنجاح. سجّل دخولك للمتابعة إلى حسابك.",
+"pdScreenTitle": "استكمال البيانات الشخصية",
+"pdScreenSub": "خطوة أخيرة قبل ما تدخل حسابك — البيانات دي مطلوبة لإكمال فتح الحساب.",
+"pdBirthCountry": "بلد الميلاد",
+"pdBirthCity": "مدينة الميلاد",
+"pdBirthCityPlaceholder": "اختر بلد الميلاد أولًا",
+"pdGovernorate": "المحافظة",
+"pdCity": "المدينة",
+"pdCityPlaceholder": "مدينة الإقامة",
+"pdDistrict": "الحي",
+"pdStreet": "الشارع",
+"pdPostalCode": "الرمز البريدي",
+"pdBuildingNumber": "رقم المبنى",
+"pdUnitNumber": "رقم الوحدة",
+"pdNationalId": "رقم الهوية",
+"pdMaritalStatus": "الحالة الاجتماعية",
+"pdEducationLevel": "المستوى التعليمي",
+"pdWhatsapp": "رقم التواصل (واتساب)",
+"pdWhatsappPlaceholder": "5xxxxxxxx",
+"pdWhatsappHint": "كود الدولة بيتحدد تلقائيًا حسب بلد الميلاد اللي اخترته فوق.",
+"pdAltPhone": "رقم إضافي (اختياري)",
+"pdSelectPlaceholder": "اختر...",
+"pdRequiredMsg": "لازم تملأ كل الحقول (ما عدا الرقم الإضافي، ده اختياري).",
+"pdSubmitBtn": "تأكيد ومتابعة",
+"pdSavingMsg": "جاري الحفظ...",
+"pdEditBtn": "📋 تعديل البيانات الشخصية",
+"pdModalTitle": "البيانات الشخصية",
+"pdSaveBtn": "حفظ التعديلات",
+"pdSavedMsg": "تم حفظ بياناتك بنجاح.",
 "profileTitle": "الملف الشخصي",
 "nameLabel": "الاسم",
 "demoTraderName": "متداول كابيتال برو",
@@ -1326,13 +1374,13 @@ const translations = {
 "adminRecsEmptyMsg": "لا توجد توصيات مضافة بعد.",
 "adminRecsAddedMsg": "تمت إضافة التوصية بنجاح.",
 "notifNewRecTitle": "🎯 توصية استثمارية جديدة",
-"adminRecsReplacedMsg": "السهم كان ليه توصية تانية، تم استبدالها بالتوصية الجديدة.",
+"adminRecsReplacedMsg": "كان لهذا السهم توصية أخرى، وتم استبدالها بالتوصية الجديدة.",
 "adminRecsDeletedMsg": "تم حذف التوصية.",
-"adminRecsErrorMsg": "حصل خطأ، حاول تاني.",
+"adminRecsErrorMsg": "حدث خطأ، يرجى المحاولة مرة أخرى.",
 "adminRecsDuplicateMsg": "هذا السهم عليه بالفعل نفس التوصية.",
 "adminRecsCurrentCallPrefix": "⚠️ هذا السهم عليه حاليًا توصية:",
 "aiRec1Title": "قطاع البنوك السعودي",
-"aiRec1Detail": "نموذج التحليل بيرصد زخم إيجابي نسبي في قطاع البنوك خلال الفترة الحالية.",
+"aiRec1Detail": "يرصد نموذج التحليل زخمًا إيجابيًا نسبيًا في قطاع البنوك خلال الفترة الحالية.",
 "aiRec2Title": "مؤشرات التقنية الأمريكية",
 "aiRec2Detail": "تذبذب أعلى من المعتاد في قطاع التقنية — يفضّل تنويع المراكز وعدم التركيز.",
 "aiRec3Title": "الذهب كأداة تحوّط",
@@ -1383,6 +1431,7 @@ const translations = {
 "withdrawTitle": "طلب سحب أموال",
 "withdrawIntro": "أدخل بيانات حسابك البنكي والمبلغ الذي ترغب في سحبه، وسيتواصل معك فريق كابيتال برو لإتمام عملية السحب.",
 "bankNameLabel": "اسم البنك",
+"bankNamePlaceholder": "بنك الراجحي",
 "bankAccountLabel": "رقم الحساب البنكي",
 "ibanLabel": "الآيبان (IBAN)",
 "withdrawAmountLabel": "المبلغ الذي ترغب في سحبه",
@@ -1418,17 +1467,30 @@ const translations = {
 "catCommodities": "سلع",
 "catBars": "سبائك",
 "catFunds": "صناديق استثمار",
-"welcomeGateTitle": "أهلاً بيك في كابيتال برو",
+"welcomeGateTitle": "أهلاً بك في كابيتال برو",
 "welcomeGateNote": "سجّل الدخول لتبدأ التداول وإدارة محفظتك.",
 "infoBalance": "الرصيد المتاح هو الأموال النقدية الموجودة لديك وغير المستثمرة في أي أداة. عند الشراء، يُخصم سعر الأداة كاملًا من هنا فورًا؛ وعند البيع، تعود الأموال إلى هنا مرة أخرى.",
 "infoFloatingPnl": "الأرباح العائمة هي الفرق بين القيمة الحالية لما تملكه في السوق وسعر الشراء الذي دفعته. تتغيّر لحظة بلحظة مع تحرك السعر، ولا تُعد نهائية إلا عند البيع.",
 "infoEquity": "الحقوق (Equity) = الرصيد المتاح + القيمة السوقية الحالية لكل ما تملكه. أي أنها صافي ثروتك الحالية لو تم بيع كل شيء فورًا.",
 "infoUsedMargin": "المبلغ المستثمر هو إجمالي الأموال التي دفعتها فعليًا لشراء الأدوات التي ما زلت تملكها (دون أي رافعة مالية).",
 "infoFreeMargin": "الرصيد الحر للشراء هو نفسه رصيدك المتاح نقدًا، وهو ما يمكنك استخدامه لشراء أدوات جديدة.",
-"infoMarginLevel": "نسبة الاستثمار = (المبلغ المستثمر ÷ الحقوق) × 100. بتوضحلك قد إيه من ثروتك محبوس في أدوات مقابل الكاش الحر.",
+"infoMarginLevel": "نسبة الاستثمار = (المبلغ المستثمر ÷ الحقوق) × 100. توضح لك مقدار ما هو محبوس من ثروتك في أدوات مقابل النقد المتاح.",
 "infoSpread": "الفرق (Spread) هو الفرق بين سعر البيع وسعر الشراء لنفس الأداة، وهو أساسًا أحد أشكال تكلفة التداول.",
 "infoPnl": "يوضح هذا الرقم ربحك أو خسارتك في الصفقة: أخضر = ربح، أحمر = خسارة. يتغيّر مع السعر بالنسبة للصفقات المفتوحة، ويبقى ثابتًا نهائيًا للصفقات المغلقة.",
-"infoVolume": "الحجم هو حجم الصفقة بوحدة 'اللوت' — كل ما الحجم أكبر كل ما كل حركة في السعر أثرت أكتر في أرباحك أو خسائرك."
+"infoVolume": "الحجم هو حجم الصفقة بوحدة 'اللوت' — كلما زاد الحجم، زاد تأثير حركة السعر في أرباحك أو خسائرك.",
+"brandName": "كابيتال برو",
+"noJsMsg": "تحتاج المنصة إلى تفعيل JavaScript كي تعمل. يُرجى فتح الملف من متصفح كامل مثل Safari أو Chrome بدلاً من المعاينة داخل تطبيق آخر.",
+"realDataNote": "📡 بيانات حقيقية ({source})",
+"liveSourceYahooDelayed": "Yahoo Finance (بيانات مؤجلة)",
+"marketNotInPlanTitle": "🔒 السوق غير متاح في باقتك",
+"marketNotInPlanBody": "باقتك الحالية لا تغطي هذا الرمز ({symbol}). يُرجى الترقية لباقة أشمل للتداول عليه.",
+"frozenTitle": "تم تجميد هذا الحساب",
+"frozenDefaultMsg": "تم إيقاف الوصول لهذا الحساب مؤقتًا. من فضلك تواصل مع الدعم الفني لمزيد من التفاصيل.",
+"frozenContactSupportBtn": "💬 تواصل مع الدعم بخصوص التجميد",
+"frozenSupportSubject": "استفسار عن سبب تجميد الحساب",
+"frozenSupportMsgWithReason": "تم تجميد حسابي وظهرت لي هذه الرسالة: \"{reason}\"\n\nممكن أعرف السبب بالتفصيل؟",
+"frozenSupportMsgNoReason": "تم تجميد حسابي من غير ما أعرف السبب. ممكن أعرف السبب بالتفصيل؟",
+"pageTitle": "كابيتال برو | منصة التداول الرقمية"
 },
 "en": {
 "navMarket": "Market",
@@ -1549,6 +1611,34 @@ const translations = {
 "cancelBtn": "Cancel",
 "loginScreenTitle": "Log In — Capital Pro",
 "loginScreenNote": "You've been logged out. Log back in to continue to your account.",
+"pdScreenTitle": "Complete Your Personal Details",
+"pdScreenSub": "One last step before you enter your account — this information is required to finish opening your account.",
+"pdBirthCountry": "Country of birth",
+"pdBirthCity": "City of birth",
+"pdBirthCityPlaceholder": "Choose a country first",
+"pdGovernorate": "Region",
+"pdCity": "City",
+"pdCityPlaceholder": "City of residence",
+"pdDistrict": "District",
+"pdStreet": "Street",
+"pdPostalCode": "Postal code",
+"pdBuildingNumber": "Building number",
+"pdUnitNumber": "Unit number",
+"pdNationalId": "National ID number",
+"pdMaritalStatus": "Marital status",
+"pdEducationLevel": "Education level",
+"pdWhatsapp": "WhatsApp number",
+"pdWhatsappPlaceholder": "5xxxxxxxx",
+"pdWhatsappHint": "The dial code is set automatically from the country of birth you chose above.",
+"pdAltPhone": "Additional number (optional)",
+"pdSelectPlaceholder": "Select...",
+"pdRequiredMsg": "Please fill in all fields (the additional number is optional).",
+"pdSubmitBtn": "Confirm & Continue",
+"pdSavingMsg": "Saving...",
+"pdEditBtn": "📋 Edit Personal Details",
+"pdModalTitle": "Personal Details",
+"pdSaveBtn": "Save Changes",
+"pdSavedMsg": "Your details were saved successfully.",
 "profileTitle": "Profile",
 "nameLabel": "Name",
 "demoTraderName": "Capital Pro Trader",
@@ -1693,6 +1783,7 @@ const translations = {
 "withdrawTitle": "Withdrawal Request",
 "withdrawIntro": "Enter your bank account details and the amount you'd like to withdraw, and the Capital Pro team will contact you to complete the withdrawal.",
 "bankNameLabel": "Bank name",
+"bankNamePlaceholder": "Al Rajhi Bank",
 "bankAccountLabel": "Bank account number",
 "ibanLabel": "IBAN",
 "withdrawAmountLabel": "Amount to withdraw",
@@ -1738,14 +1829,28 @@ const translations = {
 "infoMarginLevel": "Invested Ratio = (Invested Amount ÷ Equity) × 100. It shows how much of your wealth is tied up in holdings versus free cash.",
 "infoSpread": "Spread is the gap between the sell and buy price of the same instrument — essentially a built-in trading cost.",
 "infoPnl": "This shows your profit or loss on the trade: green = profit, red = loss. For open positions it changes with price; for closed trades it's final.",
-"infoVolume": "Volume is the trade size in 'lots' — the bigger the volume, the more each price move affects your profit or loss."
+"infoVolume": "Volume is the trade size in 'lots' — the bigger the volume, the more each price move affects your profit or loss.",
+"brandName": "Capital Pro",
+"noJsMsg": "This platform needs JavaScript enabled to work. Please open the file in a full browser like Safari or Chrome instead of an in-app preview.",
+"realDataNote": "📡 Real data ({source})",
+"liveSourceYahooDelayed": "Yahoo Finance (delayed)",
+"marketNotInPlanTitle": "🔒 Market not included in your plan",
+"marketNotInPlanBody": "Your current plan doesn't cover this symbol ({symbol}). Please upgrade to a broader plan to trade it.",
+"frozenTitle": "This account has been frozen",
+"frozenDefaultMsg": "Access to this account has been temporarily suspended. Please contact support for more details.",
+"frozenContactSupportBtn": "💬 Contact support about this freeze",
+"frozenSupportSubject": "Inquiry about account freeze",
+"frozenSupportMsgWithReason": "My account was frozen and I got this message: \"{reason}\"\n\nCan I get more detail on why?",
+"frozenSupportMsgNoReason": "My account was frozen and I don't know why. Can I get more detail?",
+"pageTitle": "Capital Pro | Digital Trading Platform"
 }
 };
-let lang = (new URLSearchParams(location.search).get('lang')==='en') ? 'en' : 'ar';
+let lang = window.__capitalLang || 'en';
 function t(key){ return (translations[lang] && translations[lang][key]) || key; }
 function applyStaticI18n(){
   document.documentElement.lang = lang;
   document.documentElement.dir = lang==='en' ? 'ltr' : 'rtl';
+  document.title = t('pageTitle');
   document.querySelectorAll('[data-i18n]').forEach(el=>{
     el.textContent = t(el.dataset.i18n);
   });
@@ -1754,12 +1859,13 @@ function applyStaticI18n(){
 }
 function setLang(newLang){
   lang = newLang;
+  try { localStorage.setItem('capitalProLang', lang); } catch(err){ console.warn('lang save failed:', err); }
   try {
     const url = new URL(location.href);
     url.searchParams.set('lang', lang);
     history.replaceState(null, '', url);
   } catch(err){ console.warn('lang url update failed:', err); }
-  const steps = [applyStaticI18n, renderTickerStrip, syncSymbolUI, renderPositions, renderHistory, renderReport, renderMenuDropdown, ()=>closeAllDropdowns(null), closeModal];
+  const steps = [applyStaticI18n, renderTickerStrip, syncSymbolUI, renderPositions, renderHistory, renderReport, renderMenuDropdown, ()=>{ if(notifDropdown.classList.contains('open')) renderNotifDropdown(); }, ()=>closeAllDropdowns(null), closeModal];
   steps.forEach(fn=>{
     try { fn(); } catch(err){ console.warn('setLang step failed:', err); }
   });
@@ -1965,7 +2071,7 @@ async function loadChartSeries(){
     }
     series = downsample(real, 120);
     series[series.length-1] = s.price; // anchor to the live price exactly — never jumps
-    if(note){ note.style.display=''; note.textContent = '📡 بيانات حقيقية (' + source + ')'; }
+    if(note){ note.style.display=''; note.textContent = t('realDataNote').replace('{source}', source); }
     drawChart();
   }
   // no live source (or a transient fetch failure) — stays on the simulated series already
@@ -2412,8 +2518,8 @@ async function buyPosition(){
   if(accountMode==='real'){
     const allowed = allowedCategoriesForUser();
     if(!allowed.includes(s.cat)){
-      openModal('🔒 السوق غير متاح في باقتك', `
-        <div class="modal-note">باقتك الحالية لا تغطي هذا الرمز (${s.name}). يُرجى الترقية لباقة أشمل للتداول عليه.</div>
+      openModal(t('marketNotInPlanTitle'), `
+        <div class="modal-note">${t('marketNotInPlanBody').replace('{symbol}', s.name)}</div>
         <button class="modal-btn primary" id="planUpgradeBtn">${t('subscribeBtn')}</button>
         <button class="modal-btn ghost" id="planLockedClose">${t('closeBtn')}</button>
       `);
@@ -2466,7 +2572,10 @@ async function buyPosition(){
     positions.push(posRecord);
     renderPositions();
     updateTradeButtonsState();
-    pushNotification(`${t('openedTrade')} ${t('buy')}`, `${s.short} · ${t('volumeWord')} ${vol.toFixed(2)} ${t('lotAt')} ${fmt(entry, s.decimals)}`, 'buy');
+    pushNotification(
+      bilingualText(()=> `${t('openedTrade')} ${t('buy')}`),
+      bilingualText(()=> `${s.short} · ${t('volumeWord')} ${vol.toFixed(2)} ${t('lotAt')} ${fmt(entry, s.decimals)}`),
+      'buy');
     document.getElementById('tpCheck').checked = false;
     document.getElementById('tpInput').value = ''; document.getElementById('tpInput').disabled = true;
     document.getElementById('slCheck').checked = false;
@@ -2528,7 +2637,10 @@ async function sellPosition(){
       showOrderMsg(t('persistFailedRetryMsg'));
     }
     if(totalPnl !== 0 || remaining <= EPS){
-      pushNotification(`${t('closedTrade')} ${t('sell')}`, `${s.short} · ${totalPnl>=0?t('profitWord'):t('lossWord')} ${fmt(Math.abs(totalPnl),2)}`, totalPnl>=0?'profit':'loss');
+      pushNotification(
+        bilingualText(()=> `${t('closedTrade')} ${t('sell')}`),
+        bilingualText(()=> `${s.short} · ${totalPnl>=0?t('profitWord'):t('lossWord')} ${fmt(Math.abs(totalPnl),2)}`),
+        totalPnl>=0?'profit':'loss');
     }
   } finally {
     if(sellBtnEl) sellBtnEl.disabled = false;
@@ -2561,8 +2673,10 @@ async function closePosition(id, reason){
   renderHistory();
   renderReport();
   updateTradeButtonsState();
-  const title = reason==='tp' ? t('tpTriggeredTitle') : reason==='sl' ? t('slTriggeredTitle') : `${t('closedTrade')} ${t('sell')}`;
-  pushNotification(title, `${s.short} · ${pnl>=0?t('profitWord'):t('lossWord')} ${fmt(Math.abs(pnl),2)}`, pnl>=0?'profit':'loss');
+  pushNotification(
+    bilingualText(()=> reason==='tp' ? t('tpTriggeredTitle') : reason==='sl' ? t('slTriggeredTitle') : `${t('closedTrade')} ${t('sell')}`),
+    bilingualText(()=> `${s.short} · ${pnl>=0?t('profitWord'):t('lossWord')} ${fmt(Math.abs(pnl),2)}`),
+    pnl>=0?'profit':'loss');
 }
 function renderPositions(){
   if(positions.length===0){
@@ -2949,7 +3063,7 @@ async function fetchLiveSaudiPrices(){
         s.liveAt = Date.now(); persistLastPrice(s);
         // Tadawul quotes via this free route come slightly delayed, not tick-by-tick
         // real-time — labeled honestly, same as the Frankfurter forex rates.
-        s.liveSource = 'Yahoo Finance (بيانات مؤجلة)';
+        s.liveSource = t('liveSourceYahooDelayed');
         updated++;
       }
     });
@@ -2988,7 +3102,7 @@ async function fetchLiveYahooIndices(){
         s.baseStep = s.step;
         s.liveAt = Date.now(); persistLastPrice(s);
         // Same honesty note as the Saudi/forex feeds — this free route is delayed, not tick-by-tick.
-        s.liveSource = 'Yahoo Finance (بيانات مؤجلة)';
+        s.liveSource = t('liveSourceYahooDelayed');
         updated++;
       }
     });
@@ -3026,7 +3140,7 @@ async function fetchLiveYahooCommodities(){
         s.step = Math.max(real*0.0004, real>=1 ? 0.01 : 0.0001);
         s.baseStep = s.step;
         s.liveAt = Date.now(); persistLastPrice(s);
-        s.liveSource = 'Yahoo Finance (بيانات مؤجلة)';
+        s.liveSource = t('liveSourceYahooDelayed');
         updated++;
       }
     });
@@ -3064,7 +3178,7 @@ async function fetchLiveYahooGlobal(){
         s.step = Math.max(real*0.0004, real>=1 ? 0.01 : 0.0001);
         s.baseStep = s.step;
         s.liveAt = Date.now(); persistLastPrice(s);
-        s.liveSource = 'Yahoo Finance (بيانات مؤجلة)';
+        s.liveSource = t('liveSourceYahooDelayed');
         updated++;
       }
     });
@@ -3257,6 +3371,32 @@ document.querySelectorAll('#timeframesRow .tf-btn').forEach(btn=>{
 /* ============ Notifications ============ */
 let notifications = [];
 const notifTypeIcon = { buy:'🟢', sell:'🔴', profit:'💰', loss:'🔻', recommendation:'🎯', system:'🔔' };
+/* Runs a t()-based string builder once per language and returns both results,
+   so a notification can be re-rendered correctly no matter which language is
+   active later — instead of baking in whatever language was active when the
+   event happened. Dynamic values captured in the closure (amounts, symbol
+   names, etc.) are computed once and reused for both, since fmt() output and
+   ticker symbols are already language-neutral. */
+function bilingualText(builderFn){
+  const savedLang = lang;
+  let ar, en;
+  try { lang = 'ar'; ar = builderFn(); }
+  finally { lang = savedLang; }
+  try { lang = 'en'; en = builderFn(); }
+  finally { lang = savedLang; }
+  return { ar, en };
+}
+function localizeNotifText(val){
+  if(val && typeof val === 'object' && ('ar' in val || 'en' in val)) return val[lang] ?? val.ar ?? val.en ?? '';
+  if(typeof val === 'string' && val.length && (val[0]==='{')){
+    // loaded back from the DB, where bilingual entries are stored as a JSON string
+    try {
+      const parsed = JSON.parse(val);
+      if(parsed && typeof parsed === 'object') return parsed[lang] ?? parsed.ar ?? parsed.en ?? val;
+    } catch(err){ /* not JSON — a legacy plain-text notification, fall through */ }
+  }
+  return val;
+}
 function pushNotification(title, detail, type='system'){
   const entry = { title, detail, time: new Date(), unread:true, type, id:null };
   notifications.unshift(entry);
@@ -3282,7 +3422,11 @@ async function persistNotification(entry){
         'Authorization': `Bearer ${token}`,
         'Prefer': 'return=representation'
       },
-      body: JSON.stringify({ user_id: currentUser.id, type: entry.type, title: entry.title, detail: entry.detail })
+      body: JSON.stringify({
+        user_id: currentUser.id, type: entry.type,
+        title: typeof entry.title === 'object' ? JSON.stringify(entry.title) : entry.title,
+        detail: typeof entry.detail === 'object' ? JSON.stringify(entry.detail) : entry.detail
+      })
     });
     if(res.ok){
       const rows = await res.json();
@@ -3330,8 +3474,8 @@ function renderNotifDropdown(){
   }
   el.innerHTML = `<div class="dropdown-header"><span>${t('notifications')}</span></div>` + notifications.map(n=>`
     <div class="notif-item">
-      <div class="notif-title">${notifTypeIcon[n.type]||'🔔'} ${n.title}</div>
-      <div>${n.detail}</div>
+      <div class="notif-title">${notifTypeIcon[n.type]||'🔔'} ${localizeNotifText(n.title)}</div>
+      <div>${localizeNotifText(n.detail)}</div>
       <div class="notif-time">${n.time.toLocaleTimeString(lang==='en'?'en-US':'ar-EG',{hour:'2-digit',minute:'2-digit'})}</div>
     </div>`).join('');
   const unreadIds = notifications.filter(n=>n.unread && n.id).map(n=>n.id);
@@ -3580,14 +3724,20 @@ function authAsideHTML(state){
       <div class="auth-aside-blob b1"></div>
       <div class="auth-aside-blob b2"></div>
       <div class="auth-aside-top">
-        <div class="auth-aside-brand">
-          <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-            <rect x="0.5" y="0.5" width="31" height="31" rx="8" fill="rgba(255,255,255,.06)" stroke="rgba(255,255,255,.14)"/>
-            <circle cx="8.5" cy="23" r="2.1" fill="#00E5A0"/>
-            <path d="M8.5 23 L23.5 9" stroke="#00E5A0" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-            <path d="M23.5 9 H17.5 M23.5 9 V15" stroke="#00E5A0" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-          <div class="brand-name">كابيتال برو<span>.</span></div>
+        <div class="auth-aside-top-row">
+          <div class="auth-aside-brand">
+            <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+              <rect x="0.5" y="0.5" width="31" height="31" rx="8" fill="rgba(255,255,255,.06)" stroke="rgba(255,255,255,.14)"/>
+              <circle cx="8.5" cy="23" r="2.1" fill="#00E5A0"/>
+              <path d="M8.5 23 L23.5 9" stroke="#00E5A0" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+              <path d="M23.5 9 H17.5 M23.5 9 V15" stroke="#00E5A0" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <div class="brand-name">${t('brandName')}<span>.</span></div>
+          </div>
+          <div class="lang-toggle" id="authLangToggle" data-active="${lang}" role="button" tabindex="0" aria-label="Switch language / تغيير اللغة">
+            <span>AR</span><span>EN</span>
+            <div class="lang-pill"></div>
+          </div>
         </div>
         <div class="auth-aside-headline">${t('authAsideHeadline')}</div>
         ${toggleBtnHTML}
@@ -3612,7 +3762,7 @@ function authMobileBrandHTML(){
         <path d="M8.5 23 L23.5 9" stroke="#00E5A0" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
         <path d="M23.5 9 H17.5 M23.5 9 V15" stroke="#00E5A0" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
-      <div class="brand-name">كابيتال برو<span>.</span></div>
+      <div class="brand-name">${t('brandName')}<span>.</span></div>
     </div>`;
 }
 function pwFieldHTML(id, label, placeholder, btnId){
@@ -3676,6 +3826,17 @@ function authGateHTML(state, canCancel){
         <button class="auth-primary-btn" id="gateSubmit">${t('verifyBtn')}</button>
         ${cancelHTML}
         <div class="auth-switch-line"><a href="#" id="gateResendLink" class="auth-link">${t('resendCodeLink')}</a></div>
+      </div>`;
+  } else if(state === 'completeProfile'){
+    inner = `
+      <div class="auth-card-head">
+        <div class="auth-card-title">${t('pdScreenTitle')}</div>
+        <div class="auth-card-sub">${t('pdScreenSub')}</div>
+      </div>
+      <div class="auth-body">
+        ${personalDetailsFormHTML({})}
+        <div id="gateError" class="auth-error"></div>
+        <button class="auth-primary-btn" id="gateSubmit">${t('pdSubmitBtn')}</button>
       </div>`;
   } else if(state === 'forgot'){
     inner = `
@@ -3792,6 +3953,13 @@ function mountLoginGate(state, canCancel){
   const asideToggle = document.getElementById('asideToggleBtn');
   if(asideToggle) asideToggle.onclick = (e)=>{ e.preventDefault(); showLoginGate(state === 'login' ? 'signup' : 'login', canCancel); };
 
+  const langToggle = document.getElementById('authLangToggle');
+  if(langToggle){
+    const flipLang = (e)=>{ e.preventDefault(); setLang(lang === 'ar' ? 'en' : 'ar'); showLoginGate(state, canCancel); };
+    langToggle.onclick = flipLang;
+    langToggle.onkeydown = (e)=>{ if(e.key==='Enter' || e.key===' ') flipLang(e); };
+  }
+
   if(state === 'login'){
     wirePasswordToggle('gatePass','gatePassToggle');
     document.getElementById('gateSubmit').onclick = async ()=>{
@@ -3810,7 +3978,7 @@ function mountLoginGate(state, canCancel){
         }
         return;
       }
-      onAuthSuccess(data.user);
+      proceedAfterVerify(data.user);
     };
     const link = document.getElementById('gateSwitchLink');
     if(link) link.onclick = (e)=>{ e.preventDefault(); showLoginGate('signup', canCancel); };
@@ -3837,7 +4005,7 @@ function mountLoginGate(state, canCancel){
       setGateLoading(false);
       if(error){ showGateError(safeErrorMessage(error, t('authGenericError'))); return; }
       pendingVerifyEmail = email;
-      pushNotification(t('signupSuccessNotifTitle'), email);
+      pushNotification(bilingualText(()=> t('signupSuccessNotifTitle')), email);
       showLoginGate('verify', canCancel);
     };
     const link = document.getElementById('gateSwitchLink');
@@ -3852,7 +4020,7 @@ function mountLoginGate(state, canCancel){
       const { data, error } = await authVerifyOtp(pendingVerifyEmail, code);
       setGateLoading(false);
       if(error){ showGateError(t('verifyErrorMsg')); return; }
-      onAuthSuccess(data.user);
+      proceedAfterVerify(data.user);
     };
     const resend = document.getElementById('gateResendLink');
     if(resend) resend.onclick = async (e)=>{
@@ -3861,6 +4029,27 @@ function mountLoginGate(state, canCancel){
       await authResendCode(pendingVerifyEmail);
       const info = document.getElementById('gateInfo');
       if(info){ info.textContent = t('resendSentMsg'); info.style.display = 'block'; }
+    };
+  }
+
+  if(state === 'completeProfile'){
+    wirePersonalDetailsForm();
+    document.getElementById('gateSubmit').onclick = async ()=>{
+      if(!pendingCompleteProfileUser){ showGateError(t('authGenericError')); return; }
+      const fields = readPersonalDetailsForm('gateError');
+      if(!fields) return;
+      setGateLoading(true);
+      try {
+        const { error } = await supabaseClient.rpc('update_my_profile_details', fields);
+        setGateLoading(false);
+        if(error) throw error;
+        const user = pendingCompleteProfileUser;
+        pendingCompleteProfileUser = null;
+        onAuthSuccess(user);
+      } catch(err){
+        setGateLoading(false);
+        showGateError(safeErrorMessage(err, t('authGenericError')));
+      }
     };
   }
 
@@ -3898,7 +4087,7 @@ function mountLoginGate(state, canCancel){
       if(updateError){ showGateError(safeErrorMessage(updateError, t('authGenericError'))); return; }
       pendingResetEmail = null;
       pendingVerifyEmail = null;
-      onAuthSuccess(data.user);
+      proceedAfterVerify(data.user);
     };
     const resend = document.getElementById('gateResendLink');
     if(resend) resend.onclick = async (e)=>{
@@ -3976,10 +4165,10 @@ function showFrozenAccountScreen(reason){
   el.innerHTML = `
     <div style="max-width:380px;text-align:center;background:var(--bg-panel);border:1px solid var(--border);border-radius:16px;padding:28px 24px;">
       <div style="font-size:40px;margin-bottom:10px;">🔒</div>
-      <div style="font-family:var(--font-display);font-weight:800;font-size:18px;margin-bottom:8px;">تم تجميد هذا الحساب</div>
-      <div style="font-size:13.5px;color:var(--text-muted);line-height:1.7;">${reason ? reason : 'تم إيقاف الوصول لهذا الحساب مؤقتًا. من فضلك تواصل مع الدعم الفني لمزيد من التفاصيل.'}</div>
-      <button class="modal-btn primary" id="frozenContactSupportBtn" style="margin-top:18px;width:100%;">💬 تواصل مع الدعم بخصوص التجميد</button>
-      <button class="modal-btn ghost" id="frozenScreenCloseBtn" style="margin-top:10px;width:100%;">تسجيل الخروج</button>
+      <div style="font-family:var(--font-display);font-weight:800;font-size:18px;margin-bottom:8px;">${t('frozenTitle')}</div>
+      <div style="font-size:13.5px;color:var(--text-muted);line-height:1.7;">${reason ? reason : t('frozenDefaultMsg')}</div>
+      <button class="modal-btn primary" id="frozenContactSupportBtn" style="margin-top:18px;width:100%;">${t('frozenContactSupportBtn')}</button>
+      <button class="modal-btn ghost" id="frozenScreenCloseBtn" style="margin-top:10px;width:100%;">${t('logoutBtn')}</button>
     </div>
   `;
   document.body.appendChild(el);
@@ -3992,8 +4181,8 @@ function showFrozenAccountScreen(reason){
   };
   document.getElementById('frozenContactSupportBtn').onclick = ()=>{
     openSupportModal({
-      subject: 'استفسار عن سبب تجميد الحساب',
-      message: reason ? `تم تجميد حسابي وظهرت لي هذه الرسالة: "${reason}"\n\nممكن أعرف السبب بالتفصيل؟` : 'تم تجميد حسابي من غير ما أعرف السبب. ممكن أعرف السبب بالتفصيل؟'
+      subject: t('frozenSupportSubject'),
+      message: reason ? t('frozenSupportMsgWithReason').replace('{reason}', reason) : t('frozenSupportMsgNoReason')
     });
   };
 }
@@ -4018,6 +4207,23 @@ function startFrozenPolling(){
       console.warn('periodic frozen-account check failed:', err);
     }
   }, 120000);
+}
+/* Gate: after any successful auth (signup verification, login, or password
+   reset) check whether this user still needs to fill the mandatory personal
+   details. If so, show that screen first instead of entering the app —
+   covers both brand-new signups AND anyone who closed the tab mid-way. */
+async function proceedAfterVerify(user){
+  try {
+    const { data } = await supabaseClient.from('profiles').select('profile_completed').eq('id', user.id).maybeSingle();
+    if(data && data.profile_completed === false){
+      pendingCompleteProfileUser = user;
+      showLoginGate('completeProfile', false);
+      return;
+    }
+  } catch(err){
+    console.warn('could not check profile_completed:', err);
+  }
+  onAuthSuccess(user);
 }
 async function onAuthSuccess(user){
   currentUser = user;
@@ -4085,7 +4291,9 @@ async function onAuthSuccess(user){
   } catch(err){
     console.warn('could not load user notifications after login:', err);
   }
-  pushNotification(t('loggedInNotifTitle'), `${t('welcomeWord')} ${user.email.split('@')[0]}${lang==='ar'?'،':','} ${t('realAccountActiveWord')}`);
+  pushNotification(
+    bilingualText(()=> t('loggedInNotifTitle')),
+    bilingualText(()=> `${t('welcomeWord')} ${user.email.split('@')[0]}${lang==='ar'?'،':','} ${t('realAccountActiveWord')}`));
   closeModal();
   resizeCanvas();
   drawChart();
@@ -4168,11 +4376,56 @@ function openProfileModal(){
     ${plansHTML}
     <div class="switch-row"><span>${t('balance')}</span><span class="notif-time" id="profBalance">${fmt(balance,2)}</span></div>
     <button class="modal-btn primary" id="profSubscribeBtn" style="margin-top:8px;">${t('subscribeBtn')}</button>
+    <button class="modal-btn ghost" id="profEditDetailsBtn">${t('pdEditBtn')}</button>
     <button class="modal-btn ghost" id="profClose">${t('closeBtn')}</button>
   `);
   document.getElementById('profClose').onclick = closeModal;
   const subBtn = document.getElementById('profSubscribeBtn');
   if(subBtn) subBtn.onclick = ()=>{ closeModal(); openSubscriptionModal(); };
+  const editBtn = document.getElementById('profEditDetailsBtn');
+  if(editBtn) editBtn.onclick = ()=>{ openPersonalDetailsModal(); };
+}
+/* Lets a logged-in client review/update the personal details collected at
+   signup. Reuses the exact same form + RPC as the mandatory signup step —
+   every field stays editable for now (no "locked" fields defined yet). */
+async function openPersonalDetailsModal(){
+  openModal(t('pdModalTitle'), `<div class="modal-note">${t('authLoadingWord')}</div>`);
+  let row = {};
+  try {
+    const { data, error } = await supabaseClient.from('profiles').select('*').eq('id', currentUser.id).maybeSingle();
+    if(error) throw error;
+    if(data) row = data;
+  } catch(err){
+    console.warn('could not load personal details:', err);
+  }
+  openModal(t('pdModalTitle'), `
+    ${personalDetailsFormHTML(row)}
+    <div id="pdEditMsg" style="font-size:12.5px;margin-top:8px;"></div>
+    <button class="modal-btn primary" id="pdSaveBtn" style="margin-top:10px;width:100%;">${t('pdSaveBtn')}</button>
+    <button class="modal-btn ghost" id="pdEditCloseBtn" style="margin-top:8px;width:100%;">${t('closeBtn')}</button>
+  `);
+  wirePersonalDetailsForm();
+  document.getElementById('pdEditCloseBtn').onclick = closeModal;
+  document.getElementById('pdSaveBtn').onclick = async ()=>{
+    const fields = readPersonalDetailsForm('pdEditMsg');
+    if(!fields) return;
+    const btn = document.getElementById('pdSaveBtn');
+    btn.disabled = true;
+    const msgEl = document.getElementById('pdEditMsg');
+    msgEl.style.color = 'var(--text-dim)';
+    msgEl.textContent = t('pdSavingMsg');
+    try {
+      const { error } = await supabaseClient.rpc('update_my_profile_details', fields);
+      if(error) throw error;
+      msgEl.style.color = 'var(--buy)';
+      msgEl.textContent = t('pdSavedMsg');
+    } catch(err){
+      msgEl.style.color = 'var(--sell)';
+      msgEl.textContent = safeErrorMessage(err, t('authGenericError'));
+    } finally {
+      btn.disabled = false;
+    }
+  };
 }
 
 /* ---- Support / contact-admin modal ---- */
@@ -4183,11 +4436,11 @@ function openSupportModal(prefill){
     <div class="modal-note">${t('supportIntro')}</div>
     <div class="form-row">
       <span class="field-label">${t('supportSubjectLabel')}</span>
-      <input class="field-input" style="text-align:right;" id="supportSubject" placeholder="${t('supportSubjectPlaceholder')}" value="${prefill.subject ? prefill.subject.replace(/"/g,'&quot;') : ''}">
+      <input class="field-input" style="text-align:start;" id="supportSubject" placeholder="${t('supportSubjectPlaceholder')}" value="${prefill.subject ? prefill.subject.replace(/"/g,'&quot;') : ''}">
     </div>
     <div class="form-row">
       <span class="field-label">${t('supportMessageLabel')}</span>
-      <textarea class="field-input" style="text-align:right;min-height:110px;resize:vertical;font-family:var(--font-body);" id="supportMessage" placeholder="${t('supportMessagePlaceholder')}">${prefill.message || ''}</textarea>
+      <textarea class="field-input" style="text-align:start;min-height:110px;resize:vertical;font-family:var(--font-body);" id="supportMessage" placeholder="${t('supportMessagePlaceholder')}">${prefill.message || ''}</textarea>
     </div>
     <div id="supportError" style="color:var(--sell);font-size:12.5px;display:none;"></div>
     <button class="modal-btn primary" id="supportSubmitBtn">${t('supportSendBtn')}</button>
@@ -4227,7 +4480,7 @@ function openSupportModal(prefill){
     btn.disabled = false;
     btn.textContent = originalLabel;
     closeModal();
-    pushNotification(t('supportSuccessNotifTitle'), '');
+    pushNotification(bilingualText(()=> t('supportSuccessNotifTitle')), '');
     openModal(t('supportSuccessTitle'), `
       <div class="modal-note">${t('supportSuccessMsg')}</div>
       <button class="modal-btn primary" id="supportDoneBtn">${t('closeBtn')}</button>
@@ -4285,7 +4538,7 @@ function openSettingsModal(){
   if(diagBtn) diagBtn.onclick = openLiveDataDiagModal;
   document.getElementById('settingsSave').onclick = ()=>{
     document.querySelectorAll('table.positions').forEach(tb=> tb.style.fontSize = settings.compact ? '11px' : '12.5px');
-    pushNotification(t('settingsSavedTitle'), t('settingsSavedDetail'));
+    pushNotification(bilingualText(()=> t('settingsSavedTitle')), bilingualText(()=> t('settingsSavedDetail')));
     closeModal();
   };
 }
@@ -4336,7 +4589,7 @@ async function loadPendingSubscriptions(){
       if(btn) btn.onclick = ()=> approvePendingRequest(r, btn);
     });
   } catch(err){
-    listEl.innerHTML = `<div class="modal-note" style="color:var(--sell);">تعذّر تحميل الطلبات: ${err.message || 'حاول تاني'}</div>`;
+    listEl.innerHTML = `<div class="modal-note" style="color:var(--sell);">تعذّر تحميل الطلبات: ${err.message || 'حاول مرة أخرى'}</div>`;
   }
 }
 async function approvePendingRequest(row, btn){
@@ -4354,7 +4607,7 @@ async function approvePendingRequest(row, btn){
     logAdmin('approve_subscription_request', row.email, { plan: row.plan });
   } catch(err){
     btn.disabled = false;
-    btn.textContent = 'فشل — حاول تاني';
+    btn.textContent = 'فشل — حاول مرة أخرى';
     console.warn('approvePendingRequest failed:', err);
   }
 }
@@ -4392,13 +4645,13 @@ async function loadPendingCashback(){
           logAdmin('mark_contacted', r.email, { type:'cashback', amount:r.amount });
         } catch(err){
           btn.disabled = false;
-          btn.textContent = 'فشل — حاول تاني';
+          btn.textContent = 'فشل — حاول مرة أخرى';
           console.warn('markCashbackContacted failed:', err);
         }
       };
     });
   } catch(err){
-    listEl.innerHTML = `<div class="modal-note" style="color:var(--sell);">تعذّر تحميل الطلبات: ${err.message || 'حاول تاني'}</div>`;
+    listEl.innerHTML = `<div class="modal-note" style="color:var(--sell);">تعذّر تحميل الطلبات: ${err.message || 'حاول مرة أخرى'}</div>`;
   }
 }
 async function loadPendingDeposits(){
@@ -4435,13 +4688,13 @@ async function loadPendingDeposits(){
           logAdmin('mark_contacted', r.email, { type:'deposit', amount:r.amount });
         } catch(err){
           btn.disabled = false;
-          btn.textContent = 'فشل — حاول تاني';
+          btn.textContent = 'فشل — حاول مرة أخرى';
           console.warn('markDepositContacted failed:', err);
         }
       };
     });
   } catch(err){
-    listEl.innerHTML = `<div class="modal-note" style="color:var(--sell);">تعذّر تحميل الطلبات: ${err.message || 'حاول تاني'}</div>`;
+    listEl.innerHTML = `<div class="modal-note" style="color:var(--sell);">تعذّر تحميل الطلبات: ${err.message || 'حاول مرة أخرى'}</div>`;
   }
 }
 async function loadPendingWithdrawals(){
@@ -4480,13 +4733,13 @@ async function loadPendingWithdrawals(){
           logAdmin('mark_contacted', r.email, { type:'withdrawal', amount:r.amount });
         } catch(err){
           btn.disabled = false;
-          btn.textContent = 'فشل — حاول تاني';
+          btn.textContent = 'فشل — حاول مرة أخرى';
           console.warn('markWithdrawalContacted failed:', err);
         }
       };
     });
   } catch(err){
-    listEl.innerHTML = `<div class="modal-note" style="color:var(--sell);">تعذّر تحميل الطلبات: ${err.message || 'حاول تاني'}</div>`;
+    listEl.innerHTML = `<div class="modal-note" style="color:var(--sell);">تعذّر تحميل الطلبات: ${err.message || 'حاول مرة أخرى'}</div>`;
   }
 }
 async function loadPendingSupportRequests(){
@@ -4525,13 +4778,13 @@ async function loadPendingSupportRequests(){
           setTimeout(()=> loadPendingSupportRequests().then(updateAdminReqStats), 600);
         } catch(err){
           btn.disabled = false;
-          btn.textContent = 'فشل — حاول تاني';
+          btn.textContent = 'فشل — حاول مرة أخرى';
           console.warn('resolveSupportRequest failed:', err);
         }
       };
     });
   } catch(err){
-    listEl.innerHTML = `<div class="modal-note" style="color:var(--sell);">تعذّر تحميل طلبات الدعم: ${err.message || 'حاول تاني'}</div>`;
+    listEl.innerHTML = `<div class="modal-note" style="color:var(--sell);">تعذّر تحميل طلبات الدعم: ${err.message || 'حاول مرة أخرى'}</div>`;
   }
 }
 function openAdminRequestsTrackingModal(){
@@ -4577,6 +4830,29 @@ function openAdminPaymentLinksModal(){
 
     <div style="border-top:1px solid var(--border);margin:18px 0 14px;"></div>
 
+    <div class="modal-note">أسعار وعملات الباقات: عدّل سعر أي باقة والعملة اللي هيتحاسب بيها العميل (ريال أو دولار). اضغط حفظ عشان التغيير يظهر فورًا لكل العملاء.</div>
+    <div id="planPricesList" style="display:flex;flex-direction:column;gap:14px;margin-top:10px;">
+      ${subscriptionPlans.map(p=>`
+        <div>
+          <div style="font-size:13px;font-weight:600;margin-bottom:6px;">${t(p.nameKey)}</div>
+          <div style="display:flex;gap:8px;">
+            <input type="number" class="plan-price-input" data-plan="${p.id}" placeholder="السعر" style="flex:1;padding:10px;border-radius:8px;border:1px solid var(--border);box-sizing:border-box;font-family:var(--font-mono);">
+            <div class="currency-toggle" style="flex:1;margin-top:0;">
+              <button type="button" class="currency-toggle-btn plan-currency-btn" data-plan="${p.id}" data-currency="SAR">﷼ ريال</button>
+              <button type="button" class="currency-toggle-btn plan-currency-btn" data-plan="${p.id}" data-currency="USD">$ دولار</button>
+            </div>
+          </div>
+          <div class="plan-price-msg" data-plan="${p.id}" style="margin-top:6px;font-size:12.5px;"></div>
+          <div style="display:flex;gap:8px;margin-top:6px;">
+            <button class="modal-btn primary plan-price-save" data-plan="${p.id}" style="flex:1;">حفظ السعر</button>
+            <button class="modal-btn ghost plan-price-clear" data-plan="${p.id}" style="flex:1;">إرجاع الافتراضي</button>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+
+    <div style="border-top:1px solid var(--border);margin:18px 0 14px;"></div>
+
     <div class="modal-note">روابط مخصصة لأزرار "اطلب الاشتراك": لو حطيت رابطًا لباقة معينة، أي عميل يدوس على زرارها هيتوجّه مباشرة لهذا الرابط بدل فتح نموذج تأكيد رقم الهاتف. اترك أي باقة فارغة لإعادة النموذج الافتراضي لها.</div>
     <div id="planLinksList" style="display:flex;flex-direction:column;gap:14px;margin-top:10px;">
       ${subscriptionPlans.map(p=>`
@@ -4592,6 +4868,78 @@ function openAdminPaymentLinksModal(){
       `).join('')}
     </div>
   `);
+  (async ()=>{
+    await loadPlanOverrides();
+    for(const p of subscriptionPlans){
+      const priceInput = document.querySelector(`.plan-price-input[data-plan="${p.id}"]`);
+      if(priceInput) priceInput.value = effectivePlanPrice(p);
+      const cur = effectivePlanCurrency(p);
+      document.querySelectorAll(`.plan-currency-btn[data-plan="${p.id}"]`).forEach(b=>{
+        b.classList.toggle('active', b.dataset.currency===cur);
+      });
+    }
+  })();
+  document.querySelectorAll('.plan-currency-btn').forEach(btn=>{
+    btn.onclick = ()=>{
+      document.querySelectorAll(`.plan-currency-btn[data-plan="${btn.dataset.plan}"]`).forEach(b=> b.classList.toggle('active', b===btn));
+    };
+  });
+  document.querySelectorAll('.plan-price-save').forEach(btn=>{
+    btn.onclick = async ()=>{
+      const planId = btn.dataset.plan;
+      const priceInput = document.querySelector(`.plan-price-input[data-plan="${planId}"]`);
+      const activeCurBtn = document.querySelector(`.plan-currency-btn[data-plan="${planId}"].active`);
+      const msgEl = document.querySelector(`.plan-price-msg[data-plan="${planId}"]`);
+      const priceVal = Number(priceInput.value);
+      if(!priceVal || priceVal<=0){
+        msgEl.style.color = 'var(--sell)';
+        msgEl.textContent = 'من فضلك أدخل سعرًا صحيحًا أكبر من صفر.';
+        return;
+      }
+      const currencyVal = activeCurBtn ? activeCurBtn.dataset.currency : 'SAR';
+      msgEl.style.color = 'var(--text-dim)';
+      msgEl.textContent = 'جاري الحفظ...';
+      try {
+        const r1 = await supabaseClient.rpc('admin_set_app_setting', { setting_key: 'plan_price_'+planId, setting_value: String(priceVal) });
+        if(r1.error) throw r1.error;
+        const r2 = await supabaseClient.rpc('admin_set_app_setting', { setting_key: 'plan_currency_'+planId, setting_value: currencyVal });
+        if(r2.error) throw r2.error;
+        await loadPlanOverrides();
+        logAdmin('set_plan_price', null, { plan: planId, price: priceVal, currency: currencyVal });
+        msgEl.style.color = 'var(--buy)';
+        msgEl.textContent = 'تم الحفظ. السعر الجديد هيظهر لكل العملاء الآن.';
+      } catch(err){
+        msgEl.style.color = 'var(--sell)';
+        msgEl.textContent = 'فشل الحفظ: ' + (err.message || 'حاول مرة أخرى.');
+      }
+    };
+  });
+  document.querySelectorAll('.plan-price-clear').forEach(btn=>{
+    btn.onclick = async ()=>{
+      const planId = btn.dataset.plan;
+      const defaultPlan = subscriptionPlans.find(p=>p.id===planId);
+      const msgEl = document.querySelector(`.plan-price-msg[data-plan="${planId}"]`);
+      msgEl.style.color = 'var(--text-dim)';
+      msgEl.textContent = 'جاري الإرجاع للسعر الافتراضي...';
+      try {
+        const r1 = await supabaseClient.rpc('admin_set_app_setting', { setting_key: 'plan_price_'+planId, setting_value: '' });
+        if(r1.error) throw r1.error;
+        const r2 = await supabaseClient.rpc('admin_set_app_setting', { setting_key: 'plan_currency_'+planId, setting_value: '' });
+        if(r2.error) throw r2.error;
+        await loadPlanOverrides();
+        document.querySelector(`.plan-price-input[data-plan="${planId}"]`).value = defaultPlan.price;
+        document.querySelectorAll(`.plan-currency-btn[data-plan="${planId}"]`).forEach(b=>{
+          b.classList.toggle('active', b.dataset.currency===defaultPlan.currency);
+        });
+        logAdmin('reset_plan_price', null, { plan: planId });
+        msgEl.style.color = 'var(--buy)';
+        msgEl.textContent = 'تم الإرجاع للسعر الافتراضي.';
+      } catch(err){
+        msgEl.style.color = 'var(--sell)';
+        msgEl.textContent = 'فشل الإرجاع: ' + (err.message || 'حاول مرة أخرى.');
+      }
+    };
+  });
   (async ()=>{
     const current = await getAppSetting('deposit_link');
     const input = document.getElementById('depositLinkInput');
@@ -4748,6 +5096,7 @@ function openAdminDashboardPage(initialTab){
   el.style.display = 'flex';
   document.body.style.overflow = 'hidden';
   switchAdminDashTab(initialTab || adminDashActiveTab || 'overview');
+  loadPlanOverrides().then(()=> switchAdminDashTab(adminDashActiveTab));
 }
 function closeAdminDashboardPage(){
   const el = document.getElementById('adminDashOverlay');
@@ -4788,7 +5137,7 @@ async function renderAdminDashOverview(){
     if(error) throw error;
     paintAdminDashOverview(data);
   } catch(err){
-    body.innerHTML = `<div class="modal-note" style="color:var(--sell);">تعذّر تحميل النظرة العامة: ${err.message||'حاول تاني'}</div>`;
+    body.innerHTML = `<div class="modal-note" style="color:var(--sell);">تعذّر تحميل النظرة العامة: ${err.message||'حاول مرة أخرى'}</div>`;
   }
 }
 function paintAdminDashOverview(d){
@@ -4799,7 +5148,7 @@ function paintAdminDashOverview(d){
     ? `<div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>السهم</th><th>عدد المرات (مفتوحة + مقفولة)</th></tr></thead><tbody>
         ${d.top_traded_symbols.map(r=>`<tr><td class="name-cell">${r.symbol}</td><td>${r.cnt}</td></tr>`).join('')}
        </tbody></table></div>`
-    : `<div style="font-size:12px;color:var(--text-dim);">لسه مفيش صفقات كفاية لعرض ترتيب.</div>`;
+    : `<div style="font-size:12px;color:var(--text-dim);">لا توجد صفقات كافية بعد لعرض ترتيب.</div>`;
   body.innerHTML = `
     <div class="admin-stat-grid" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));">
       ${statCard(d.total_users, 'إجمالي العملاء')}
@@ -4809,7 +5158,7 @@ function paintAdminDashOverview(d){
       ${statCard(fmt(Number(d.deposit_volume),2), 'إجمالي طلبات الإيداع')}
       ${statCard(fmt(Number(d.withdrawal_volume),2), 'إجمالي طلبات السحب')}
     </div>
-    <div class="admin-section-title">🏆 الأسهم الأكتر تداولًا (كل العملاء)</div>
+    <div class="admin-section-title">🏆 الأسهم الأكثر تداولًا (كل العملاء)</div>
     ${topSymbolsHTML}
   `;
 }
@@ -4852,7 +5201,7 @@ function renderAdminDashBroadcast(){
       document.getElementById('broadcastTitle').value='';
       document.getElementById('broadcastDetail').value='';
     } catch(err){
-      msgEl.style.color='var(--sell)'; msgEl.textContent='فشل الإرسال: '+(err.message||'حاول تاني.');
+      msgEl.style.color='var(--sell)'; msgEl.textContent='فشل الإرسال: '+(err.message||'حاول مرة أخرى.');
     } finally {
       document.getElementById('broadcastSendBtn').disabled = false;
     }
@@ -4980,7 +5329,7 @@ async function commitAdminDashPrice(name, rawVal){
     await renderAdminDashPrices();
   } catch(err){
     console.warn('could not save manual price:', err);
-    alert('فشل حفظ السعر: ' + (err.message||'حاول تاني'));
+    alert('فشل حفظ السعر: ' + (err.message||'حاول مرة أخرى'));
   }
 }
 
@@ -5093,6 +5442,26 @@ function renderAdminDashLinks(){
         <button class="modal-btn ghost" id="clearDepositLinkBtn" style="flex:1;">إلغاء الرابط</button>
       </div>
     </div>
+    <div class="admin-section-title">💵 أسعار وعملات الباقات</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;">
+      ${subscriptionPlans.map(p=>`
+        <div style="background:var(--bg-panel);border:1px solid var(--border);border-radius:12px;padding:14px;">
+          <div style="font-size:13.5px;font-weight:700;margin-bottom:8px;">${t(p.nameKey)}</div>
+          <div style="display:flex;gap:6px;">
+            <input type="number" class="plan-price-input" data-plan="${p.id}" placeholder="السعر" style="flex:1;min-width:0;padding:9px;border-radius:8px;border:1px solid var(--border);box-sizing:border-box;font-size:12.5px;font-family:var(--font-mono);">
+          </div>
+          <div class="currency-toggle" style="margin-top:6px;">
+            <button type="button" class="currency-toggle-btn plan-currency-btn" data-plan="${p.id}" data-currency="SAR" style="font-size:12px;padding:7px 8px;">﷼ ريال</button>
+            <button type="button" class="currency-toggle-btn plan-currency-btn" data-plan="${p.id}" data-currency="USD" style="font-size:12px;padding:7px 8px;">$ دولار</button>
+          </div>
+          <div class="plan-price-msg" data-plan="${p.id}" style="margin-top:6px;font-size:12px;"></div>
+          <div style="display:flex;gap:6px;margin-top:8px;">
+            <button class="admin-mini-btn plan-price-save" data-plan="${p.id}" style="flex:1;">حفظ</button>
+            <button class="admin-mini-btn plan-price-clear" data-plan="${p.id}" style="flex:1;">افتراضي</button>
+          </div>
+        </div>
+      `).join('')}
+    </div>
     <div class="admin-section-title">روابط أزرار الاشتراك</div>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;">
       ${subscriptionPlans.map(p=>`
@@ -5123,7 +5492,7 @@ function renderAdminDashLinks(){
       if(error) throw error;
       msgEl.style.color='var(--buy)'; msgEl.textContent='تم الحفظ.';
       logAdmin('set_deposit_link', null, { link });
-    } catch(err){ msgEl.style.color='var(--sell)'; msgEl.textContent='فشل الحفظ: '+(err.message||'حاول تاني.'); }
+    } catch(err){ msgEl.style.color='var(--sell)'; msgEl.textContent='فشل الحفظ: '+(err.message||'حاول مرة أخرى.'); }
   };
   document.getElementById('clearDepositLinkBtn').onclick = async ()=>{
     const msgEl = document.getElementById('depositLinkMsg');
@@ -5134,7 +5503,7 @@ function renderAdminDashLinks(){
       document.getElementById('depositLinkInput').value='';
       msgEl.style.color='var(--buy)'; msgEl.textContent='تم الإلغاء.';
       logAdmin('clear_deposit_link', null, null);
-    } catch(err){ msgEl.style.color='var(--sell)'; msgEl.textContent='فشل: '+(err.message||'حاول تاني.'); }
+    } catch(err){ msgEl.style.color='var(--sell)'; msgEl.textContent='فشل: '+(err.message||'حاول مرة أخرى.'); }
   };
   (async ()=>{
     for(const p of subscriptionPlans){
@@ -5156,7 +5525,7 @@ function renderAdminDashLinks(){
         if(error) throw error;
         msgEl.style.color='var(--buy)'; msgEl.textContent='تم الحفظ.';
         logAdmin('set_plan_link', null, { plan:planId, link });
-      } catch(err){ msgEl.style.color='var(--sell)'; msgEl.textContent='فشل: '+(err.message||'حاول تاني.'); }
+      } catch(err){ msgEl.style.color='var(--sell)'; msgEl.textContent='فشل: '+(err.message||'حاول مرة أخرى.'); }
     };
   });
   document.querySelectorAll('.plan-link-clear').forEach(btn=>{
@@ -5170,7 +5539,65 @@ function renderAdminDashLinks(){
         if(error) throw error;
         input.value=''; msgEl.style.color='var(--buy)'; msgEl.textContent='تم الإلغاء.';
         logAdmin('clear_plan_link', null, { plan:planId });
-      } catch(err){ msgEl.style.color='var(--sell)'; msgEl.textContent='فشل: '+(err.message||'حاول تاني.'); }
+      } catch(err){ msgEl.style.color='var(--sell)'; msgEl.textContent='فشل: '+(err.message||'حاول مرة أخرى.'); }
+    };
+  });
+  (async ()=>{
+    await loadPlanOverrides();
+    for(const p of subscriptionPlans){
+      const priceInput = document.querySelector(`.plan-price-input[data-plan="${p.id}"]`);
+      if(priceInput) priceInput.value = effectivePlanPrice(p);
+      const cur = effectivePlanCurrency(p);
+      document.querySelectorAll(`.plan-currency-btn[data-plan="${p.id}"]`).forEach(b=>{
+        b.classList.toggle('active', b.dataset.currency===cur);
+      });
+    }
+  })();
+  document.querySelectorAll('.plan-currency-btn').forEach(btn=>{
+    btn.onclick = ()=>{
+      document.querySelectorAll(`.plan-currency-btn[data-plan="${btn.dataset.plan}"]`).forEach(b=> b.classList.toggle('active', b===btn));
+    };
+  });
+  document.querySelectorAll('.plan-price-save').forEach(btn=>{
+    btn.onclick = async ()=>{
+      const planId = btn.dataset.plan;
+      const priceInput = document.querySelector(`.plan-price-input[data-plan="${planId}"]`);
+      const activeCurBtn = document.querySelector(`.plan-currency-btn[data-plan="${planId}"].active`);
+      const msgEl = document.querySelector(`.plan-price-msg[data-plan="${planId}"]`);
+      const priceVal = Number(priceInput.value);
+      if(!priceVal || priceVal<=0){ msgEl.style.color='var(--sell)'; msgEl.textContent='سعر غير صحيح.'; return; }
+      const currencyVal = activeCurBtn ? activeCurBtn.dataset.currency : 'SAR';
+      msgEl.style.color='var(--text-dim)'; msgEl.textContent='جاري الحفظ...';
+      try {
+        const r1 = await supabaseClient.rpc('admin_set_app_setting', { setting_key:'plan_price_'+planId, setting_value:String(priceVal) });
+        if(r1.error) throw r1.error;
+        const r2 = await supabaseClient.rpc('admin_set_app_setting', { setting_key:'plan_currency_'+planId, setting_value:currencyVal });
+        if(r2.error) throw r2.error;
+        await loadPlanOverrides();
+        msgEl.style.color='var(--buy)'; msgEl.textContent='تم الحفظ.';
+        logAdmin('set_plan_price', null, { plan:planId, price:priceVal, currency:currencyVal });
+      } catch(err){ msgEl.style.color='var(--sell)'; msgEl.textContent='فشل: '+(err.message||'حاول مرة أخرى.'); }
+    };
+  });
+  document.querySelectorAll('.plan-price-clear').forEach(btn=>{
+    btn.onclick = async ()=>{
+      const planId = btn.dataset.plan;
+      const defaultPlan = subscriptionPlans.find(p=>p.id===planId);
+      const msgEl = document.querySelector(`.plan-price-msg[data-plan="${planId}"]`);
+      msgEl.style.color='var(--text-dim)'; msgEl.textContent='جاري الإرجاع...';
+      try {
+        const r1 = await supabaseClient.rpc('admin_set_app_setting', { setting_key:'plan_price_'+planId, setting_value:'' });
+        if(r1.error) throw r1.error;
+        const r2 = await supabaseClient.rpc('admin_set_app_setting', { setting_key:'plan_currency_'+planId, setting_value:'' });
+        if(r2.error) throw r2.error;
+        await loadPlanOverrides();
+        document.querySelector(`.plan-price-input[data-plan="${planId}"]`).value = defaultPlan.price;
+        document.querySelectorAll(`.plan-currency-btn[data-plan="${planId}"]`).forEach(b=>{
+          b.classList.toggle('active', b.dataset.currency===defaultPlan.currency);
+        });
+        msgEl.style.color='var(--buy)'; msgEl.textContent='تم الإرجاع للافتراضي.';
+        logAdmin('reset_plan_price', null, { plan:planId });
+      } catch(err){ msgEl.style.color='var(--sell)'; msgEl.textContent='فشل: '+(err.message||'حاول مرة أخرى.'); }
     };
   });
 }
@@ -5217,7 +5644,7 @@ async function renderAdminDashRequests(){
       ...pendingWithdrawalsData.map(r=> ['سحب', r.email, '', r.amount, r.currency||'', r.phone||'', `بنك: ${r.bank_name||'—'} · حساب: ${r.account_number||'—'} · آيبان: ${r.iban||'—'}`, dateLabel(r.created_at)]),
       ...pendingSupportData.map(r=> ['دعم', r.email, r.subject||'', '', '', '', r.message||'', dateLabel(r.created_at)])
     ];
-    if(!rows.length){ pushNotification('لا يوجد شيء للتصدير', 'مفيش طلبات معلّقة حاليًا.'); return; }
+    if(!rows.length){ pushNotification('لا يوجد شيء للتصدير', 'لا توجد طلبات معلّقة حاليًا.'); return; }
     downloadCSV(`الطلبات_المعلّقة_${new Date().toISOString().slice(0,10)}.csv`, headers, rows);
     logAdmin('export_csv', null, { type:'pending_requests', count: rows.length });
   };
@@ -5263,7 +5690,7 @@ function paintAdminDashUsers(){
   if(!body || adminDashActiveTab!=='users') return;
   const q = adminDashUsersSearch.trim().toLowerCase();
   const rows = adminDashUsersList.filter(u=> !q || u.email.toLowerCase().includes(q));
-  const planOptionsHTML = subscriptionPlans.map(p=>`<option value="${p.id}">${t(p.nameKey)} — ${p.price} ${planCurrencyLabel(p)}</option>`).join('');
+  const planOptionsHTML = subscriptionPlans.map(p=>`<option value="${p.id}">${t(p.nameKey)} — ${effectivePlanPrice(p)} ${planCurrencyLabel(p)}</option>`).join('');
   const quickAmounts = [100,500,1000,5000,10000];
   body.innerHTML = `
     <div class="admin-toolbar">
@@ -5335,7 +5762,7 @@ function paintAdminDashUsers(){
   `;
   document.getElementById('adminDashUsersSearch').oninput = (e)=>{ adminDashUsersSearch = e.target.value; paintAdminDashUsers(); };
   document.getElementById('exportUsersCSVBtn').onclick = ()=>{
-    if(!adminDashUsersList.length){ pushNotification('لا يوجد شيء للتصدير', 'مفيش عملاء لسه.'); return; }
+    if(!adminDashUsersList.length){ pushNotification('لا يوجد شيء للتصدير', 'لا يوجد عملاء بعد.'); return; }
     const headers = ['الإيميل','الرصيد','عدد الباقات','مجمّد؟'];
     const dataRows = adminDashUsersList.map(u=> [u.email, u.balance, u.plan_count, u.frozen ? 'نعم' : 'لا']);
     downloadCSV(`قائمة_العملاء_${new Date().toISOString().slice(0,10)}.csv`, headers, dataRows);
@@ -5390,13 +5817,13 @@ function paintAdminDashUsers(){
     if(!email.includes('@')){ msgEl.style.color='var(--sell)'; msgEl.textContent='إيميل غير صحيح.'; return; }
     msgEl.style.color='var(--text-dim)'; msgEl.textContent='جاري التنفيذ...';
     try {
-      const { data, error } = await supabaseClient.rpc('admin_set_subscription', { target_email: email, plan_id: planId, plan_price: plan.price, plan_currency: plan.currency });
+      const { data, error } = await supabaseClient.rpc('admin_set_subscription', { target_email: email, plan_id: planId, plan_price: effectivePlanPrice(plan), plan_currency: effectivePlanCurrency(plan) });
       if(error) throw error;
       msgEl.style.color = data==='already_subscribed' ? 'var(--amber)' : 'var(--buy)';
       msgEl.textContent = data==='already_subscribed' ? `${email} مشترك بالفعل.` : `تم تفعيل "${t(plan.nameKey)}" لـ ${email}.`;
       if(data!=='already_subscribed') logAdmin('activate_plan', email, { plan: planId });
       await renderAdminDashUsers();
-    } catch(err){ msgEl.style.color='var(--sell)'; msgEl.textContent='فشل: '+(err.message||'حاول تاني.'); }
+    } catch(err){ msgEl.style.color='var(--sell)'; msgEl.textContent='فشل: '+(err.message||'حاول مرة أخرى.'); }
   };
   document.getElementById('adminRevokePlanSubmitBtn').onclick = async ()=>{
     const email = document.getElementById('adminRevokePlanEmail').value.trim();
@@ -5425,7 +5852,7 @@ function paintAdminDashUsers(){
         if(chip) chip.textContent = t(accountMode==='real' ? 'accountReal' : 'accountDemo');
       }
       await renderAdminDashUsers();
-    } catch(err){ msgEl.style.color='var(--sell)'; msgEl.textContent='فشل: '+(err.message||'حاول تاني.'); }
+    } catch(err){ msgEl.style.color='var(--sell)'; msgEl.textContent='فشل: '+(err.message||'حاول مرة أخرى.'); }
   };
   document.getElementById('adminRevokeSubmitBtn').onclick = async ()=>{
     const email = document.getElementById('adminRevokeEmail').value.trim();
@@ -5444,7 +5871,7 @@ function paintAdminDashUsers(){
         if(chip) chip.textContent = t('accountDemo');
       }
       await renderAdminDashUsers();
-    } catch(err){ msgEl.style.color='var(--sell)'; msgEl.textContent='فشل: '+(err.message||'حاول تاني.'); }
+    } catch(err){ msgEl.style.color='var(--sell)'; msgEl.textContent='فشل: '+(err.message||'حاول مرة أخرى.'); }
   };
 }
 
@@ -5459,7 +5886,7 @@ async function renderAdminDashLog(){
     if(error) throw error;
     rows = data || [];
   } catch(err){
-    body.innerHTML = `<div class="modal-note" style="color:var(--sell);">تعذّر تحميل السجل: ${err.message||'حاول تاني'}</div>`;
+    body.innerHTML = `<div class="modal-note" style="color:var(--sell);">تعذّر تحميل السجل: ${err.message||'حاول مرة أخرى'}</div>`;
     return;
   }
   if(!rows.length){
@@ -5528,7 +5955,7 @@ async function openAdminUserDetail(email){
     if(error) throw error;
     paintAdminUserDetail(data);
   } catch(err){
-    bodyEl.innerHTML = `<div class="modal-note" style="color:var(--sell);">تعذّر تحميل بيانات العميل: ${err.message||'حاول تاني'}</div>
+    bodyEl.innerHTML = `<div class="modal-note" style="color:var(--sell);">تعذّر تحميل بيانات العميل: ${err.message||'حاول مرة أخرى'}</div>
       <button class="modal-btn ghost" onclick="closeAdminUserDetail()" style="margin-top:10px;">إغلاق</button>`;
   }
 }
@@ -5549,6 +5976,29 @@ function paintAdminUserDetail(d){
         ${d.closed_trades.map(tr=>`<tr><td class="name-cell">${tr.symbol}</td><td>${fmt(tr.vol,2)}</td><td>${fmt(tr.entry,2)}</td><td>${fmt(tr.exit,2)}</td><td style="color:${tr.pnl>=0?'var(--buy)':'var(--sell)'};">${fmt(tr.pnl,2)}</td></tr>`).join('')}
        </tbody></table></div>`
     : `<div style="font-size:12px;color:var(--text-dim);">لا يوجد صفقات مقفولة بعد</div>`;
+  const pd = d.personal_details || {};
+  const regionLabel = id => { const r = SAUDI_REGIONS.find(x=>x.id===id); return r ? r.ar : (id||'—'); };
+  const maritalLabel = id => { const o = MARITAL_STATUS_OPTIONS.find(x=>x.id===id); return o ? o.ar : (id||'—'); };
+  const eduLabel = id => { const o = EDUCATION_LEVELS.find(x=>x.id===id); return o ? o.ar : (id||'—'); };
+  const pdRow = (label, val) => `<div style="display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid var(--border-soft);font-size:12.5px;"><span style="color:var(--text-dim);">${label}</span><span style="font-weight:600;text-align:end;">${val || '—'}</span></div>`;
+  const personalDetailsHTML = !pd.profile_completed
+    ? `<div style="font-size:12px;color:var(--text-dim);">العميل لسه ما استكملش بياناته الشخصية.</div>`
+    : `<div>
+        ${pdRow('بلد الميلاد', pd.birth_country_name)}
+        ${pdRow('مدينة الميلاد', pd.birth_city)}
+        ${pdRow('المنطقة', regionLabel(pd.governorate))}
+        ${pdRow('المدينة', pd.city)}
+        ${pdRow('الحي', pd.district)}
+        ${pdRow('الشارع', pd.street)}
+        ${pdRow('الرمز البريدي', pd.postal_code)}
+        ${pdRow('رقم المبنى', pd.building_number)}
+        ${pdRow('رقم الوحدة', pd.unit_number)}
+        ${pdRow('الرقم القومي/الهوية', pd.national_id)}
+        ${pdRow('الحالة الاجتماعية', maritalLabel(pd.marital_status))}
+        ${pdRow('المستوى التعليمي', eduLabel(pd.education_level))}
+        ${pdRow('واتساب', pd.whatsapp_number ? `+${pd.whatsapp_dial_code||''} ${pd.whatsapp_number}` : '—')}
+        ${pdRow('رقم إضافي', pd.alt_number ? `+${pd.alt_dial_code||''} ${pd.alt_number}` : '—')}
+      </div>`;
 
   bodyEl.innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
@@ -5569,6 +6019,8 @@ function paintAdminUserDetail(d){
     ${posHTML}
     <div class="admin-section-title">📁 آخر الصفقات المقفولة</div>
     ${tradesHTML}
+    <div class="admin-section-title">🪪 البيانات الشخصية</div>
+    ${personalDetailsHTML}
     <button class="modal-btn primary" id="userDetailFreezeBtn" style="margin-top:18px;width:100%;background:${d.frozen?'var(--accent)':'var(--sell)'};">
       ${d.frozen ? '🔓 إلغاء تجميد الحساب' : '🔒 تجميد الحساب'}
     </button>
@@ -5579,15 +6031,15 @@ function paintAdminUserDetail(d){
         await supabaseClient.rpc('admin_set_user_frozen', { target_email: d.email, is_frozen: false, reason: null });
         await openAdminUserDetail(d.email);
         renderAdminDashUsers();
-      } catch(err){ alert('فشل إلغاء التجميد: '+(err.message||'حاول تاني')); }
+      } catch(err){ alert('فشل إلغاء التجميد: '+(err.message||'حاول مرة أخرى')); }
     } else {
-      const reason = prompt('سبب التجميد (اختياري، هيظهر للعميل):', '');
+      const reason = prompt('سبب التجميد (اختياري، سيظهر للعميل):', '');
       if(reason===null) return; // cancelled
       try {
         await supabaseClient.rpc('admin_set_user_frozen', { target_email: d.email, is_frozen: true, reason: reason||null });
         await openAdminUserDetail(d.email);
         renderAdminDashUsers();
-      } catch(err){ alert('فشل التجميد: '+(err.message||'حاول تاني')); }
+      } catch(err){ alert('فشل التجميد: '+(err.message||'حاول مرة أخرى')); }
     }
   };
   bodyEl.querySelectorAll('[data-admin-close-pos]').forEach(btn=>{
@@ -5627,7 +6079,7 @@ function openAdminManualCloseModal(email, positionId, symbol, vol){
       await openAdminUserDetail(email);
       renderAdminDashUsers();
     } catch(err){
-      msgEl.style.color='var(--sell)'; msgEl.textContent='فشل: '+(err.message||'حاول تاني.');
+      msgEl.style.color='var(--sell)'; msgEl.textContent='فشل: '+(err.message||'حاول مرة أخرى.');
       document.getElementById('adminCloseConfirmBtn').disabled = false;
     }
   };
@@ -5660,14 +6112,14 @@ function openAdminEditEntryModal(email, positionId, symbol, currentEntry){
       closeModal();
       await openAdminUserDetail(email);
     } catch(err){
-      msgEl.style.color='var(--sell)'; msgEl.textContent='فشل: '+(err.message||'حاول تاني.');
+      msgEl.style.color='var(--sell)'; msgEl.textContent='فشل: '+(err.message||'حاول مرة أخرى.');
       document.getElementById('adminEditEntryConfirmBtn').disabled = false;
     }
   };
 }
 
 function openAdminModal(){
-  const planOptionsHTML = subscriptionPlans.map(p=>`<option value="${p.id}">${t(p.nameKey)} — ${p.price} ${planCurrencyLabel(p)}</option>`).join('');
+  const planOptionsHTML = subscriptionPlans.map(p=>`<option value="${p.id}">${t(p.nameKey)} — ${effectivePlanPrice(p)} ${planCurrencyLabel(p)}</option>`).join('');
   const quickAmounts = [100,500,1000,5000,10000];
   openModal('🔑 لوحة الأدمن', `
     <datalist id="platformEmailsList"></datalist>
@@ -5742,7 +6194,7 @@ function openAdminModal(){
     msgEl.textContent = 'جاري التنفيذ...';
     try {
       const { data, error } = await supabaseClient.rpc('admin_set_subscription', {
-        target_email: email, plan_id: planId, plan_price: plan.price, plan_currency: plan.currency
+        target_email: email, plan_id: planId, plan_price: effectivePlanPrice(plan), plan_currency: effectivePlanCurrency(plan)
       });
       if(error) throw error;
       if(data === 'already_subscribed'){
@@ -5754,7 +6206,7 @@ function openAdminModal(){
       }
     } catch(err){
       msgEl.style.color = 'var(--sell)';
-      msgEl.textContent = 'فشل التنفيذ: ' + (err.message || 'حاول تاني.');
+      msgEl.textContent = 'فشل التنفيذ: ' + (err.message || 'حاول مرة أخرى.');
     }
   };
   document.getElementById('adminRevokePlanSubmitBtn').onclick = async ()=>{
@@ -5794,7 +6246,7 @@ function openAdminModal(){
       }
     } catch(err){
       msgEl.style.color = 'var(--sell)';
-      msgEl.textContent = 'فشل التنفيذ: ' + (err.message || 'حاول تاني.');
+      msgEl.textContent = 'فشل التنفيذ: ' + (err.message || 'حاول مرة أخرى.');
     }
   };
   document.getElementById('adminRevokeSubmitBtn').onclick = async ()=>{
@@ -5821,7 +6273,7 @@ function openAdminModal(){
       }
     } catch(err){
       msgEl.style.color = 'var(--sell)';
-      msgEl.textContent = 'فشل التنفيذ: ' + (err.message || 'حاول تاني.');
+      msgEl.textContent = 'فشل التنفيذ: ' + (err.message || 'حاول مرة أخرى.');
     }
   };
   document.getElementById('adminSubmitBtn').onclick = async ()=>{
@@ -5900,6 +6352,217 @@ function openPortfolioModal(){
   document.getElementById('subscribeFromPortfolioBtn').onclick = ()=>{ closeModal(); openSubscriptionModal(); };
 }
 
+/* ============ Personal-details reference data (used in signup completion + profile editing) ============ */
+// [iso2, name_ar, name_en, dial_code]
+const WORLD_COUNTRIES = [
+['SA','السعودية','Saudi Arabia','966'],['AE','الإمارات','United Arab Emirates','971'],['EG','مصر','Egypt','20'],
+['KW','الكويت','Kuwait','965'],['QA','قطر','Qatar','974'],['BH','البحرين','Bahrain','973'],['OM','عُمان','Oman','968'],
+['JO','الأردن','Jordan','962'],['LB','لبنان','Lebanon','961'],['SY','سوريا','Syria','963'],['IQ','العراق','Iraq','964'],
+['YE','اليمن','Yemen','967'],['PS','فلسطين','Palestine','970'],['LY','ليبيا','Libya','218'],['TN','تونس','Tunisia','216'],
+['DZ','الجزائر','Algeria','213'],['MA','المغرب','Morocco','212'],['SD','السودان','Sudan','249'],['SO','الصومال','Somalia','252'],
+['DJ','جيبوتي','Djibouti','253'],['KM','جزر القمر','Comoros','269'],['MR','موريتانيا','Mauritania','222'],
+['TR','تركيا','Turkey','90'],['IR','إيران','Iran','98'],['PK','باكستان','Pakistan','92'],['IN','الهند','India','91'],
+['BD','بنغلاديش','Bangladesh','880'],['LK','سريلانكا','Sri Lanka','94'],['NP','نيبال','Nepal','977'],
+['PH','الفلبين','Philippines','63'],['ID','إندونيسيا','Indonesia','62'],['MY','ماليزيا','Malaysia','60'],
+['SG','سنغافورة','Singapore','65'],['TH','تايلاند','Thailand','66'],['VN','فيتنام','Vietnam','84'],
+['CN','الصين','China','86'],['JP','اليابان','Japan','81'],['KR','كوريا الجنوبية','South Korea','82'],
+['AF','أفغانستان','Afghanistan','93'],['UZ','أوزبكستان','Uzbekistan','998'],['KZ','كازاخستان','Kazakhstan','7'],
+['AZ','أذربيجان','Azerbaijan','994'],['AM','أرمينيا','Armenia','374'],['GE','جورجيا','Georgia','995'],
+['RU','روسيا','Russia','7'],['UA','أوكرانيا','Ukraine','380'],['BY','بيلاروسيا','Belarus','375'],
+['PL','بولندا','Poland','48'],['CZ','التشيك','Czechia','420'],['SK','سلوفاكيا','Slovakia','421'],
+['HU','المجر','Hungary','36'],['RO','رومانيا','Romania','40'],['BG','بلغاريا','Bulgaria','359'],
+['GR','اليونان','Greece','30'],['CY','قبرص','Cyprus','357'],['IT','إيطاليا','Italy','39'],
+['ES','إسبانيا','Spain','34'],['PT','البرتغال','Portugal','351'],['FR','فرنسا','France','33'],
+['DE','ألمانيا','Germany','49'],['NL','هولندا','Netherlands','31'],['BE','بلجيكا','Belgium','32'],
+['CH','سويسرا','Switzerland','41'],['AT','النمسا','Austria','43'],['GB','المملكة المتحدة','United Kingdom','44'],
+['IE','أيرلندا','Ireland','353'],['SE','السويد','Sweden','46'],['NO','النرويج','Norway','47'],
+['DK','الدنمارك','Denmark','45'],['FI','فنلندا','Finland','358'],['IS','آيسلندا','Iceland','354'],
+['EE','إستونيا','Estonia','372'],['LV','لاتفيا','Latvia','371'],['LT','ليتوانيا','Lithuania','370'],
+['HR','كرواتيا','Croatia','385'],['RS','صربيا','Serbia','381'],['SI','سلوفينيا','Slovenia','386'],
+['BA','البوسنة والهرسك','Bosnia and Herzegovina','387'],['AL','ألبانيا','Albania','355'],['MK','مقدونيا الشمالية','North Macedonia','389'],
+['MT','مالطا','Malta','356'],['LU','لوكسمبورغ','Luxembourg','352'],
+['US','الولايات المتحدة','United States','1'],['CA','كندا','Canada','1'],['MX','المكسيك','Mexico','52'],
+['BR','البرازيل','Brazil','55'],['AR','الأرجنتين','Argentina','54'],['CL','تشيلي','Chile','56'],
+['CO','كولومبيا','Colombia','57'],['PE','بيرو','Peru','51'],['VE','فنزويلا','Venezuela','58'],
+['EC','الإكوادور','Ecuador','593'],['UY','الأوروجواي','Uruguay','598'],['BO','بوليفيا','Bolivia','591'],
+['PY','باراغواي','Paraguay','595'],['CU','كوبا','Cuba','53'],['DO','جمهورية الدومينيكان','Dominican Republic','1'],
+['ZA','جنوب أفريقيا','South Africa','27'],['NG','نيجيريا','Nigeria','234'],['KE','كينيا','Kenya','254'],
+['ET','إثيوبيا','Ethiopia','251'],['GH','غانا','Ghana','233'],['TZ','تنزانيا','Tanzania','255'],
+['UG','أوغندا','Uganda','256'],['SN','السنغال','Senegal','221'],['CI','ساحل العاج','Ivory Coast','225'],
+['CM','الكاميرون','Cameroon','237'],['ZM','زامبيا','Zambia','260'],['ZW','زيمبابوي','Zimbabwe','263'],
+['RW','رواندا','Rwanda','250'],['AU','أستراليا','Australia','61'],['NZ','نيوزيلندا','New Zealand','64'],
+['HK','هونغ كونغ','Hong Kong','852'],['TW','تايوان','Taiwan','886'],['MM','ميانمار','Myanmar','95'],
+['KH','كمبوديا','Cambodia','855'],['LA','لاوس','Laos','856'],['MN','منغوليا','Mongolia','976'],
+['TM','تركمانستان','Turkmenistan','993'],['TJ','طاجيكستان','Tajikistan','992'],['KG','قيرغيزستان','Kyrgyzstan','996'],
+['MD','مولدوفا','Moldova','373'],['MC','موناكو','Monaco','377'],['LI','ليختنشتاين','Liechtenstein','423'],
+['SM','سان مارينو','San Marino','378'],['VA','الفاتيكان','Vatican City','379'],['AD','أندورا','Andorra','376'],
+];
+const SAUDI_REGIONS = [
+  {id:'riyadh', ar:'الرياض', en:'Riyadh'}, {id:'makkah', ar:'مكة المكرمة', en:'Makkah'},
+  {id:'madinah', ar:'المدينة المنورة', en:'Madinah'}, {id:'qassim', ar:'القصيم', en:'Qassim'},
+  {id:'eastern', ar:'المنطقة الشرقية', en:'Eastern Province'}, {id:'asir', ar:'عسير', en:'Asir'},
+  {id:'tabuk', ar:'تبوك', en:'Tabuk'}, {id:'hail', ar:'حائل', en:'Hail'},
+  {id:'northern_borders', ar:'الحدود الشمالية', en:'Northern Borders'}, {id:'jazan', ar:'جازان', en:'Jazan'},
+  {id:'najran', ar:'نجران', en:'Najran'}, {id:'baha', ar:'الباحة', en:'Al Baha'}, {id:'jouf', ar:'الجوف', en:'Al Jouf'},
+];
+const MARITAL_STATUS_OPTIONS = [
+  {id:'single', ar:'أعزب / عزباء', en:'Single'}, {id:'married', ar:'متزوج / متزوجة', en:'Married'},
+  {id:'divorced', ar:'مطلّق / مطلّقة', en:'Divorced'}, {id:'widowed', ar:'أرمل / أرملة', en:'Widowed'},
+];
+const EDUCATION_LEVELS = [
+  {id:'below_high_school', ar:'أقل من الثانوية', en:'Below high school'},
+  {id:'high_school', ar:'ثانوية عامة', en:'High school'},
+  {id:'diploma', ar:'دبلوم', en:'Diploma'},
+  {id:'bachelor', ar:'بكالوريوس', en:'Bachelor\'s degree'},
+  {id:'master', ar:'ماجستير', en:'Master\'s degree'},
+  {id:'phd', ar:'دكتوراه', en:'PhD'},
+];
+function countryLabel(c){ return lang==='ar' ? c[1] : c[2]; }
+function findCountry(iso2){ return WORLD_COUNTRIES.find(c=>c[0]===iso2); }
+async function fetchCitiesForCountry(countryNameEn){
+  try {
+    const res = await fetch('https://countriesnow.space/api/v0.1/countries/cities', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ country: countryNameEn })
+    });
+    const json = await res.json();
+    if(json && !json.error && Array.isArray(json.data)) return json.data;
+    return [];
+  } catch(err){
+    console.warn('city lookup failed:', err);
+    return [];
+  }
+}
+/* Builds the personal-details form markup, shared by the mandatory
+   "complete your profile" step right after signup AND the later profile-edit
+   modal. `p` is an optional prefill object using the same keys the RPC takes. */
+function personalDetailsFormHTML(p){
+  p = p || {};
+  const countryOptions = WORLD_COUNTRIES.map(c=>
+    `<option value="${c[0]}" ${p.birth_country_iso===c[0]?'selected':''}>${countryLabel(c)}</option>`
+  ).join('');
+  const dialOptions = WORLD_COUNTRIES.map(c=>
+    `<option value="${c[3]}" data-iso="${c[0]}" ${p.alt_dial_code===c[3]?'selected':''}>+${c[3]} ${countryLabel(c)}</option>`
+  ).join('');
+  const regionOptions = SAUDI_REGIONS.map(r=>
+    `<option value="${r.id}" ${p.governorate===r.id?'selected':''}>${lang==='ar'?r.ar:r.en}</option>`
+  ).join('');
+  const maritalOptions = MARITAL_STATUS_OPTIONS.map(o=>
+    `<option value="${o.id}" ${p.marital_status===o.id?'selected':''}>${lang==='ar'?o.ar:o.en}</option>`
+  ).join('');
+  const eduOptions = EDUCATION_LEVELS.map(o=>
+    `<option value="${o.id}" ${p.education_level===o.id?'selected':''}>${lang==='ar'?o.ar:o.en}</option>`
+  ).join('');
+  const esc = v => v ? String(v).replace(/"/g,'&quot;') : '';
+  const initialDial = p.whatsapp_dial_code || (p.birth_country_iso ? findCountry(p.birth_country_iso)?.[3] : '') || '';
+  return `
+    <div class="pd-grid">
+      <div class="form-row"><span class="field-label">${t('pdBirthCountry')}</span>
+        <select class="field-input pd-text" id="pdBirthCountry"><option value="">${t('pdSelectPlaceholder')}</option>${countryOptions}</select>
+      </div>
+      <div class="form-row"><span class="field-label">${t('pdBirthCity')}</span>
+        <input class="field-input pd-text" id="pdBirthCity" list="pdBirthCityList" value="${esc(p.birth_city)}" placeholder="${t('pdBirthCityPlaceholder')}">
+        <datalist id="pdBirthCityList"></datalist>
+      </div>
+      <div class="form-row"><span class="field-label">${t('pdGovernorate')}</span>
+        <select class="field-input pd-text" id="pdGovernorate"><option value="">${t('pdSelectPlaceholder')}</option>${regionOptions}</select>
+      </div>
+      <div class="form-row"><span class="field-label">${t('pdCity')}</span>
+        <input class="field-input pd-text" id="pdCity" value="${esc(p.city)}" placeholder="${t('pdCityPlaceholder')}">
+      </div>
+      <div class="form-row"><span class="field-label">${t('pdDistrict')}</span>
+        <input class="field-input pd-text" id="pdDistrict" value="${esc(p.district)}">
+      </div>
+      <div class="form-row"><span class="field-label">${t('pdStreet')}</span>
+        <input class="field-input pd-text" id="pdStreet" value="${esc(p.street)}">
+      </div>
+      <div class="form-row"><span class="field-label">${t('pdPostalCode')}</span>
+        <input class="field-input" id="pdPostalCode" inputmode="numeric" value="${esc(p.postal_code)}">
+      </div>
+      <div class="form-row"><span class="field-label">${t('pdBuildingNumber')}</span>
+        <input class="field-input" id="pdBuildingNumber" inputmode="numeric" value="${esc(p.building_number)}">
+      </div>
+      <div class="form-row"><span class="field-label">${t('pdUnitNumber')}</span>
+        <input class="field-input" id="pdUnitNumber" inputmode="numeric" value="${esc(p.unit_number)}">
+      </div>
+      <div class="form-row"><span class="field-label">${t('pdNationalId')}</span>
+        <input class="field-input" id="pdNationalId" inputmode="numeric" value="${esc(p.national_id)}">
+      </div>
+      <div class="form-row"><span class="field-label">${t('pdMaritalStatus')}</span>
+        <select class="field-input pd-text" id="pdMaritalStatus"><option value="">${t('pdSelectPlaceholder')}</option>${maritalOptions}</select>
+      </div>
+      <div class="form-row"><span class="field-label">${t('pdEducationLevel')}</span>
+        <select class="field-input pd-text" id="pdEducationLevel"><option value="">${t('pdSelectPlaceholder')}</option>${eduOptions}</select>
+      </div>
+      <div class="form-row"><span class="field-label">${t('pdWhatsapp')}</span>
+        <div style="display:flex;gap:6px;">
+          <span id="pdWhatsappDialBadge" class="pd-dial-badge">${initialDial?'+'+initialDial:'—'}</span>
+          <input class="field-input" id="pdWhatsappNumber" type="tel" inputmode="tel" value="${esc(p.whatsapp_number)}" style="flex:1;" placeholder="${t('pdWhatsappPlaceholder')}">
+        </div>
+        <span style="font-size:11px;color:var(--text-dim);">${t('pdWhatsappHint')}</span>
+      </div>
+      <div class="form-row"><span class="field-label">${t('pdAltPhone')}</span>
+        <div style="display:flex;gap:6px;">
+          <select class="field-input pd-text" id="pdAltDialCode" style="flex:0 0 118px;">${dialOptions}</select>
+          <input class="field-input" id="pdAltNumber" type="tel" inputmode="tel" value="${esc(p.alt_number)}" style="flex:1;">
+        </div>
+      </div>
+    </div>
+  `;
+}
+/* Wires interactivity for a personalDetailsFormHTML() block already in the DOM:
+   birth-country → birth-city datalist + WhatsApp dial code auto-fill. */
+function wirePersonalDetailsForm(){
+  const countrySel = document.getElementById('pdBirthCountry');
+  if(!countrySel) return;
+  countrySel.onchange = async ()=>{
+    const c = findCountry(countrySel.value);
+    const badge = document.getElementById('pdWhatsappDialBadge');
+    if(badge) badge.textContent = c ? '+'+c[3] : '—';
+    const cityInput = document.getElementById('pdBirthCity');
+    const cityList = document.getElementById('pdBirthCityList');
+    if(!c || !cityInput || !cityList) return;
+    cityInput.placeholder = t('authLoadingWord');
+    const cities = await fetchCitiesForCountry(c[2]);
+    cityList.innerHTML = cities.map(name=>`<option value="${name.replace(/"/g,'&quot;')}">`).join('');
+    cityInput.placeholder = t('pdBirthCityPlaceholder');
+  };
+}
+/* Reads the form's current values into the shape update_my_profile_details expects.
+   Returns null (and shows msgElId) if a required field is missing. */
+function readPersonalDetailsForm(msgElId){
+  const val = id => (document.getElementById(id).value||'').trim();
+  const countryIso = val('pdBirthCountry');
+  const country = findCountry(countryIso);
+  const fields = {
+    p_birth_country_iso: countryIso,
+    p_birth_country_name: country ? country[2] : '',
+    p_birth_city: val('pdBirthCity'),
+    p_governorate: val('pdGovernorate'),
+    p_city: val('pdCity'),
+    p_district: val('pdDistrict'),
+    p_street: val('pdStreet'),
+    p_postal_code: val('pdPostalCode'),
+    p_building_number: val('pdBuildingNumber'),
+    p_unit_number: val('pdUnitNumber'),
+    p_national_id: val('pdNationalId'),
+    p_marital_status: val('pdMaritalStatus'),
+    p_education_level: val('pdEducationLevel'),
+    p_whatsapp_dial_code: country ? country[3] : '',
+    p_whatsapp_number: val('pdWhatsappNumber'),
+    p_alt_dial_code: document.getElementById('pdAltDialCode').value || '',
+    p_alt_number: val('pdAltNumber'),
+  };
+  const required = ['p_birth_country_iso','p_birth_city','p_governorate','p_city','p_district','p_street','p_postal_code','p_building_number','p_unit_number','p_national_id','p_marital_status','p_education_level','p_whatsapp_number'];
+  const missing = required.some(k=> !fields[k]);
+  if(missing){
+    const el = document.getElementById(msgElId);
+    if(el){ el.style.color='var(--sell)'; el.textContent = t('pdRequiredMsg'); el.style.display='block'; }
+    return null;
+  }
+  return fields;
+}
+
 /* ============ Subscription plans ============ */
 const subscriptionPlans = [
   { id:'saudi', nameKey:'planSaudiName', descKey:'planSaudiDesc', price:3000, currency:'SAR', featured:false },
@@ -5912,14 +6575,34 @@ const subscriptionPlans = [
 // market-access plans vs. standalone add-on plans (AI recs / gold bars) — a
 // client can hold a market plan AND one or more add-ons at the same time.
 const marketPlanIds = ['saudi','us','all'];
-function planCurrencyLabel(p){ return t(p.currency==='USD' ? 'currencyUSD' : 'currencySAR'); }
-function openSubscriptionModal(){
+function planCurrencyLabel(p){ return t(effectivePlanCurrency(p)==='USD' ? 'currencyUSD' : 'currencySAR'); }
+let planOverridesCache = {};
+async function loadPlanOverrides(){
+  const entries = await Promise.all(subscriptionPlans.map(async p=>{
+    const [price, currency] = await Promise.all([
+      getAppSetting('plan_price_'+p.id),
+      getAppSetting('plan_currency_'+p.id)
+    ]);
+    return [p.id, { price: (price!==null && price!=='' && !isNaN(Number(price))) ? Number(price) : null, currency: (currency==='USD'||currency==='SAR') ? currency : null }];
+  }));
+  planOverridesCache = Object.fromEntries(entries);
+}
+function effectivePlanPrice(p){
+  const o = planOverridesCache[p.id];
+  return (o && o.price!==null) ? o.price : p.price;
+}
+function effectivePlanCurrency(p){
+  const o = planOverridesCache[p.id];
+  return (o && o.currency) ? o.currency : p.currency;
+}
+async function openSubscriptionModal(){
+  await loadPlanOverrides();
   const cardsHTML = subscriptionPlans.map(p=>`
     <div class="plan-card ${p.featured?'featured':''}">
       ${p.featured?`<span class="plan-badge">${t('planBestValue')}</span>`:''}
       <div class="plan-name">${t(p.nameKey)}</div>
       <div class="plan-desc">${t(p.descKey)}</div>
-      <div class="plan-price">${p.price} <span>${planCurrencyLabel(p)} ${t('perMonth')}</span></div>
+      <div class="plan-price">${effectivePlanPrice(p)} <span>${planCurrencyLabel(p)} ${t('perMonth')}</span></div>
       <button class="plan-btn" data-plan="${p.id}">${t('requestSubBtn')}</button>
     </div>
   `).join('');
@@ -5943,12 +6626,12 @@ function openSubscriptionModal(){
 }
 function confirmSubscription(planId){
   const plan = subscriptionPlans.find(p=>p.id===planId);
-  const msg = t('subConfirmMsg').replace('{plan}', t(plan.nameKey)).replace('{price}', plan.price+' '+planCurrencyLabel(plan));
+  const msg = t('subConfirmMsg').replace('{plan}', t(plan.nameKey)).replace('{price}', effectivePlanPrice(plan)+' '+planCurrencyLabel(plan));
   openModal(t('subConfirmTitle'), `
     <div class="modal-note">${msg}</div>
     <div class="form-row">
       <span class="field-label">${t('phoneLabel')}</span>
-      <input class="field-input" style="text-align:right;" id="subPhoneInput" type="tel" placeholder="05xxxxxxxx">
+      <input class="field-input" style="text-align:start;" id="subPhoneInput" type="tel" placeholder="05xxxxxxxx">
     </div>
     <div id="subPhoneError" style="color:var(--sell);font-size:12.5px;display:none;">${t('phoneErrorMsg')}</div>
     <button class="modal-btn primary" id="subConfirmYes">${t('yesBtn')}</button>
@@ -5969,12 +6652,12 @@ async function requestSubscription(planId, phone){
   if(!currentUser){
     closeModal();
     openLoginModal();
-    pushNotification(t('subLoginFirstMsg'), '');
+    pushNotification(bilingualText(()=> t('subLoginFirstMsg')), '');
     return;
   }
   try {
     await supabaseClient.from('subscription_requests').insert({
-      user_id: currentUser.id, email: currentUser.email, phone, plan: planId, price: plan.price, currency: plan.currency
+      user_id: currentUser.id, email: currentUser.email, phone, plan: planId, price: effectivePlanPrice(plan), currency: effectivePlanCurrency(plan)
     });
   } catch(err){
     console.warn('subscription request DB insert skipped/failed (table may not exist yet):', err);
@@ -5986,8 +6669,8 @@ async function requestSubscription(planId, phone){
       email: currentUser.email,
       phone: phone,
       plan: t(plan.nameKey),
-      price: plan.price + ' ' + planCurrencyLabel(plan),
-      message: `طلب اشتراك جديد\nالباقة: ${t(plan.nameKey)}\nالسعر: ${plan.price} ${planCurrencyLabel(plan)}/شهريًا\nبريد العميل: ${currentUser.email}\nرقم الهاتف: ${phone}`
+      price: effectivePlanPrice(plan) + ' ' + planCurrencyLabel(plan),
+      message: `طلب اشتراك جديد\nالباقة: ${t(plan.nameKey)}\nالسعر: ${effectivePlanPrice(plan)} ${planCurrencyLabel(plan)}/شهريًا\nبريد العميل: ${currentUser.email}\nرقم الهاتف: ${phone}`
     });
   } catch(err){
     console.warn('subscription request email delivery failed:', err);
@@ -5999,7 +6682,7 @@ async function requestSubscription(planId, phone){
     <button class="modal-btn primary" id="subDoneBtn">${t('closeBtn')}</button>
   `);
   document.getElementById('subDoneBtn').onclick = closeModal;
-  pushNotification(t('subSuccessNotifTitle'), t(plan.nameKey));
+  pushNotification(bilingualText(()=> t('subSuccessNotifTitle')), bilingualText(()=> t(plan.nameKey)));
 }
 
 /* ============ Cash-back deposit request ============ */
@@ -6012,7 +6695,7 @@ function openCashbackModal(){
     <div class="modal-note">${t('cashbackIntro')}</div>
     <div class="form-row">
       <span class="field-label">${t('cashbackAmountLabel')}</span>
-      <input class="field-input" style="text-align:right;" id="cashbackAmountInput" type="number" min="1" step="0.01" placeholder="1000">
+      <input class="field-input" style="text-align:start;" id="cashbackAmountInput" type="number" min="1" step="0.01" placeholder="1000">
     </div>
     <div class="currency-toggle">
       <button type="button" class="currency-toggle-btn active" id="cashbackCurSAR" data-currency="SAR">﷼ ${t('currencySAR')}</button>
@@ -6020,7 +6703,7 @@ function openCashbackModal(){
     </div>
     <div class="form-row">
       <span class="field-label">${t('phoneLabel')}</span>
-      <input class="field-input" style="text-align:right;" id="cashbackPhoneInput" type="tel" placeholder="05xxxxxxxx">
+      <input class="field-input" style="text-align:start;" id="cashbackPhoneInput" type="tel" placeholder="05xxxxxxxx">
     </div>
     <div id="cashbackError" style="color:var(--sell);font-size:12.5px;display:none;"></div>
     <button class="modal-btn primary" id="cashbackSubmitBtn">${t('cashbackSubmitBtn')}</button>
@@ -6064,7 +6747,7 @@ function openAddBalanceModal(){
     <div class="modal-note">${t('depositIntro')}</div>
     <div class="form-row">
       <span class="field-label">${t('depositAmountLabel')}</span>
-      <input class="field-input" style="text-align:right;" id="depositAmountInput" type="number" min="1" step="0.01" placeholder="1000">
+      <input class="field-input" style="text-align:start;" id="depositAmountInput" type="number" min="1" step="0.01" placeholder="1000">
     </div>
     <div class="currency-toggle">
       <button type="button" class="currency-toggle-btn active" id="depositCurSAR" data-currency="SAR">﷼ ${t('currencySAR')}</button>
@@ -6072,7 +6755,7 @@ function openAddBalanceModal(){
     </div>
     <div class="form-row">
       <span class="field-label">${t('phoneLabel')}</span>
-      <input class="field-input" style="text-align:right;" id="depositPhoneInput" type="tel" placeholder="05xxxxxxxx">
+      <input class="field-input" style="text-align:start;" id="depositPhoneInput" type="tel" placeholder="05xxxxxxxx">
     </div>
     <div id="depositError" style="color:var(--sell);font-size:12.5px;display:none;"></div>
     <button class="modal-btn primary" id="depositSubmitBtn">${t('depositSubmitBtn')}</button>
@@ -6146,7 +6829,9 @@ async function requestAddBalance(amount, phone, currency){
     <button class="modal-btn primary" id="depositDoneBtn">${t('closeBtn')}</button>
   `);
   document.getElementById('depositDoneBtn').onclick = closeModal;
-  pushNotification(t('depositSuccessNotifTitle'), `${fmt(amount,2)} ${curLabel}`);
+  pushNotification(
+    bilingualText(()=> t('depositSuccessNotifTitle')),
+    bilingualText(()=> `${fmt(amount,2)} ${t(currency==='USD' ? 'currencyUSD' : 'currencySAR')}`));
 }
 
 function openWithdrawModal(){
@@ -6159,19 +6844,19 @@ function openWithdrawModal(){
     <div class="modal-note" style="color:var(--buy);font-weight:600;">${t('balance')}: ${fmt(balance,2)} ${t('currencySAR')}</div>
     <div class="form-row">
       <span class="field-label">${t('bankNameLabel')}</span>
-      <input class="field-input" style="text-align:right;" id="withdrawBankNameInput" type="text" placeholder="بنك الراجحي">
+      <input class="field-input" style="text-align:start;" id="withdrawBankNameInput" type="text" placeholder="${t('bankNamePlaceholder')}">
     </div>
     <div class="form-row">
       <span class="field-label">${t('bankAccountLabel')}</span>
-      <input class="field-input" style="text-align:right;" id="withdrawAccountInput" type="text" placeholder="0123456789">
+      <input class="field-input" style="text-align:start;" id="withdrawAccountInput" type="text" placeholder="0123456789">
     </div>
     <div class="form-row">
       <span class="field-label">${t('ibanLabel')}</span>
-      <input class="field-input" style="text-align:right;" id="withdrawIbanInput" type="text" placeholder="SA0000000000000000000000">
+      <input class="field-input" style="text-align:start;" id="withdrawIbanInput" type="text" placeholder="SA0000000000000000000000">
     </div>
     <div class="form-row">
       <span class="field-label">${t('withdrawAmountLabel')}</span>
-      <input class="field-input" style="text-align:right;" id="withdrawAmountInput" type="number" min="1" step="0.01" placeholder="1000">
+      <input class="field-input" style="text-align:start;" id="withdrawAmountInput" type="number" min="1" step="0.01" placeholder="1000">
     </div>
     <div class="currency-toggle">
       <button type="button" class="currency-toggle-btn active" id="withdrawCurSAR" data-currency="SAR">﷼ ${t('currencySAR')}</button>
@@ -6179,7 +6864,7 @@ function openWithdrawModal(){
     </div>
     <div class="form-row">
       <span class="field-label">${t('phoneLabel')}</span>
-      <input class="field-input" style="text-align:right;" id="withdrawPhoneInput" type="tel" placeholder="05xxxxxxxx">
+      <input class="field-input" style="text-align:start;" id="withdrawPhoneInput" type="tel" placeholder="05xxxxxxxx">
     </div>
     <div id="withdrawError" style="color:var(--sell);font-size:12.5px;display:none;"></div>
     <button class="modal-btn primary" id="withdrawSubmitBtn">${t('withdrawSubmitBtn')}</button>
@@ -6277,7 +6962,9 @@ async function requestWithdrawal(amount, phone, currency, bankName, accountNumbe
     <button class="modal-btn primary" id="withdrawDoneBtn">${t('closeBtn')}</button>
   `);
   document.getElementById('withdrawDoneBtn').onclick = closeModal;
-  pushNotification(t('withdrawSuccessNotifTitle'), `${fmt(amount,2)} ${curLabel}`);
+  pushNotification(
+    bilingualText(()=> t('withdrawSuccessNotifTitle')),
+    bilingualText(()=> `${fmt(amount,2)} ${t(currency==='USD' ? 'currencyUSD' : 'currencySAR')}`));
 }
 
 async function requestCashback(amount, phone, currency){
@@ -6319,7 +7006,9 @@ async function requestCashback(amount, phone, currency){
     <button class="modal-btn primary" id="cashbackDoneBtn">${t('closeBtn')}</button>
   `);
   document.getElementById('cashbackDoneBtn').onclick = closeModal;
-  pushNotification(t('cashbackSuccessNotifTitle'), amount+' '+curLabel);
+  pushNotification(
+    bilingualText(()=> t('cashbackSuccessNotifTitle')),
+    bilingualText(()=> `${amount} ${t(currency==='USD' ? 'currencyUSD' : 'currencySAR')}`));
 }
 
 /* ============ AI recommendations (ai add-on plan) ============ */
@@ -6606,7 +7295,7 @@ function renderAdminStockPricesModal(){
     const msgEl = document.getElementById('adminStockPriceMsg');
     if(!symbolName || isNaN(priceVal) || priceVal <= 0){
       msgEl.style.color = 'var(--sell)';
-      msgEl.textContent = 'من فضلك اختار السهم وادخل سعر صحيح.';
+      msgEl.textContent = 'من فضلك اختر السهم وأدخل سعرًا صحيحًا.';
       return;
     }
     msgEl.style.color = 'var(--text-dim)';
@@ -6629,7 +7318,7 @@ function renderAdminStockPricesModal(){
       renderAdminStockPricesModal();
     } catch(err){
       msgEl.style.color = 'var(--sell)';
-      msgEl.textContent = 'فشل التنفيذ: ' + (err.message || 'حاول تاني.');
+      msgEl.textContent = 'فشل التنفيذ: ' + (err.message || 'حاول مرة أخرى.');
     }
   };
   document.querySelectorAll('[data-symbol]').forEach(btn=>{
@@ -6669,6 +7358,20 @@ function renderAdminStockPricesModal(){
     if(data && data.session && data.session.user){
       currentUser = data.session.user;
       await checkIsAdmin();
+      // Anyone (non-admin) who verified but closed the tab before finishing
+      // the mandatory personal-details step gets sent back to it here too.
+      if(!currentIsAdmin){
+        try {
+          const { data: profRow } = await supabaseClient.from('profiles').select('profile_completed').eq('id', currentUser.id).maybeSingle();
+          if(profRow && profRow.profile_completed === false){
+            pendingCompleteProfileUser = currentUser;
+            showLoginGate('completeProfile', false);
+            return;
+          }
+        } catch(err){
+          console.warn('could not check profile_completed on load:', err);
+        }
+      }
       // Same frozen-account gate as fresh logins — a refreshed page must not
       // slip a frozen customer back into the app.
       if(!currentIsAdmin){

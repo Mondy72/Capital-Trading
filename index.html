@@ -1265,8 +1265,8 @@ const translations = {
 "pdBirthCity": "مدينة الميلاد",
 "pdBirthCityPlaceholder": "اختر بلد الميلاد أولًا",
 "pdGovernorate": "المحافظة",
-"pdCity": "المدينة",
-"pdCityPlaceholder": "مدينة الإقامة",
+"pdCity": "المدينة الحالية",
+"pdCityPlaceholder": "مدينة الإقامة الحالية",
 "pdDistrict": "الحي",
 "pdStreet": "الشارع",
 "pdPostalCode": "الرمز البريدي",
@@ -1277,9 +1277,10 @@ const translations = {
 "pdEducationLevel": "المستوى التعليمي",
 "pdWhatsapp": "رقم التواصل (واتساب)",
 "pdWhatsappPlaceholder": "5xxxxxxxx",
-"pdWhatsappHint": "كود الدولة بيتحدد تلقائيًا حسب بلد الميلاد اللي اخترته فوق.",
+"pdWhatsappHint": "يُحدَّد كود الدولة تلقائيًا وفقًا لبلد الميلاد الذي اخترته أعلاه.",
 "pdAltPhone": "رقم إضافي (اختياري)",
 "pdSelectPlaceholder": "اختر...",
+"pdLockedNote": "لا يمكن تعديل هذا الحقل بعد حفظه.",
 "pdRequiredMsg": "لازم تملأ كل الحقول (ما عدا الرقم الإضافي، ده اختياري).",
 "pdSubmitBtn": "تأكيد ومتابعة",
 "pdSavingMsg": "جاري الحفظ...",
@@ -1617,8 +1618,8 @@ const translations = {
 "pdBirthCity": "City of birth",
 "pdBirthCityPlaceholder": "Choose a country first",
 "pdGovernorate": "Region",
-"pdCity": "City",
-"pdCityPlaceholder": "City of residence",
+"pdCity": "Current City",
+"pdCityPlaceholder": "Current city of residence",
 "pdDistrict": "District",
 "pdStreet": "Street",
 "pdPostalCode": "Postal code",
@@ -1632,6 +1633,7 @@ const translations = {
 "pdWhatsappHint": "The dial code is set automatically from the country of birth you chose above.",
 "pdAltPhone": "Additional number (optional)",
 "pdSelectPlaceholder": "Select...",
+"pdLockedNote": "This field can't be changed once saved.",
 "pdRequiredMsg": "Please fill in all fields (the additional number is optional).",
 "pdSubmitBtn": "Confirm & Continue",
 "pdSavingMsg": "Saving...",
@@ -2576,6 +2578,7 @@ async function buyPosition(){
       bilingualText(()=> `${t('openedTrade')} ${t('buy')}`),
       bilingualText(()=> `${s.short} · ${t('volumeWord')} ${vol.toFixed(2)} ${t('lotAt')} ${fmt(entry, s.decimals)}`),
       'buy');
+    logClient('open_trade', { symbol: s.short, type:'buy', vol: vol, entry: fmt(entry, s.decimals) });
     document.getElementById('tpCheck').checked = false;
     document.getElementById('tpInput').value = ''; document.getElementById('tpInput').disabled = true;
     document.getElementById('slCheck').checked = false;
@@ -2641,6 +2644,7 @@ async function sellPosition(){
         bilingualText(()=> `${t('closedTrade')} ${t('sell')}`),
         bilingualText(()=> `${s.short} · ${totalPnl>=0?t('profitWord'):t('lossWord')} ${fmt(Math.abs(totalPnl),2)}`),
         totalPnl>=0?'profit':'loss');
+      logClient('close_trade', { symbol: s.short, vol: (vol-remaining).toFixed(2), pnl: totalPnl.toFixed(2) });
     }
   } finally {
     if(sellBtnEl) sellBtnEl.disabled = false;
@@ -3834,7 +3838,7 @@ function authGateHTML(state, canCancel){
         <div class="auth-card-sub">${t('pdScreenSub')}</div>
       </div>
       <div class="auth-body">
-        ${personalDetailsFormHTML({})}
+        ${personalDetailsFormHTML({}, false)}
         <div id="gateError" class="auth-error"></div>
         <button class="auth-primary-btn" id="gateSubmit">${t('pdSubmitBtn')}</button>
       </div>`;
@@ -4387,7 +4391,9 @@ function openProfileModal(){
 }
 /* Lets a logged-in client review/update the personal details collected at
    signup. Reuses the exact same form + RPC as the mandatory signup step —
-   every field stays editable for now (no "locked" fields defined yet). */
+   birth country, birth city, education level, and WhatsApp number lock
+   permanently once first saved (see personalDetailsFormHTML's isEdit flag);
+   everything else stays editable. */
 async function openPersonalDetailsModal(){
   openModal(t('pdModalTitle'), `<div class="modal-note">${t('authLoadingWord')}</div>`);
   let row = {};
@@ -4399,7 +4405,7 @@ async function openPersonalDetailsModal(){
     console.warn('could not load personal details:', err);
   }
   openModal(t('pdModalTitle'), `
-    ${personalDetailsFormHTML(row)}
+    ${personalDetailsFormHTML(row, true)}
     <div id="pdEditMsg" style="font-size:12.5px;margin-top:8px;"></div>
     <button class="modal-btn primary" id="pdSaveBtn" style="margin-top:10px;width:100%;">${t('pdSaveBtn')}</button>
     <button class="modal-btn ghost" id="pdEditCloseBtn" style="margin-top:8px;width:100%;">${t('closeBtn')}</button>
@@ -4417,6 +4423,7 @@ async function openPersonalDetailsModal(){
     try {
       const { error } = await supabaseClient.rpc('update_my_profile_details', fields);
       if(error) throw error;
+      logClient('update_profile', null);
       msgEl.style.color = 'var(--buy)';
       msgEl.textContent = t('pdSavedMsg');
     } catch(err){
@@ -5047,6 +5054,16 @@ const ADMIN_DASH_TABS = [
 async function logAdmin(action, targetEmail, detail){
   try { await supabaseClient.rpc('admin_log_action', { action, target_email: targetEmail||null, detail: detail||null }); }
   catch(err){ console.warn('admin_log_action failed (non-blocking):', err); }
+}
+// Fire-and-forget logging of the CLIENT's own actions (trades, subscription
+// requests, deposit/withdrawal requests, profile edits...), stored server-side
+// so the admin can review every client's activity from the Log tab. Never
+// blocks or fails the client's actual action if logging has a hiccup.
+async function logClient(action, detail){
+  try {
+    if(!currentUser) return;
+    await supabaseClient.rpc('log_client_action', { action, detail: detail||null });
+  } catch(err){ console.warn('log_client_action failed (non-blocking):', err); }
 }
 
 /* ============ CSV export (used by the admin dashboard's Users & Requests tabs) ============ */
@@ -5876,21 +5893,37 @@ function paintAdminDashUsers(){
 }
 
 /* ---- Tab: السجل (audit log) ---- */
-async function renderAdminDashLog(){
+let adminDashLogSubTab = 'admin';
+function renderAdminDashLog(){
   const body = document.getElementById('adminDashBody');
   if(!body || adminDashActiveTab!=='log') return;
-  body.innerHTML = `<div class="modal-note">${t('loadingMsg')}</div>`;
+  body.innerHTML = `
+    <div class="admin-toolbar" style="gap:8px;">
+      <button class="admin-mini-btn log-subtab-btn ${adminDashLogSubTab==='admin'?'active':''}" data-subtab="admin" style="${adminDashLogSubTab==='admin'?'background:var(--accent);color:#04140D;border-color:var(--accent);':''}">📜 سجل الأدمن</button>
+      <button class="admin-mini-btn log-subtab-btn ${adminDashLogSubTab==='client'?'active':''}" data-subtab="client" style="${adminDashLogSubTab==='client'?'background:var(--accent);color:#04140D;border-color:var(--accent);':''}">👤 سجل العملاء</button>
+    </div>
+    <div id="logSubtabBody" style="margin-top:12px;"><div class="modal-note">${t('loadingMsg')}</div></div>
+  `;
+  document.querySelectorAll('.log-subtab-btn').forEach(btn=>{
+    btn.onclick = ()=>{ adminDashLogSubTab = btn.dataset.subtab; renderAdminDashLog(); };
+  });
+  if(adminDashLogSubTab==='admin') renderAdminLogTable();
+  else renderClientLogTable();
+}
+async function renderAdminLogTable(){
+  const el = document.getElementById('logSubtabBody');
+  if(!el) return;
   let rows = [];
   try {
     const { data, error } = await supabaseClient.rpc('admin_list_audit_log', { limit_count: 150 });
     if(error) throw error;
     rows = data || [];
   } catch(err){
-    body.innerHTML = `<div class="modal-note" style="color:var(--sell);">تعذّر تحميل السجل: ${err.message||'حاول مرة أخرى'}</div>`;
+    el.innerHTML = `<div class="modal-note" style="color:var(--sell);">تعذّر تحميل السجل: ${err.message||'حاول مرة أخرى'}</div>`;
     return;
   }
   if(!rows.length){
-    body.innerHTML = `<div class="modal-note">لا يوجد أي نشاط مسجّل بعد.</div>`;
+    el.innerHTML = `<div class="modal-note">لا يوجد أي نشاط مسجّل بعد.</div>`;
     return;
   }
   const actionLabels = {
@@ -5898,13 +5931,14 @@ async function renderAdminDashLog(){
     add_recommendation:'إضافة توصية', delete_recommendation:'حذف توصية',
     set_deposit_link:'تعديل رابط الإيداع', clear_deposit_link:'إلغاء رابط الإيداع',
     set_plan_link:'تعديل رابط باقة', clear_plan_link:'إلغاء رابط باقة',
+    set_plan_price:'تعديل سعر باقة', reset_plan_price:'إرجاع سعر باقة للافتراضي',
     approve_subscription_request:'تفعيل طلب اشتراك', mark_contacted:'تسجيل تواصل مع عميل',
     add_balance:'إضافة رصيد', deduct_balance:'خصم رصيد',
     activate_plan:'تفعيل باقة', revoke_plan:'إلغاء باقة', revoke_all_subscriptions:'إلغاء كل الاشتراكات',
     freeze_account:'تجميد حساب', unfreeze_account:'إلغاء تجميد حساب',
   };
-  body.innerHTML = `
-    <div class="admin-toolbar"><span style="font-size:12px;color:var(--text-dim);">آخر ${rows.length} نشاط — الأحدث أولًا</span></div>
+  el.innerHTML = `
+    <div class="admin-toolbar"><span style="font-size:12px;color:var(--text-dim);">آخر ${rows.length} نشاط أدمن — الأحدث أولًا</span></div>
     <div class="admin-table-wrap"><table class="admin-table">
       <thead><tr><th>الوقت</th><th>الأدمن</th><th>الإجراء</th><th>العميل المستهدف</th><th>التفاصيل</th></tr></thead>
       <tbody>
@@ -5917,6 +5951,48 @@ async function renderAdminDashLog(){
             <td class="name-cell">${r.admin_email}</td>
             <td class="name-cell">${label}</td>
             <td class="name-cell">${r.target_email||'—'}</td>
+            <td class="name-cell" style="font-size:11.5px;color:var(--text-dim);">${detailStr}</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table></div>
+  `;
+}
+async function renderClientLogTable(){
+  const el = document.getElementById('logSubtabBody');
+  if(!el) return;
+  let rows = [];
+  try {
+    const { data, error } = await supabaseClient.rpc('admin_list_client_activity_log', { limit_count: 200 });
+    if(error) throw error;
+    rows = data || [];
+  } catch(err){
+    el.innerHTML = `<div class="modal-note" style="color:var(--sell);">تعذّر تحميل سجل العملاء: ${err.message||'حاول مرة أخرى'}</div>`;
+    return;
+  }
+  if(!rows.length){
+    el.innerHTML = `<div class="modal-note">لا يوجد أي نشاط عملاء مسجّل بعد.</div>`;
+    return;
+  }
+  const actionLabels = {
+    open_trade:'فتح صفقة', close_trade:'إغلاق صفقة',
+    request_subscription:'طلب اشتراك', request_deposit:'طلب إضافة رصيد',
+    request_withdrawal:'طلب سحب', request_cashback:'طلب كاش باك',
+    update_profile:'تعديل الملف الشخصي',
+  };
+  el.innerHTML = `
+    <div class="admin-toolbar"><span style="font-size:12px;color:var(--text-dim);">آخر ${rows.length} نشاط عملاء — الأحدث أولًا</span></div>
+    <div class="admin-table-wrap"><table class="admin-table">
+      <thead><tr><th>الوقت</th><th>العميل</th><th>الإجراء</th><th>التفاصيل</th></tr></thead>
+      <tbody>
+        ${rows.map(r=>{
+          const dateLabel = new Date(r.created_at).toLocaleString('ar-EG');
+          const label = actionLabels[r.action] || r.action;
+          const detailStr = r.detail ? Object.entries(r.detail).map(([k,v])=>`${k}: ${v}`).join(' · ') : '';
+          return `<tr>
+            <td style="font-size:11.5px;">${dateLabel}</td>
+            <td class="name-cell">${r.email||'—'}</td>
+            <td class="name-cell">${label}</td>
             <td class="name-cell" style="font-size:11.5px;color:var(--text-dim);">${detailStr}</td>
           </tr>`;
         }).join('')}
@@ -5986,8 +6062,7 @@ function paintAdminUserDetail(d){
     : `<div>
         ${pdRow('بلد الميلاد', pd.birth_country_name)}
         ${pdRow('مدينة الميلاد', pd.birth_city)}
-        ${pdRow('المنطقة', regionLabel(pd.governorate))}
-        ${pdRow('المدينة', pd.city)}
+        ${pdRow('المدينة الحالية', pd.city)}
         ${pdRow('الحي', pd.district)}
         ${pdRow('الشارع', pd.street)}
         ${pdRow('الرمز البريدي', pd.postal_code)}
@@ -6436,16 +6511,18 @@ async function fetchCitiesForCountry(countryNameEn){
 /* Builds the personal-details form markup, shared by the mandatory
    "complete your profile" step right after signup AND the later profile-edit
    modal. `p` is an optional prefill object using the same keys the RPC takes. */
-function personalDetailsFormHTML(p){
+function personalDetailsFormHTML(p, isEdit){
   p = p || {};
+  const lockBirthCountry = !!(isEdit && p.birth_country_iso);
+  const lockBirthCity = !!(isEdit && p.birth_city);
+  const lockEducation = !!(isEdit && p.education_level);
+  const lockWhatsapp = !!(isEdit && p.whatsapp_number);
+  const lockNote = `<span style="font-size:11px;color:var(--text-dim);display:block;margin-top:3px;">🔒 ${t('pdLockedNote')}</span>`;
   const countryOptions = WORLD_COUNTRIES.map(c=>
     `<option value="${c[0]}" ${p.birth_country_iso===c[0]?'selected':''}>${countryLabel(c)}</option>`
   ).join('');
   const dialOptions = WORLD_COUNTRIES.map(c=>
     `<option value="${c[3]}" data-iso="${c[0]}" ${p.alt_dial_code===c[3]?'selected':''}>+${c[3]} ${countryLabel(c)}</option>`
-  ).join('');
-  const regionOptions = SAUDI_REGIONS.map(r=>
-    `<option value="${r.id}" ${p.governorate===r.id?'selected':''}>${lang==='ar'?r.ar:r.en}</option>`
   ).join('');
   const maritalOptions = MARITAL_STATUS_OPTIONS.map(o=>
     `<option value="${o.id}" ${p.marital_status===o.id?'selected':''}>${lang==='ar'?o.ar:o.en}</option>`
@@ -6458,14 +6535,13 @@ function personalDetailsFormHTML(p){
   return `
     <div class="pd-grid">
       <div class="form-row"><span class="field-label">${t('pdBirthCountry')}</span>
-        <select class="field-input pd-text" id="pdBirthCountry"><option value="">${t('pdSelectPlaceholder')}</option>${countryOptions}</select>
+        <select class="field-input pd-text" id="pdBirthCountry" ${lockBirthCountry?'disabled':''}><option value="">${t('pdSelectPlaceholder')}</option>${countryOptions}</select>
+        ${lockBirthCountry?lockNote:''}
       </div>
       <div class="form-row"><span class="field-label">${t('pdBirthCity')}</span>
-        <input class="field-input pd-text" id="pdBirthCity" list="pdBirthCityList" value="${esc(p.birth_city)}" placeholder="${t('pdBirthCityPlaceholder')}">
+        <input class="field-input pd-text" id="pdBirthCity" list="pdBirthCityList" value="${esc(p.birth_city)}" placeholder="${t('pdBirthCityPlaceholder')}" ${lockBirthCity?'disabled':''}>
         <datalist id="pdBirthCityList"></datalist>
-      </div>
-      <div class="form-row"><span class="field-label">${t('pdGovernorate')}</span>
-        <select class="field-input pd-text" id="pdGovernorate"><option value="">${t('pdSelectPlaceholder')}</option>${regionOptions}</select>
+        ${lockBirthCity?lockNote:''}
       </div>
       <div class="form-row"><span class="field-label">${t('pdCity')}</span>
         <input class="field-input pd-text" id="pdCity" value="${esc(p.city)}" placeholder="${t('pdCityPlaceholder')}">
@@ -6492,14 +6568,15 @@ function personalDetailsFormHTML(p){
         <select class="field-input pd-text" id="pdMaritalStatus"><option value="">${t('pdSelectPlaceholder')}</option>${maritalOptions}</select>
       </div>
       <div class="form-row"><span class="field-label">${t('pdEducationLevel')}</span>
-        <select class="field-input pd-text" id="pdEducationLevel"><option value="">${t('pdSelectPlaceholder')}</option>${eduOptions}</select>
+        <select class="field-input pd-text" id="pdEducationLevel" ${lockEducation?'disabled':''}><option value="">${t('pdSelectPlaceholder')}</option>${eduOptions}</select>
+        ${lockEducation?lockNote:''}
       </div>
       <div class="form-row"><span class="field-label">${t('pdWhatsapp')}</span>
         <div style="display:flex;gap:6px;">
           <span id="pdWhatsappDialBadge" class="pd-dial-badge">${initialDial?'+'+initialDial:'—'}</span>
-          <input class="field-input" id="pdWhatsappNumber" type="tel" inputmode="tel" value="${esc(p.whatsapp_number)}" style="flex:1;" placeholder="${t('pdWhatsappPlaceholder')}">
+          <input class="field-input" id="pdWhatsappNumber" type="tel" inputmode="tel" value="${esc(p.whatsapp_number)}" style="flex:1;" placeholder="${t('pdWhatsappPlaceholder')}" ${lockWhatsapp?'disabled':''}>
         </div>
-        <span style="font-size:11px;color:var(--text-dim);">${t('pdWhatsappHint')}</span>
+        ${lockWhatsapp?lockNote:`<span style="font-size:11px;color:var(--text-dim);">${t('pdWhatsappHint')}</span>`}
       </div>
       <div class="form-row"><span class="field-label">${t('pdAltPhone')}</span>
         <div style="display:flex;gap:6px;">
@@ -6538,7 +6615,7 @@ function readPersonalDetailsForm(msgElId){
     p_birth_country_iso: countryIso,
     p_birth_country_name: country ? country[2] : '',
     p_birth_city: val('pdBirthCity'),
-    p_governorate: val('pdGovernorate'),
+    p_governorate: '',
     p_city: val('pdCity'),
     p_district: val('pdDistrict'),
     p_street: val('pdStreet'),
@@ -6553,7 +6630,7 @@ function readPersonalDetailsForm(msgElId){
     p_alt_dial_code: document.getElementById('pdAltDialCode').value || '',
     p_alt_number: val('pdAltNumber'),
   };
-  const required = ['p_birth_country_iso','p_birth_city','p_governorate','p_city','p_district','p_street','p_postal_code','p_building_number','p_unit_number','p_national_id','p_marital_status','p_education_level','p_whatsapp_number'];
+  const required = ['p_birth_country_iso','p_birth_city','p_city','p_district','p_street','p_postal_code','p_building_number','p_unit_number','p_national_id','p_marital_status','p_education_level','p_whatsapp_number'];
   const missing = required.some(k=> !fields[k]);
   if(missing){
     const el = document.getElementById(msgElId);
@@ -6662,6 +6739,7 @@ async function requestSubscription(planId, phone){
   } catch(err){
     console.warn('subscription request DB insert skipped/failed (table may not exist yet):', err);
   }
+  logClient('request_subscription', { plan: t(plan.nameKey), price: effectivePlanPrice(plan)+' '+planCurrencyLabel(plan) });
   try {
     await notifyWeb3Forms({
       subject: `طلب اشتراك جديد — ${t(plan.nameKey)}`,
@@ -6803,6 +6881,7 @@ async function requestAddBalance(amount, phone, currency){
   } catch(err){
     console.warn('deposit request DB insert failed:', err);
   }
+  logClient('request_deposit', { amount: amount+' '+curLabel });
   try {
     await notifyWeb3Forms({
       subject: `طلب إضافة رصيد جديد — ${amount} ${curLabel}`,
@@ -6936,6 +7015,7 @@ async function requestWithdrawal(amount, phone, currency, bankName, accountNumbe
   } catch(err){
     console.warn('withdrawal request DB insert failed:', err);
   }
+  logClient('request_withdrawal', { amount: amount+' '+curLabel });
   try {
     await notifyWeb3Forms({
       subject: `طلب سحب جديد — ${amount} ${curLabel}`,
@@ -6980,6 +7060,7 @@ async function requestCashback(amount, phone, currency){
   } catch(err){
     console.warn('cashback request DB insert failed:', err);
   }
+  logClient('request_cashback', { amount: amount+' '+curLabel });
   try {
     await notifyWeb3Forms({
       subject: `طلب كاش باك جديد — ${amount} ${curLabel}`,

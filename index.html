@@ -5044,6 +5044,7 @@ const ADMIN_DASH_TABS = [
   { key:'prices',   label:'أسعار الأسهم',  icon:'💰' },
   { key:'recs',     label:'التوصيات',      icon:'💡' },
   { key:'links',    label:'روابط الدفع',   icon:'🔗' },
+  { key:'plans',    label:'الباقات',       icon:'📦' },
   { key:'requests', label:'الطلبات',       icon:'📥' },
   { key:'users',    label:'اللوحة',        icon:'👥' },
   { key:'broadcast',label:'إشعار جماعي',   icon:'📣' },
@@ -5135,6 +5136,7 @@ function switchAdminDashTab(key){
   else if(key==='prices') renderAdminDashPrices();
   else if(key==='recs') renderAdminDashRecs();
   else if(key==='links') renderAdminDashLinks();
+  else if(key==='plans') renderAdminDashPlans();
   else if(key==='requests') renderAdminDashRequests();
   else if(key==='users') renderAdminDashUsers();
   else if(key==='broadcast') renderAdminDashBroadcast();
@@ -5459,26 +5461,6 @@ function renderAdminDashLinks(){
         <button class="modal-btn ghost" id="clearDepositLinkBtn" style="flex:1;">إلغاء الرابط</button>
       </div>
     </div>
-    <div class="admin-section-title">💵 أسعار وعملات الباقات</div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;">
-      ${subscriptionPlans.map(p=>`
-        <div style="background:var(--bg-panel);border:1px solid var(--border);border-radius:12px;padding:14px;">
-          <div style="font-size:13.5px;font-weight:700;margin-bottom:8px;">${t(p.nameKey)}</div>
-          <div style="display:flex;gap:6px;">
-            <input type="number" class="plan-price-input" data-plan="${p.id}" placeholder="السعر" style="flex:1;min-width:0;padding:9px;border-radius:8px;border:1px solid var(--border);box-sizing:border-box;font-size:12.5px;font-family:var(--font-mono);">
-          </div>
-          <div class="currency-toggle" style="margin-top:6px;">
-            <button type="button" class="currency-toggle-btn plan-currency-btn" data-plan="${p.id}" data-currency="SAR" style="font-size:12px;padding:7px 8px;">﷼ ريال</button>
-            <button type="button" class="currency-toggle-btn plan-currency-btn" data-plan="${p.id}" data-currency="USD" style="font-size:12px;padding:7px 8px;">$ دولار</button>
-          </div>
-          <div class="plan-price-msg" data-plan="${p.id}" style="margin-top:6px;font-size:12px;"></div>
-          <div style="display:flex;gap:6px;margin-top:8px;">
-            <button class="admin-mini-btn plan-price-save" data-plan="${p.id}" style="flex:1;">حفظ</button>
-            <button class="admin-mini-btn plan-price-clear" data-plan="${p.id}" style="flex:1;">افتراضي</button>
-          </div>
-        </div>
-      `).join('')}
-    </div>
     <div class="admin-section-title">روابط أزرار الاشتراك</div>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;">
       ${subscriptionPlans.map(p=>`
@@ -5619,7 +5601,167 @@ function renderAdminDashLinks(){
   });
 }
 
-/* ---- Tab: الطلبات ---- */
+/* ---- Tab: الباقات (plans catalog — add / edit / activate-deactivate) ---- */
+function renderAdminDashPlans(){
+  const body = document.getElementById('adminDashBody');
+  if(!body || adminDashActiveTab!=='plans') return;
+  const rowsHTML = [...subscriptionPlans].sort((a,b)=>(a.sortOrder||0)-(b.sortOrder||0)).map(p=>`
+    <div style="background:var(--bg-panel);border:1px solid var(--border);border-radius:12px;padding:14px;display:flex;flex-wrap:wrap;align-items:center;gap:10px;">
+      <div style="flex:1;min-width:180px;">
+        <div style="font-weight:700;font-size:13.5px;display:flex;align-items:center;gap:6px;">
+          ${t(p.nameKey)}
+          ${p.isMarketPlan?'<span title="باقة سوق أساسية — لا يمكن حذفها، وإيقافها لا يلغي وصول العملاء الحاليين" style="font-size:11px;color:var(--text-dim);">🔒 سوق</span>':''}
+          ${p.active===false?'<span class="admin-chip" style="background:var(--sell-dim);color:var(--sell);">متوقفة</span>':'<span class="admin-chip active">مفعّلة</span>'}
+        </div>
+        <div style="font-size:12px;color:var(--text-dim);margin-top:3px;">${t(p.descKey)}</div>
+        <div style="font-size:12.5px;font-family:var(--font-mono);margin-top:4px;">${p.price} ${p.currency==='USD'?'$':'﷼'} / شهريًا — <span style="color:var(--text-dim);">id: ${p.id}</span></div>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0;">
+        <button class="admin-mini-btn plan-edit-btn" data-plan="${p.id}">✎ تعديل</button>
+        <button class="admin-mini-btn plan-toggle-btn" data-plan="${p.id}" data-active="${p.active!==false}">${p.active===false?'✅ تفعيل':'⏸ إيقاف'}</button>
+      </div>
+    </div>
+  `).join('');
+  body.innerHTML = `
+    <div class="modal-note">
+      إدارة كاملة لكل باقات الاشتراك من هنا: إضافة باقة جديدة، تعديل أي باقة موجودة، أو إيقافها مؤقتًا (تختفي من صفحة الاشتراك للعملاء الجدد فقط). الباقات المعلّم عليها 🔒 سوق (السعودي/الأمريكي/الكل) مربوطة مباشرة بمنطق فتح سوق الأسهم — إيقافها لا يلغي وصول أي عميل مشترك بالفعل، وهي غير قابلة للحذف.
+    </div>
+    <button class="modal-btn primary" id="planAddNewBtn" style="margin:10px 0 16px;width:100%;">➕ إضافة باقة جديدة</button>
+    <div style="display:flex;flex-direction:column;gap:10px;">${rowsHTML}</div>
+  `;
+  document.getElementById('planAddNewBtn').onclick = openAdminAddPlanModal;
+  body.querySelectorAll('.plan-edit-btn').forEach(btn=>{
+    btn.onclick = ()=> openAdminEditPlanModal(btn.dataset.plan);
+  });
+  body.querySelectorAll('.plan-toggle-btn').forEach(btn=>{
+    btn.onclick = async ()=>{
+      const planId = btn.dataset.plan;
+      const wasActive = btn.dataset.active === 'true';
+      btn.disabled = true;
+      try {
+        const { error } = await supabaseClient.from('plans_catalog').update({ active: !wasActive }).eq('id', planId);
+        if(error) throw error;
+        await logAdmin(wasActive ? 'deactivate_plan' : 'activate_plan', null, { plan: planId });
+        await loadPlansCatalog();
+        renderAdminDashPlans();
+      } catch(err){
+        alert('فشل تغيير حالة الباقة: ' + (err.message || 'حاول مرة أخرى.'));
+        btn.disabled = false;
+      }
+    };
+  });
+}
+function planFormFieldsHTML(prefix, p){
+  const currency = p ? p.currency : 'USD';
+  return `
+    <label style="font-size:12.5px;font-weight:600;display:block;margin-top:10px;">اسم الباقة (عربي)</label>
+    <input type="text" id="${prefix}NameAr" value="${p?p.nameAr.replace(/"/g,'&quot;'):''}" placeholder="مثال: باقة السلع" style="width:100%;padding:9px;border-radius:8px;border:1px solid var(--border);margin-top:4px;box-sizing:border-box;">
+    <label style="font-size:12.5px;font-weight:600;display:block;margin-top:10px;">اسم الباقة (إنجليزي)</label>
+    <input type="text" id="${prefix}NameEn" value="${p?p.nameEn.replace(/"/g,'&quot;'):''}" placeholder="e.g. Commodities Plan" style="width:100%;padding:9px;border-radius:8px;border:1px solid var(--border);margin-top:4px;box-sizing:border-box;">
+    <label style="font-size:12.5px;font-weight:600;display:block;margin-top:10px;">الوصف (عربي)</label>
+    <textarea id="${prefix}DescAr" rows="2" style="width:100%;padding:9px;border-radius:8px;border:1px solid var(--border);margin-top:4px;box-sizing:border-box;font-family:var(--font-body);resize:vertical;">${p?p.descAr:''}</textarea>
+    <label style="font-size:12.5px;font-weight:600;display:block;margin-top:10px;">الوصف (إنجليزي)</label>
+    <textarea id="${prefix}DescEn" rows="2" style="width:100%;padding:9px;border-radius:8px;border:1px solid var(--border);margin-top:4px;box-sizing:border-box;font-family:var(--font-body);resize:vertical;">${p?p.descEn:''}</textarea>
+    <label style="font-size:12.5px;font-weight:600;display:block;margin-top:10px;">السعر الشهري</label>
+    <input type="number" id="${prefix}Price" value="${p?p.price:''}" min="0" step="1" style="width:100%;padding:9px;border-radius:8px;border:1px solid var(--border);margin-top:4px;box-sizing:border-box;font-family:var(--font-mono);">
+    <div class="currency-toggle" style="margin-top:8px;">
+      <button type="button" class="currency-toggle-btn ${prefix}CurBtn ${currency==='SAR'?'active':''}" data-currency="SAR">﷼ ريال</button>
+      <button type="button" class="currency-toggle-btn ${prefix}CurBtn ${currency==='USD'?'active':''}" data-currency="USD">$ دولار</button>
+    </div>
+    <label style="display:flex;align-items:center;gap:8px;margin-top:12px;font-size:13px;">
+      <input type="checkbox" id="${prefix}Featured" ${p&&p.featured?'checked':''}> تمييزها كـ "الأفضل قيمة" في صفحة الاشتراك
+    </label>`;
+}
+function wirePlanCurrencyToggle(prefix){
+  document.querySelectorAll(`.${prefix}CurBtn`).forEach(btn=>{
+    btn.onclick = ()=> document.querySelectorAll(`.${prefix}CurBtn`).forEach(b=> b.classList.toggle('active', b===btn));
+  });
+}
+function readPlanFormFields(prefix){
+  const curBtn = document.querySelector(`.${prefix}CurBtn.active`);
+  return {
+    nameAr: document.getElementById(prefix+'NameAr').value.trim(),
+    nameEn: document.getElementById(prefix+'NameEn').value.trim(),
+    descAr: document.getElementById(prefix+'DescAr').value.trim(),
+    descEn: document.getElementById(prefix+'DescEn').value.trim(),
+    price: Number(document.getElementById(prefix+'Price').value),
+    currency: curBtn ? curBtn.dataset.currency : 'USD',
+    featured: document.getElementById(prefix+'Featured').checked
+  };
+}
+function openAdminAddPlanModal(){
+  openModal('➕ إضافة باقة جديدة', `
+    <label style="font-size:12.5px;font-weight:600;display:block;">معرّف الباقة (إنجليزي، بدون مسافات — يُستخدم داخليًا ولا يظهر للعميل)</label>
+    <input type="text" id="planAddId" placeholder="e.g. commodities" style="width:100%;padding:9px;border-radius:8px;border:1px solid var(--border);margin-top:4px;box-sizing:border-box;font-family:var(--font-mono);">
+    ${planFormFieldsHTML('planAdd', null)}
+    <div id="planAddMsg" style="margin-top:10px;font-size:12.5px;"></div>
+    <button class="modal-btn primary" id="planAddConfirmBtn" style="margin-top:10px;width:100%;">إضافة الباقة</button>
+    <button class="modal-btn ghost" id="planAddCancelBtn" style="margin-top:8px;width:100%;">إلغاء</button>
+  `);
+  wirePlanCurrencyToggle('planAdd');
+  document.getElementById('planAddCancelBtn').onclick = closeModal;
+  document.getElementById('planAddConfirmBtn').onclick = async ()=>{
+    const msgEl = document.getElementById('planAddMsg');
+    const rawId = document.getElementById('planAddId').value.trim().toLowerCase().replace(/[^a-z0-9_-]/g,'');
+    const f = readPlanFormFields('planAdd');
+    if(!rawId){ msgEl.style.color='var(--sell)'; msgEl.textContent='اكتب معرّف صالح بالإنجليزي (حروف صغيرة وأرقام فقط).'; return; }
+    if(!f.nameAr || !f.nameEn){ msgEl.style.color='var(--sell)'; msgEl.textContent='اسم الباقة بالعربي والإنجليزي مطلوبين.'; return; }
+    if(!(f.price >= 0)){ msgEl.style.color='var(--sell)'; msgEl.textContent='أدخل سعرًا صحيحًا.'; return; }
+    if(subscriptionPlans.some(p=>p.id===rawId)){ msgEl.style.color='var(--sell)'; msgEl.textContent='المعرّف ده مستخدم بالفعل، اختر معرّف تاني.'; return; }
+    msgEl.style.color='var(--text-dim)'; msgEl.textContent='جاري الإضافة...';
+    document.getElementById('planAddConfirmBtn').disabled = true;
+    try {
+      const maxSort = subscriptionPlans.reduce((m,p)=> Math.max(m, p.sortOrder||0), 0);
+      const { error } = await supabaseClient.from('plans_catalog').insert({
+        id: rawId, name_ar: f.nameAr, name_en: f.nameEn, desc_ar: f.descAr, desc_en: f.descEn,
+        price: f.price, currency: f.currency, featured: f.featured, active: true,
+        is_market_plan: false, sort_order: maxSort + 1
+      });
+      if(error) throw error;
+      await logAdmin('add_plan', null, { plan: rawId });
+      await loadPlansCatalog();
+      closeModal();
+      renderAdminDashPlans();
+    } catch(err){
+      msgEl.style.color='var(--sell)'; msgEl.textContent='فشل: '+(err.message||'حاول مرة أخرى.');
+      document.getElementById('planAddConfirmBtn').disabled = false;
+    }
+  };
+}
+function openAdminEditPlanModal(planId){
+  const p = subscriptionPlans.find(x=>x.id===planId);
+  if(!p) return;
+  openModal(`✎ تعديل باقة — ${t(p.nameKey)}`, `
+    ${planFormFieldsHTML('planEdit', p)}
+    <div id="planEditMsg" style="margin-top:10px;font-size:12.5px;"></div>
+    <button class="modal-btn primary" id="planEditConfirmBtn" style="margin-top:10px;width:100%;">حفظ التعديلات</button>
+    <button class="modal-btn ghost" id="planEditCancelBtn" style="margin-top:8px;width:100%;">إلغاء</button>
+  `);
+  wirePlanCurrencyToggle('planEdit');
+  document.getElementById('planEditCancelBtn').onclick = closeModal;
+  document.getElementById('planEditConfirmBtn').onclick = async ()=>{
+    const msgEl = document.getElementById('planEditMsg');
+    const f = readPlanFormFields('planEdit');
+    if(!f.nameAr || !f.nameEn){ msgEl.style.color='var(--sell)'; msgEl.textContent='اسم الباقة بالعربي والإنجليزي مطلوبين.'; return; }
+    if(!(f.price >= 0)){ msgEl.style.color='var(--sell)'; msgEl.textContent='أدخل سعرًا صحيحًا.'; return; }
+    msgEl.style.color='var(--text-dim)'; msgEl.textContent='جاري الحفظ...';
+    document.getElementById('planEditConfirmBtn').disabled = true;
+    try {
+      const { error } = await supabaseClient.from('plans_catalog').update({
+        name_ar: f.nameAr, name_en: f.nameEn, desc_ar: f.descAr, desc_en: f.descEn,
+        price: f.price, currency: f.currency, featured: f.featured
+      }).eq('id', planId);
+      if(error) throw error;
+      await logAdmin('edit_plan', null, { plan: planId });
+      await loadPlansCatalog();
+      closeModal();
+      renderAdminDashPlans();
+    } catch(err){
+      msgEl.style.color='var(--sell)'; msgEl.textContent='فشل: '+(err.message||'حاول مرة أخرى.');
+      document.getElementById('planEditConfirmBtn').disabled = false;
+    }
+  };
+}
 async function renderAdminDashRequests(){
   const body = document.getElementById('adminDashBody');
   if(!body || adminDashActiveTab!=='requests') return;
@@ -6641,7 +6783,10 @@ function readPersonalDetailsForm(msgElId){
 }
 
 /* ============ Subscription plans ============ */
-const subscriptionPlans = [
+// These 6 entries are the FALLBACK only, used if the plans_catalog table can't be
+// reached for any reason. On a normal load, loadPlansCatalog() below overwrites both
+// subscriptionPlans and marketPlanIds with what the admin has configured in the database.
+let subscriptionPlans = [
   { id:'saudi', nameKey:'planSaudiName', descKey:'planSaudiDesc', price:3000, currency:'SAR', featured:false },
   { id:'us', nameKey:'planUSName', descKey:'planUSDesc', price:5000, currency:'USD', featured:false },
   { id:'ai', nameKey:'planAIName', descKey:'planAIDesc', price:3000, currency:'USD', featured:false },
@@ -6651,7 +6796,7 @@ const subscriptionPlans = [
 ];
 // market-access plans vs. standalone add-on plans (AI recs / gold bars) — a
 // client can hold a market plan AND one or more add-ons at the same time.
-const marketPlanIds = ['saudi','us','all'];
+let marketPlanIds = ['saudi','us','all'];
 function planCurrencyLabel(p){ return t(effectivePlanCurrency(p)==='USD' ? 'currencyUSD' : 'currencySAR'); }
 let planOverridesCache = {};
 async function loadPlanOverrides(){
@@ -6664,17 +6809,51 @@ async function loadPlanOverrides(){
   }));
   planOverridesCache = Object.fromEntries(entries);
 }
-function effectivePlanPrice(p){
-  const o = planOverridesCache[p.id];
-  return (o && o.price!==null) ? o.price : p.price;
-}
-function effectivePlanCurrency(p){
-  const o = planOverridesCache[p.id];
-  return (o && o.currency) ? o.currency : p.currency;
+// Price/currency now live directly on each plan row (from plans_catalog), so this is
+// just p.price/p.currency — no more separate app_settings override lookup for these two.
+function effectivePlanPrice(p){ return p.price; }
+function effectivePlanCurrency(p){ return p.currency; }
+
+// ===== plans catalog (database-backed subscription plans) =====
+// Loads every plan the admin has configured — including inactive ones, so admin screens
+// can still see/edit/reactivate them — and replaces the hard-coded fallback list above.
+// Each plan's display name/description is injected into the translations dictionary under
+// a synthetic per-plan key, so every existing t(p.nameKey)/t(p.descKey) call site across the
+// app keeps working unchanged for both the original 6 plans and any new admin-added ones.
+async function loadPlansCatalog(){
+  try {
+    const { data, error } = await supabaseClient.from('plans_catalog').select('*').order('sort_order', { ascending:true });
+    if(error) throw error;
+    if(!data || !data.length) throw new Error('plans_catalog is empty');
+    const mapped = data.map(row=>{
+      const nameKey = 'planDyn_' + row.id + '_name';
+      const descKey = 'planDyn_' + row.id + '_desc';
+      translations.ar[nameKey] = row.name_ar || row.id;
+      translations.en[nameKey] = row.name_en || row.id;
+      translations.ar[descKey] = row.desc_ar || '';
+      translations.en[descKey] = row.desc_en || '';
+      return {
+        id: row.id, nameKey, descKey,
+        nameAr: row.name_ar || '', nameEn: row.name_en || '',
+        descAr: row.desc_ar || '', descEn: row.desc_en || '',
+        price: Number(row.price), currency: row.currency,
+        featured: !!row.featured, active: row.active !== false,
+        isMarketPlan: !!row.is_market_plan, sortOrder: row.sort_order
+      };
+    });
+    subscriptionPlans = mapped;
+    // Market-plan protection: access-granting logic below only ever checks membership
+    // in marketPlanIds, never the "active" flag — so deactivating saudi/us/all in the
+    // catalog only hides them from NEW signups, it can never revoke market access that
+    // was already approved for an existing client.
+    marketPlanIds = mapped.filter(p=> p.isMarketPlan).map(p=> p.id);
+  } catch(err){
+    console.warn('plans_catalog fetch failed — keeping the built-in fallback plans:', err);
+  }
 }
 async function openSubscriptionModal(){
   await loadPlanOverrides();
-  const cardsHTML = subscriptionPlans.map(p=>`
+  const cardsHTML = subscriptionPlans.filter(p=> p.active !== false).map(p=>`
     <div class="plan-card ${p.featured?'featured':''}">
       ${p.featured?`<span class="plan-badge">${t('planBestValue')}</span>`:''}
       <div class="plan-name">${t(p.nameKey)}</div>
@@ -7435,6 +7614,7 @@ function renderAdminStockPricesModal(){
     renderHistory();
     renderReport();
     await loadStockPriceOverrides();
+    await loadPlansCatalog();
     const { data } = await supabaseClient.auth.getSession();
     if(data && data.session && data.session.user){
       currentUser = data.session.user;

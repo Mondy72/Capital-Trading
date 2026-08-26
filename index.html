@@ -276,6 +276,38 @@
   .plan-price span{font-size:12px;font-weight:500;color:var(--text-dim);}
   .plan-btn{margin-top:4px;padding:11px;border-radius:9px;background:var(--bg-panel-raised);border:1px solid var(--border);font-weight:700;font-size:13px;color:var(--text-primary);}
   .plan-card.featured .plan-btn{background:var(--accent);color:#04140D;border-color:var(--accent);}
+  .brics-card{
+    border:1.5px solid transparent;
+    background: linear-gradient(var(--bg-panel-raised), var(--bg-panel-raised)) padding-box,
+                linear-gradient(135deg, #D4AF37, #F5D580 45%, #B8860B) border-box;
+    box-shadow: 0 0 0 1px rgba(212,175,55,.12), 0 10px 28px rgba(212,175,55,.14);
+    overflow:hidden;
+  }
+  .brics-card::before{
+    content:''; position:absolute; top:-46%; inset-inline-end:-18%; width:160px; height:160px;
+    background:radial-gradient(circle, rgba(212,175,55,.28), transparent 70%); pointer-events:none;
+  }
+  .brics-card .plan-name{
+    display:flex; align-items:center; gap:7px; font-size:15.5px;
+    background:linear-gradient(90deg, #D4AF37, #F5D580 55%, #D4AF37);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  .brics-btn{background:linear-gradient(135deg, #D4AF37, #B8860B) !important; color:#241a02 !important; border:none !important;}
+  .brics-btn:hover{filter:brightness(1.05);}
+  .brics-summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0 16px;}
+  .brics-summary-stat{
+    position:relative; border-radius:13px; padding:13px 14px 12px;
+    background:linear-gradient(160deg, rgba(212,175,55,.10), rgba(212,175,55,.02));
+    border:1px solid rgba(212,175,55,.28);
+    display:flex; flex-direction:column; gap:5px; overflow:hidden;
+  }
+  .brics-summary-stat.owned{
+    background:linear-gradient(160deg, rgba(212,175,55,.22), rgba(212,175,55,.06));
+    border:1px solid rgba(212,175,55,.5);
+  }
+  .brics-summary-stat .bs-icon{font-size:14px;opacity:.9;}
+  .brics-summary-stat .bs-num{font-family:var(--font-mono);font-weight:800;font-size:19px;color:#D4AF37;letter-spacing:.2px;}
+  .brics-summary-stat .bs-lbl{font-size:10.5px;color:var(--text-dim);line-height:1.5;}
   .acc-option.active{border-color:var(--accent);background:var(--accent-dim);}
   .nav-links a{cursor:pointer;}
 
@@ -1420,6 +1452,21 @@ const translations = {
 "depositTitle": "طلب إضافة رصيد",
 "depositIntro": "أدخل المبلغ الذي ترغب في إضافته إلى رصيدك ورقم هاتفك، وسيتواصل معك فريق كابيتال برو لإتمام عملية الإيداع.",
 "depositAmountLabel": "المبلغ الذي ترغب في إضافته",
+"bricsCardTitle": "عملة BRICS",
+"bricsCardBadge": "قريبًا",
+"bricsCardDesc": "أصل رقمي مقترح لدعم التبادل التجاري بين دول تحالف BRICS. احجز الكمية التي تريدها مسبقًا الآن — سيتواصل معك فريقنا فور توفر التداول عليها.",
+"bricsReserveBtn": "احجز الآن",
+"bricsModalTitle": "حجز مسبق — عملة BRICS",
+"bricsModalIntro": "حدد الكمية التي ترغب في حجزها. هذا مجرد طلب حجز مبدئي بدون أي دفع أو سعر محدد حاليًا، وسيتواصل معك فريق كابيتال برو عند إطلاق التداول الفعلي.",
+"bricsQuantityLabel": "الكمية المطلوب حجزها (الحد الأدنى 500)",
+"bricsQuantityErrorMsg": "الحد الأدنى للحجز 500 — أدخل كمية 500 أو أكثر",
+"bricsSubmitBtn": "تأكيد الحجز",
+"bricsSuccessTitle": "تم استلام طلب الحجز",
+"bricsSuccessMsg": "استلمنا طلب حجزك بكمية {qty} من عملة BRICS. سيتواصل معك فريق كابيتال برو فور توفر التداول الفعلي عليها.",
+"bricsPartialFailMsg": "استلمنا طلبك عبر البريد الإلكتروني، لكن حدثت مشكلة في حفظه بالنظام. سيتواصل معك فريقنا أيضًا عند الإطلاق.",
+"bricsTotalReservedLabel": "إجمالي الكمية التي حجزتها حتى الآن (قيد المراجعة + معتمدة)",
+"bricsOwnedLabel": "الكمية المعتمدة والمملوكة فعليًا (بعد موافقة الإدارة)",
+"bricsSummaryLoading": "جاري تحميل بيانات حجوزاتك...",
 "depositAmountErrorMsg": "من فضلك أدخل مبلغ صحيح أكبر من صفر",
 "depositSubmitBtn": "إرسال الطلب",
 "depositSuccessTitle": "تم إرسال طلبك",
@@ -1773,6 +1820,21 @@ const translations = {
 "depositTitle": "Add Balance Request",
 "depositIntro": "Enter the amount you'd like to add to your balance and your phone number, and the Capital Pro team will contact you to complete the deposit.",
 "depositAmountLabel": "Amount to add",
+"bricsCardTitle": "BRICS Currency",
+"bricsCardBadge": "Coming soon",
+"bricsCardDesc": "A proposed digital asset to support trade exchange among BRICS alliance countries. Reserve the quantity you want now — our team will contact you as soon as trading becomes available.",
+"bricsReserveBtn": "Reserve now",
+"bricsModalTitle": "Pre-launch reservation — BRICS Currency",
+"bricsModalIntro": "Specify the quantity you'd like to reserve. This is just an initial reservation request with no payment or set price at this time, and the Capital Pro team will contact you once actual trading launches.",
+"bricsQuantityLabel": "Quantity to reserve (minimum 500)",
+"bricsQuantityErrorMsg": "Minimum reservation is 500 — enter 500 or more",
+"bricsSubmitBtn": "Confirm reservation",
+"bricsSuccessTitle": "Reservation request received",
+"bricsSuccessMsg": "We received your reservation request for {qty} of BRICS currency. The Capital Pro team will contact you as soon as actual trading is available.",
+"bricsPartialFailMsg": "We received your request by email, but there was an issue saving it in our system. Our team will also reach out once it launches.",
+"bricsTotalReservedLabel": "Total quantity you've reserved so far (pending + approved)",
+"bricsOwnedLabel": "Approved and actually owned quantity (after admin approval)",
+"bricsSummaryLoading": "Loading your reservation data...",
 "depositAmountErrorMsg": "Please enter a valid amount greater than zero",
 "depositSubmitBtn": "Submit Request",
 "depositSuccessTitle": "Your request has been sent",
@@ -4794,6 +4856,60 @@ async function loadPendingSupportRequests(){
     listEl.innerHTML = `<div class="modal-note" style="color:var(--sell);">تعذّر تحميل طلبات الدعم: ${err.message || 'حاول مرة أخرى'}</div>`;
   }
 }
+let pendingBricsData = [];
+async function loadPendingBricsReservations(){
+  const listEl = document.getElementById('pendingBricsList');
+  if(!listEl) return;
+  listEl.innerHTML = `<div class="modal-note">جاري التحميل...</div>`;
+  try {
+    const { data, error } = await supabaseClient.rpc('admin_list_pending_brics_reservations');
+    if(error) throw error;
+    pendingBricsData = data || [];
+    if(!data || !data.length){
+      listEl.innerHTML = `<div class="modal-note">لا توجد طلبات حجز BRICS معلّقة حاليًا.</div>`;
+      return;
+    }
+    listEl.innerHTML = data.map((r,i)=>{
+      const dateLabel = new Date(r.created_at).toLocaleString('ar-EG');
+      return `
+        <div class="plan-card" style="text-align:right;">
+          <div class="plan-name">${r.email}</div>
+          <div class="plan-desc">الكمية المطلوب حجزها: ${fmt(r.quantity,2)}</div>
+          <div class="plan-desc">الهاتف: ${r.phone || '—'} · ${dateLabel}</div>
+          <div style="display:flex;gap:8px;margin-top:8px;">
+            <button class="modal-btn primary" style="flex:1;" data-brics-approve-idx="${i}">✅ موافقة</button>
+            <button class="modal-btn ghost" style="flex:1;" data-brics-reject-idx="${i}">❌ رفض</button>
+          </div>
+        </div>`;
+    }).join('');
+    data.forEach((r,i)=>{
+      const approveBtn = listEl.querySelector(`[data-brics-approve-idx="${i}"]`);
+      const rejectBtn = listEl.querySelector(`[data-brics-reject-idx="${i}"]`);
+      const setBricsStatus = async (status, btn, otherBtn)=>{
+        btn.disabled = true;
+        if(otherBtn) otherBtn.disabled = true;
+        const originalText = btn.textContent;
+        btn.textContent = 'جاري التحديث...';
+        try {
+          const { error } = await supabaseClient.rpc('admin_set_brics_reservation_status', { reservation_id: r.id, new_status: status });
+          if(error) throw error;
+          btn.textContent = status==='approved' ? '✅ اتوافق عليه' : '❌ اترفض';
+          logAdmin(status==='approved' ? 'approve_brics_reservation' : 'reject_brics_reservation', r.email, { quantity: r.quantity });
+          setTimeout(()=> loadPendingBricsReservations().then(updateAdminReqStats), 600);
+        } catch(err){
+          btn.disabled = false;
+          if(otherBtn) otherBtn.disabled = false;
+          btn.textContent = originalText;
+          console.warn('setBricsReservationStatus failed:', err);
+        }
+      };
+      if(approveBtn) approveBtn.onclick = ()=> setBricsStatus('approved', approveBtn, rejectBtn);
+      if(rejectBtn) rejectBtn.onclick = ()=> setBricsStatus('rejected', rejectBtn, approveBtn);
+    });
+  } catch(err){
+    listEl.innerHTML = `<div class="modal-note" style="color:var(--sell);">تعذّر تحميل طلبات الحجز: ${err.message || 'حاول مرة أخرى'}</div>`;
+  }
+}
 function openAdminRequestsTrackingModal(){
   openModal('📥 متابعة الطلبات', `
     <div class="modal-note">طلبات الاشتراك الجديدة (pending) مباشرة من قاعدة البيانات — دون الاعتماد على وصول البريد الإلكتروني.</div>
@@ -5776,6 +5892,7 @@ async function renderAdminDashRequests(){
       <div class="admin-stat-card"><span class="num" id="statDepositsNum">—</span><span class="lbl">طلبات إيداع معلّقة</span></div>
       <div class="admin-stat-card"><span class="num" id="statWithdrawalsNum">—</span><span class="lbl">طلبات سحب معلّقة</span></div>
       <div class="admin-stat-card"><span class="num" id="statSupportNum">—</span><span class="lbl">طلبات دعم مفتوحة</span></div>
+      <div class="admin-stat-card"><span class="num" id="statBricsNum">—</span><span class="lbl">طلبات حجز BRICS</span></div>
     </div>
     <div class="admin-section-title">📥 طلبات الاشتراك</div>
     <div id="pendingSubsList" style="display:flex;flex-direction:column;gap:10px;"></div>
@@ -5787,8 +5904,10 @@ async function renderAdminDashRequests(){
     <div id="pendingWithdrawalsList" style="display:flex;flex-direction:column;gap:10px;"></div>
     <div class="admin-section-title">💬 طلبات الدعم</div>
     <div id="pendingSupportList" style="display:flex;flex-direction:column;gap:10px;"></div>
+    <div class="admin-section-title">🪙 طلبات حجز BRICS</div>
+    <div id="pendingBricsList" style="display:flex;flex-direction:column;gap:10px;"></div>
   `;
-  await Promise.all([loadPendingSubscriptions(), loadPendingCashback(), loadPendingDeposits(), loadPendingWithdrawals(), loadPendingSupportRequests()]);
+  await Promise.all([loadPendingSubscriptions(), loadPendingCashback(), loadPendingDeposits(), loadPendingWithdrawals(), loadPendingSupportRequests(), loadPendingBricsReservations()]);
   updateAdminReqStats();
   document.getElementById('exportRequestsCSVBtn').onclick = ()=>{
     const dateLabel = (iso)=> new Date(iso).toLocaleString('ar-EG');
@@ -5801,7 +5920,8 @@ async function renderAdminDashRequests(){
       ...pendingCashbackData.map(r=> ['كاش باك', r.email, '', r.amount, r.currency||'', r.phone||'', '', dateLabel(r.created_at)]),
       ...pendingDepositsData.map(r=> ['إيداع', r.email, '', r.amount, r.currency||'', r.phone||'', '', dateLabel(r.created_at)]),
       ...pendingWithdrawalsData.map(r=> ['سحب', r.email, '', r.amount, r.currency||'', r.phone||'', `بنك: ${r.bank_name||'—'} · حساب: ${r.account_number||'—'} · آيبان: ${r.iban||'—'}`, dateLabel(r.created_at)]),
-      ...pendingSupportData.map(r=> ['دعم', r.email, r.subject||'', '', '', '', r.message||'', dateLabel(r.created_at)])
+      ...pendingSupportData.map(r=> ['دعم', r.email, r.subject||'', '', '', '', r.message||'', dateLabel(r.created_at)]),
+      ...pendingBricsData.map(r=> ['حجز BRICS', r.email, '', r.quantity, '', r.phone||'', '', dateLabel(r.created_at)])
     ];
     if(!rows.length){ pushNotification('لا يوجد شيء للتصدير', 'لا توجد طلبات معلّقة حاليًا.'); return; }
     downloadCSV(`الطلبات_المعلّقة_${new Date().toISOString().slice(0,10)}.csv`, headers, rows);
@@ -5821,7 +5941,8 @@ function updateAdminReqStats(){
     document.getElementById('statDepositsNum').textContent = countCards('pendingDepositsList');
     document.getElementById('statWithdrawalsNum').textContent = countCards('pendingWithdrawalsList');
     document.getElementById('statSupportNum').textContent = countCards('pendingSupportList');
-    ['statSubsNum','statCashbackNum','statDepositsNum','statWithdrawalsNum','statSupportNum'].forEach(id=>{
+    document.getElementById('statBricsNum').textContent = countCards('pendingBricsList');
+    ['statSubsNum','statCashbackNum','statDepositsNum','statWithdrawalsNum','statSupportNum','statBricsNum'].forEach(id=>{
       const e = document.getElementById(id);
       if(e) e.className = 'num ' + (Number(e.textContent)>0 ? 'warn' : '');
     });
@@ -6862,13 +6983,20 @@ async function openSubscriptionModal(){
       <button class="plan-btn" data-plan="${p.id}">${t('requestSubBtn')}</button>
     </div>
   `).join('');
+  const bricsCardHTML = `
+    <div class="plan-card brics-card">
+      <div class="plan-name">🪙 ${t('bricsCardTitle')}</div>
+      <div class="plan-desc">${t('bricsCardDesc')}</div>
+      <button class="plan-btn brics-btn" id="bricsReserveBtn">${t('bricsReserveBtn')}</button>
+    </div>`;
   openModal(t('subscriptionModalTitle'), `
     <div class="modal-note">${t('subscriptionIntro')}</div>
-    <div style="display:flex;flex-direction:column;gap:12px;">${cardsHTML}</div>
+    <div style="display:flex;flex-direction:column;gap:12px;">${cardsHTML}${bricsCardHTML}</div>
     <button class="modal-btn ghost" id="subModalClose">${t('closeBtn')}</button>
   `);
   document.getElementById('subModalClose').onclick = closeModal;
   document.querySelectorAll('.plan-btn').forEach(btn=>{
+    if(btn.id === 'bricsReserveBtn') return;
     btn.onclick = async ()=>{
       const planId = btn.dataset.plan;
       const planLink = normalizeExternalUrl(await getAppSetting('plan_link_'+planId));
@@ -6879,6 +7007,7 @@ async function openSubscriptionModal(){
       confirmSubscription(planId);
     };
   });
+  document.getElementById('bricsReserveBtn').onclick = openBricsReservationModal;
 }
 function confirmSubscription(planId){
   const plan = subscriptionPlans.find(p=>p.id===planId);
@@ -7090,6 +7219,139 @@ async function requestAddBalance(amount, phone, currency){
   pushNotification(
     bilingualText(()=> t('depositSuccessNotifTitle')),
     bilingualText(()=> `${fmt(amount,2)} ${t(currency==='USD' ? 'currencyUSD' : 'currencySAR')}`));
+}
+
+async function loadUserBricsSummary(){
+  const totalEl = document.getElementById('bricsTotalReservedVal');
+  const ownedEl = document.getElementById('bricsOwnedQtyVal');
+  if(!totalEl || !ownedEl || !currentUser) return;
+  try {
+    const { data, error } = await supabaseClient
+      .from('brics_reservations')
+      .select('quantity,status')
+      .eq('user_id', currentUser.id);
+    if(error) throw error;
+    const rows = data || [];
+    const totalReserved = rows
+      .filter(r=> r.status==='pending' || r.status==='approved')
+      .reduce((sum,r)=> sum + Number(r.quantity||0), 0);
+    const owned = rows
+      .filter(r=> r.status==='approved')
+      .reduce((sum,r)=> sum + Number(r.quantity||0), 0);
+    totalEl.textContent = fmt(totalReserved,2);
+    ownedEl.textContent = fmt(owned,2);
+  } catch(err){
+    console.warn('loadUserBricsSummary failed:', err);
+    totalEl.textContent = '—';
+    ownedEl.textContent = '—';
+  }
+}
+function openBricsReservationModal(){
+  if(!currentUser){
+    openLoginModal();
+    return;
+  }
+  openModal(t('bricsModalTitle'), `
+    <div class="modal-note">${t('bricsModalIntro')}</div>
+    <div id="bricsSummaryBox" class="brics-summary-grid">
+      <div class="brics-summary-stat">
+        <span class="bs-icon">🪙</span>
+        <span class="bs-num" id="bricsTotalReservedVal">…</span>
+        <span class="bs-lbl">${t('bricsTotalReservedLabel')}</span>
+      </div>
+      <div class="brics-summary-stat owned">
+        <span class="bs-icon">✅</span>
+        <span class="bs-num" id="bricsOwnedQtyVal">…</span>
+        <span class="bs-lbl">${t('bricsOwnedLabel')}</span>
+      </div>
+    </div>
+    <div class="form-row">
+      <span class="field-label">${t('bricsQuantityLabel')}</span>
+      <input class="field-input" style="text-align:start;" id="bricsQuantityInput" type="number" min="500" step="any" value="500">
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;">
+        <button type="button" class="quick-amt-btn" data-brics-step="10" style="padding:5px 12px;border-radius:7px;font-size:12.5px;font-family:var(--font-mono);color:var(--buy);background:var(--bg-panel-raised);border:1px solid var(--border);">+10</button>
+        <button type="button" class="quick-amt-btn" data-brics-step="100" style="padding:5px 12px;border-radius:7px;font-size:12.5px;font-family:var(--font-mono);color:var(--buy);background:var(--bg-panel-raised);border:1px solid var(--border);">+100</button>
+        <button type="button" class="quick-amt-btn" data-brics-step="1000" style="padding:5px 12px;border-radius:7px;font-size:12.5px;font-family:var(--font-mono);color:var(--buy);background:var(--bg-panel-raised);border:1px solid var(--border);">+1000</button>
+        <button type="button" class="quick-amt-btn" data-brics-step="-10" style="padding:5px 12px;border-radius:7px;font-size:12.5px;font-family:var(--font-mono);color:var(--sell);background:var(--bg-panel-raised);border:1px solid var(--border);">-10</button>
+        <button type="button" class="quick-amt-btn" data-brics-step="-100" style="padding:5px 12px;border-radius:7px;font-size:12.5px;font-family:var(--font-mono);color:var(--sell);background:var(--bg-panel-raised);border:1px solid var(--border);">-100</button>
+        <button type="button" class="quick-amt-btn" data-brics-step="-1000" style="padding:5px 12px;border-radius:7px;font-size:12.5px;font-family:var(--font-mono);color:var(--sell);background:var(--bg-panel-raised);border:1px solid var(--border);">-1000</button>
+      </div>
+    </div>
+    <div class="form-row">
+      <span class="field-label">${t('phoneLabel')}</span>
+      <input class="field-input" style="text-align:start;" id="bricsPhoneInput" type="tel" placeholder="05xxxxxxxx">
+    </div>
+    <div id="bricsError" style="color:var(--sell);font-size:12.5px;display:none;"></div>
+    <button class="modal-btn primary" id="bricsSubmitBtn">${t('bricsSubmitBtn')}</button>
+    <button class="modal-btn ghost" id="bricsCancelBtn">${t('noBtn')}</button>
+  `);
+  loadUserBricsSummary();
+  const bricsQtyInput = document.getElementById('bricsQuantityInput');
+  document.querySelectorAll('[data-brics-step]').forEach(btn=>{
+    btn.onclick = ()=>{
+      const step = parseFloat(btn.dataset.bricsStep);
+      const current = parseFloat(bricsQtyInput.value) || 500;
+      const next = Math.max(500, current + step);
+      bricsQtyInput.value = next;
+      const errEl = document.getElementById('bricsError');
+      if(errEl) errEl.style.display = 'none';
+    };
+  });
+  bricsQtyInput.addEventListener('change', ()=>{
+    if(!bricsQtyInput.value || parseFloat(bricsQtyInput.value) < 500){
+      bricsQtyInput.value = 500;
+    }
+  });
+  document.getElementById('bricsCancelBtn').onclick = closeModal;
+  document.getElementById('bricsSubmitBtn').onclick = ()=>{
+    const qty = parseFloat(document.getElementById('bricsQuantityInput').value);
+    const phone = document.getElementById('bricsPhoneInput').value.trim();
+    const errEl = document.getElementById('bricsError');
+    if(!qty || qty<500){
+      errEl.textContent = t('bricsQuantityErrorMsg');
+      errEl.style.display = 'block';
+      return;
+    }
+    if(phone.length<8){
+      errEl.textContent = t('phoneErrorMsg');
+      errEl.style.display = 'block';
+      return;
+    }
+    requestBricsReservation(qty, phone);
+  };
+}
+async function requestBricsReservation(qty, phone){
+  let dbSaved = false;
+  try {
+    const { error } = await supabaseClient.from('brics_reservations').insert({
+      user_id: currentUser.id, email: currentUser.email, phone, quantity: qty, status: 'pending'
+    });
+    if(error) throw error;
+    dbSaved = true;
+  } catch(err){
+    console.warn('BRICS reservation DB insert failed:', err);
+  }
+  logClient('request_brics_reservation', { quantity: qty });
+  try {
+    await notifyWeb3Forms({
+      subject: `طلب حجز مسبق — عملة BRICS (${qty})`,
+      from_name: 'كابيتال برو — حجوزات BRICS',
+      email: currentUser.email,
+      phone: phone,
+      quantity: qty,
+      message: `طلب حجز مسبق جديد — عملة BRICS\nالكمية: ${qty}\nبريد العميل: ${currentUser.email}\nرقم الهاتف: ${phone || '—'}${dbSaved?'':'\n⚠️ ملحوظة: فشل تسجيل الطلب في قاعدة البيانات، وهذا البريد الإلكتروني هو السجل الوحيد له.'}`
+    });
+  } catch(err){
+    console.warn('BRICS reservation email delivery failed:', err);
+  }
+  closeModal();
+  const successMsg = (dbSaved ? t('bricsSuccessMsg') : t('bricsPartialFailMsg')).replace('{qty}', qty);
+  openModal(t('bricsSuccessTitle'), `
+    <div class="modal-note">${successMsg}</div>
+    <button class="modal-btn primary" id="bricsDoneBtn">${t('closeBtn')}</button>
+  `);
+  document.getElementById('bricsDoneBtn').onclick = closeModal;
+  pushNotification(bilingualText(()=> t('bricsSuccessTitle')), bilingualText(()=> String(qty)));
 }
 
 function openWithdrawModal(){

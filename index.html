@@ -4,6 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>كابيتال برو | منصة التداول الرقمية</title>
+<!-- Sentry error tracking — must stay the first script on the page so it can
+     catch and buffer errors from everything that loads after it. -->
+<script
+  src="https://js-de.sentry-cdn.com/24b9a9b33e89a7e909bf5574e3682f2e.min.js"
+  crossorigin="anonymous"
+></script>
 <script>
 (function(){
   var qs = new URLSearchParams(location.search);
@@ -1127,7 +1133,6 @@ async function loadStockPriceOverrides(){
     console.warn('could not load stock price overrides:', err);
   }
 }
-setInterval(loadStockPriceOverrides, 60000);
 const catKeys = {saudi:'catSaudi', global:'catGlobal', forex:'catForex', crypto:'catCrypto', indices:'catIndices', commodities:'catCommodities', bars:'catBars', funds:'catFunds'};
 function catNameFor(cat){ return t(catKeys[cat]); }
 
@@ -1169,6 +1174,14 @@ function newPosId(){ return (window.crypto && crypto.randomUUID) ? crypto.random
 let balance = 0;
 
 function fmt(n, d){ return Number(n).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d}); }
+// Escapes user-supplied text before it goes into an innerHTML template (admin panels
+// render emails, phone numbers, addresses, support messages, etc. that come straight
+// from users — this stops someone typing HTML/script into one of those fields from
+// executing inside another user's or an admin's session).
+function escHtml(s){
+  if(s === null || s === undefined) return '';
+  return String(s).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+}
 
 /* ============ i18n ============ */
 const translations = {
@@ -1194,6 +1207,7 @@ const translations = {
 "colTime": "الوقت",
 "noOpenPositions": "لا توجد صفقات مفتوحة — يمكنك فتح صفقة جديدة من اللوحة 👉",
 "noHistory": "لا توجد صفقات مغلقة بعد",
+"loadMoreBtn": "تحميل المزيد",
 "fieldSymbol": "الرمز",
 "change": "تغيير ▾",
 "fieldVolume": "الحجم (لوت)",
@@ -1562,6 +1576,7 @@ const translations = {
 "colTime": "Time",
 "noOpenPositions": "No open positions — try opening a trade from the panel 👉",
 "noHistory": "No closed trades yet",
+"loadMoreBtn": "Load more",
 "fieldSymbol": "Symbol",
 "change": "Change ▾",
 "fieldVolume": "Volume (Lot)",
@@ -2058,7 +2073,7 @@ async function fetchCoinGeckoHistory(id, tf){
 const tdIntervalForTf = {'1m':'1min','15m':'15min','1h':'1h','4h':'4h','1D':'1day'};
 async function fetchTwelveDataHistory(tdSym, tf){
   const interval = tdIntervalForTf[tf];
-  const res = await fetch(`https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(tdSym)}&interval=${interval}&outputsize=120&apikey=${twelveDataKey}`);
+  const res = await fetch(`${TWELVEDATA_PROXY_URL}?mode=history&symbol=${encodeURIComponent(tdSym)}&interval=${interval}&outputsize=120`);
   if(!res.ok) throw new Error('twelvedata history http '+res.status);
   const data = await res.json();
   if(data.status==='error' || !Array.isArray(data.values)) throw new Error('twelvedata history bad payload: '+(data.message||data.status));
@@ -2334,6 +2349,31 @@ document.getElementById('slCheck').onchange = e=> document.getElementById('slInp
    - Every number below is derived from these two operations only — nothing here is a random estimate. */
 const posBody = document.getElementById('positionsBody');
 let closedTrades = [];
+const CLOSED_TRADES_PAGE_SIZE = 50;
+let closedTradesOffset = 0;
+let closedTradesHasMore = false;
+async function loadMoreClosedTrades(){
+  if(!currentUser || !closedTradesHasMore) return;
+  try {
+    const { data: closedRows, count } = await supabaseClient.from('closed_trades')
+      .select('*', { count:'exact' })
+      .eq('user_id', currentUser.id)
+      .order('closed_at', { ascending:false })
+      .range(closedTradesOffset, closedTradesOffset + CLOSED_TRADES_PAGE_SIZE - 1);
+    const mapped = (closedRows||[]).map(r=>{
+      const symName = r.sym_name ?? r.symbol;
+      const symIdx = symbolIndexByName[symName];
+      if(symIdx===undefined) return null;
+      return { symIdx, type:'buy', vol:Number(r.vol), entry:Number(r.entry), exit:Number(r.exit), pnl:Number(r.pnl), closedAt:new Date(r.closed_at) };
+    }).filter(Boolean);
+    closedTrades = closedTrades.concat(mapped);
+    closedTradesOffset = closedTrades.length;
+    closedTradesHasMore = (count||0) > closedTradesOffset;
+    renderHistory();
+  } catch(err){
+    console.warn('could not load more closed trades:', err);
+  }
+}
 const EPS = 1e-8;
 function round6(n){ return Math.round(n*1e6)/1e6; }
 
@@ -2350,87 +2390,30 @@ function showOrderMsg(msg){
   el.style.display = msg ? 'block' : 'none';
 }
 
-/* All persist* helpers now return { ok, error } so callers can decide whether
-   it's safe to mutate local state. Nothing should be reflected in the UI as
-   "saved" unless the corresponding DB write actually succeeded. */
-async function persistBalance(){
-  if(!currentUser) return { ok:false, error:'no-user' };
-  try {
-    const { error } = await supabaseClient.from('wallets').upsert({ user_id: currentUser.id, balance }, { onConflict: 'user_id' });
-    if(error){ console.warn('balance persist failed (check wallets RLS/table):', error); return { ok:false, error }; }
-    return { ok:true };
-  } catch(err){
-    console.warn('balance persist failed:', err);
-    return { ok:false, error: err };
-  }
-}
-async function persistOpenPosition(p){
-  if(!currentUser) return { ok:false, error:'no-user' };
-  const s = symbols[p.symIdx];
-  const base = { user_id: currentUser.id, sym_name: s.name, type: p.type, vol: p.vol, entry: p.entry, unit: s.unit, opened_at: p.openedAt };
-  try {
-    let { data, error } = await supabaseClient.from('positions').insert({ ...base, tp: p.tp ?? null, sl: p.sl ?? null }).select().single();
-    if(error && (error.code === '42703' || /column .*tp|column .*sl/i.test(error.message||''))){
-      // tp/sl columns not added to the DB yet (see add_tp_sl_columns.sql) —
-      // fall back so opening a trade still works; the levels just won't
-      // survive a refresh until the migration is run.
-      console.warn('positions table has no tp/sl columns yet, saving without them:', error);
-      ({ data, error } = await supabaseClient.from('positions').insert(base).select().single());
-    }
-    if(error){ console.warn('position insert persist failed (check positions table/RLS):', error); return { ok:false, error }; }
-    return { ok:true, data };
-  } catch(err){
-    console.warn('position insert persist failed:', err);
-    return { ok:false, error: err };
-  }
-}
-async function persistPositionUpdate(p){
-  if(!currentUser) return { ok:false, error:'no-user' };
-  try {
-    const { error } = await supabaseClient.from('positions').update({ vol: p.vol }).eq('id', p.id);
-    if(error){ console.warn('position update persist failed:', error); return { ok:false, error }; }
-    return { ok:true };
-  } catch(err){
-    console.warn('position update persist failed:', err);
-    return { ok:false, error: err };
-  }
-}
-async function persistPositionDelete(id){
-  if(!currentUser) return { ok:false, error:'no-user' };
-  try {
-    const { error } = await supabaseClient.from('positions').delete().eq('id', id);
-    if(error){ console.warn('position delete persist failed:', error); return { ok:false, error }; }
-    return { ok:true };
-  } catch(err){
-    console.warn('position delete persist failed:', err);
-    return { ok:false, error: err };
-  }
-}
-async function persistClosedTrade(tr){
-  if(!currentUser) return { ok:false, error:'no-user' };
-  const s = symbols[tr.symIdx];
-  try {
-    const { error } = await supabaseClient.from('closed_trades').insert({
-      user_id: currentUser.id, symbol: s.name, vol: tr.vol, entry: tr.entry, exit: tr.exit, pnl: tr.pnl, closed_at: tr.closedAt
-    });
-    if(error){ console.warn('closed trade persist failed (check closed_trades table/RLS):', error); return { ok:false, error }; }
-    return { ok:true };
-  } catch(err){
-    console.warn('closed trade persist failed:', err);
-    return { ok:false, error: err };
-  }
-}
 /* ---- Secure trade RPCs: balance/positions/closed_trades are no longer
    writable directly from the client (see security hardening). Opening and
    closing trades now goes through server-side functions that verify
-   ownership and balance before touching anything. ---- */
+   ownership and balance before touching anything. Each call carries a
+   fresh client_request_id (UUID) so a dropped-connection retry of the same
+   request can never double-execute — the server just replays the cached
+   result. p_cat tells the server which price-tolerance band to use
+   (forex ~0.5%, crypto ~3.5%, everything else ~1.5%). ---- */
+function newRequestId(){
+  if(typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
+  // Fallback for older browsers without crypto.randomUUID
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c=>{
+    const r = Math.random()*16|0;
+    return (c==='x' ? r : (r&0x3|0x8)).toString(16);
+  });
+}
 async function rpcOpenPosition(p){
   if(!currentUser) return { ok:false, error:'no-user' };
   const s = symbols[p.symIdx];
   try {
     const { data, error } = await supabaseClient.rpc('rpc_open_position', {
       p_sym_name: s.name, p_type: p.type, p_vol: p.vol, p_entry: p.entry, p_unit: s.unit,
-      p_tp: p.tp ?? null, p_sl: p.sl ?? null
+      p_tp: p.tp ?? null, p_sl: p.sl ?? null,
+      p_cat: s.cat, p_request_id: newRequestId()
     });
     if(error){ console.warn('rpc_open_position failed:', error); return { ok:false, error }; }
     const row = Array.isArray(data) ? data[0] : data;
@@ -2440,11 +2423,12 @@ async function rpcOpenPosition(p){
     return { ok:false, error: err };
   }
 }
-async function rpcCloseLot(positionId, sellVol, exitPrice){
+async function rpcCloseLot(positionId, sellVol, exitPrice, cat){
   if(!currentUser) return { ok:false, error:'no-user' };
   try {
     const { data, error } = await supabaseClient.rpc('rpc_close_lot', {
-      p_position_id: positionId, p_sell_vol: sellVol, p_exit_price: exitPrice
+      p_position_id: positionId, p_sell_vol: sellVol, p_exit_price: exitPrice,
+      p_cat: cat ?? null, p_request_id: newRequestId()
     });
     if(error){ console.warn('rpc_close_lot failed:', error); return { ok:false, error }; }
     const row = Array.isArray(data) ? data[0] : data;
@@ -2504,7 +2488,7 @@ async function loadUserFinancials(){
     balance = 0;
   }
   try {
-    const { data: posRows } = await supabaseClient.from('positions').select('*').eq('user_id', currentUser.id).order('opened_at', { ascending:true });
+    const { data: posRows } = await supabaseClient.from('positions').select('*').eq('user_id', currentUser.id).order('opened_at', { ascending:true }).limit(500);
     positions = (posRows||[]).map(r=>{
       const symName = r.sym_name ?? r.symbol;
       const symIdx = symbolIndexByName[symName];
@@ -2525,16 +2509,24 @@ async function loadUserFinancials(){
     positions = [];
   }
   try {
-    const { data: closedRows } = await supabaseClient.from('closed_trades').select('*').eq('user_id', currentUser.id).order('closed_at', { ascending:false }).limit(300);
+    const { data: closedRows, count } = await supabaseClient.from('closed_trades')
+      .select('*', { count:'exact' })
+      .eq('user_id', currentUser.id)
+      .order('closed_at', { ascending:false })
+      .range(0, CLOSED_TRADES_PAGE_SIZE-1);
     closedTrades = (closedRows||[]).map(r=>{
       const symName = r.sym_name ?? r.symbol;
       const symIdx = symbolIndexByName[symName];
       if(symIdx===undefined) return null;
       return { symIdx, type:'buy', vol:Number(r.vol), entry:Number(r.entry), exit:Number(r.exit), pnl:Number(r.pnl), closedAt:new Date(r.closed_at) };
     }).filter(Boolean);
+    closedTradesOffset = closedTrades.length;
+    closedTradesHasMore = (count||0) > closedTradesOffset;
   } catch(err){
     console.warn('could not load closed trades (check closed_trades table/RLS):', err);
     closedTrades = [];
+    closedTradesOffset = 0;
+    closedTradesHasMore = false;
   }
   renderPositions();
   renderHistory();
@@ -2679,7 +2671,7 @@ async function sellPosition(){
       // the position, records the closed trade, and credits the balance —
       // all recomputed on the server from the lot's own stored entry price,
       // never trusted blindly from the client.
-      const closeResult = await rpcCloseLot(lot.id, sellVol, exitPrice);
+      const closeResult = await rpcCloseLot(lot.id, sellVol, exitPrice, s.cat);
       if(!closeResult.ok){ hadFailure = true; break; }
 
       const tr = { symIdx: lot.symIdx, type:'buy', vol: closeResult.soldVol, entry: lot.entry, exit: exitPrice, pnl: closeResult.pnl, closedAt: new Date() };
@@ -2725,7 +2717,7 @@ async function closePosition(id, reason){
 
   // Same safe server-side function as a partial sell, just for the whole
   // remaining volume of this one position.
-  const closeResult = await rpcCloseLot(p.id, p.vol, exitPrice);
+  const closeResult = await rpcCloseLot(p.id, p.vol, exitPrice, s.cat);
   if(!closeResult.ok){
     showOrderMsg(t('persistFailedRetryMsg'));
     return;
@@ -2903,17 +2895,19 @@ function scheduleImmediateLiveCheck(s){
 }
 async function fetchLiveCryptoPrices(){
   try {
-    const pairs = Object.values(binanceSymbolMap);
-    const res = await fetch(`https://api.binance.com/api/v3/ticker/price?symbols=${encodeURIComponent(JSON.stringify(pairs))}`);
-    if(!res.ok) throw new Error('binance http '+res.status);
+    const candidates = symbols.filter(s=> s.cat==='crypto' && binanceSymbolMap[s.name] && !s.anchorPrice);
+    if(candidates.length===0){ liveDataStatus.crypto='idle'; return; }
+    const pairs = candidates.map(s=>binanceSymbolMap[s.name]);
+    const names = candidates.map(s=>s.name);
+    const res = await fetch(`${CRYPTO_PROXY_URL}?source=binance&pairs=${encodeURIComponent(pairs.join(','))}&names=${encodeURIComponent(names.join('||'))}`);
+    if(!res.ok) throw new Error('crypto proxy (binance) http '+res.status);
     const data = await res.json();
-    const lookup = {};
-    (Array.isArray(data)?data:[]).forEach(d=>{ lookup[d.symbol] = parseFloat(d.price); });
+    const lookup = data.prices || {};
     let updated = 0;
-    symbols.forEach(s=>{
+    candidates.forEach(s=>{
       const pair = binanceSymbolMap[s.name];
       const real = pair && lookup[pair];
-      if(real && !isNaN(real) && !s.anchorPrice){
+      if(real && !isNaN(real)){
         s.price = real;
         s.step = Math.max(real*0.0006, real>=1 ? 0.01 : 0.0001);
         s.baseStep = s.step;
@@ -2932,7 +2926,6 @@ async function fetchLiveCryptoPrices(){
   }
 }
 fetchLiveCryptoPrices();
-setInterval(fetchLiveCryptoPrices, 45000);
 
 // Same idea as fetchLiveTwelveData: only poll favorited/active coins so we stay
 // well inside CoinGecko's free keyless rate limit (5-15 calls/min).
@@ -2941,10 +2934,12 @@ async function fetchLiveCoinGeckoPrices(){
   try {
     const candidates = symbols.filter((s,i)=> (s.fav || i===activeSymbolIdx) && coingeckoIdMap[s.name] && !s.anchorPrice);
     if(candidates.length===0){ liveDataStatus.coingecko='idle'; return; }
-    const ids = [...new Set(candidates.map(s=>coingeckoIdMap[s.name]))];
-    const res = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${encodeURIComponent(ids.join(','))}&vs_currencies=usd`);
-    if(!res.ok) throw new Error('coingecko http '+res.status);
-    const data = await res.json();
+    const ids = candidates.map(s=>coingeckoIdMap[s.name]);
+    const names = candidates.map(s=>s.name);
+    const res = await fetch(`${CRYPTO_PROXY_URL}?source=coingecko&ids=${encodeURIComponent(ids.join(','))}&names=${encodeURIComponent(names.join('||'))}`);
+    if(!res.ok) throw new Error('crypto proxy (coingecko) http '+res.status);
+    const payload = await res.json();
+    const data = payload.prices || {};
     let updated = 0;
     candidates.forEach(s=>{
       const id = coingeckoIdMap[s.name];
@@ -2968,10 +2963,8 @@ async function fetchLiveCoinGeckoPrices(){
   }
 }
 fetchLiveCoinGeckoPrices();
-setInterval(fetchLiveCoinGeckoPrices, 90000);
 
-/* ============ Live real prices: forex/commodities/indices/global stocks (Twelve Data) ============ */
-const twelveDataKey = 'bbb9c61657c74aed97c8695b9457cbf3';
+/* ============ Live real prices: forex/commodities/indices/global stocks (Twelve Data, via server-side proxy — see twelvedata-proxy edge function; the API key no longer lives in this file) ============ */
 const tdSymbolMap = {
   // forex — pass-through, Twelve Data uses the same "XXX/YYY" format
   'EUR/USD':'EUR/USD','GBP/USD':'GBP/USD','USD/GBP':'USD/GBP','EUR/JPY':'EUR/JPY','USD/JPY':'USD/JPY',
@@ -3063,14 +3056,17 @@ const saudiTickerMap = {
   // National Gas -> National Gas & Industrialization Co / GASCO (2080)
 };
 const SAUDI_PROXY_URL = 'https://lgisoufikwcaraclzdvr.supabase.co/functions/v1/saudi-stock-proxy';
+const TWELVEDATA_PROXY_URL = 'https://lgisoufikwcaraclzdvr.supabase.co/functions/v1/twelvedata-proxy';
+const CRYPTO_PROXY_URL = 'https://lgisoufikwcaraclzdvr.supabase.co/functions/v1/crypto-price-proxy';
 liveDataStatus.twelveData = 'connecting';
 async function fetchLiveTwelveData(){
   try {
     const candidates = symbols.filter((s,i)=> (s.fav || i===activeSymbolIdx) && tdSymbolMap[s.name] && !s.anchorPrice);
     if(candidates.length===0){ liveDataStatus.twelveData='idle'; return; }
-    const tdSymbols = [...new Set(candidates.map(s=>tdSymbolMap[s.name]))];
-    const res = await fetch(`https://api.twelvedata.com/price?symbol=${encodeURIComponent(tdSymbols.join(','))}&apikey=${twelveDataKey}`);
-    if(!res.ok) throw new Error('twelvedata http '+res.status);
+    const tdSymbols = candidates.map(s=>tdSymbolMap[s.name]);
+    const names = candidates.map(s=>s.name);
+    const res = await fetch(`${TWELVEDATA_PROXY_URL}?symbol=${encodeURIComponent(tdSymbols.join(','))}&names=${encodeURIComponent(names.join('||'))}`);
+    if(!res.ok) throw new Error('twelvedata proxy http '+res.status);
     const data = await res.json();
     // response shape: {price:"..."} for a single symbol, or {"AAPL":{price:"..."}, ...} for multiple
     const lookup = tdSymbols.length===1 ? {[tdSymbols[0]]: data} : data;
@@ -3102,7 +3098,6 @@ async function fetchLiveTwelveData(){
   }
 }
 fetchLiveTwelveData();
-setInterval(fetchLiveTwelveData, 90000);
 
 liveDataStatus.saudi = 'connecting';
 async function fetchLiveSaudiPrices(){
@@ -3112,8 +3107,9 @@ async function fetchLiveSaudiPrices(){
     // need to wait for the user to open/favorite a symbol before its price goes live.
     const candidates = symbols.filter(s=> s.cat==='saudi' && saudiTickerMap[s.name] && !s.anchorPrice);
     if(candidates.length===0){ liveDataStatus.saudi='idle'; return; }
-    const tickers = [...new Set(candidates.map(s=>saudiTickerMap[s.name]))];
-    const res = await fetch(`${SAUDI_PROXY_URL}?tickers=${encodeURIComponent(tickers.join(','))}`);
+    const tickers = candidates.map(s=>saudiTickerMap[s.name]);
+    const names = candidates.map(s=>s.name);
+    const res = await fetch(`${SAUDI_PROXY_URL}?tickers=${encodeURIComponent(tickers.join(','))}&names=${encodeURIComponent(names.join('||'))}`);
     if(!res.ok) throw new Error('saudi proxy http '+res.status);
     const data = await res.json();
     const prices = data.prices || {};
@@ -3144,7 +3140,6 @@ async function fetchLiveSaudiPrices(){
   }
 }
 fetchLiveSaudiPrices();
-setInterval(fetchLiveSaudiPrices, 90000);
 
 /* ============ Live real prices: international indices (Yahoo Finance, free, no key) ============ */
 liveDataStatus.yahooIndices = 'connecting';
@@ -3152,8 +3147,9 @@ async function fetchLiveYahooIndices(){
   try {
     const candidates = symbols.filter((s,i)=> (s.fav || i===activeSymbolIdx) && s.cat==='indices' && yahooIndexMap[s.name] && !s.anchorPrice);
     if(candidates.length===0){ liveDataStatus.yahooIndices='idle'; return; }
-    const syms = [...new Set(candidates.map(s=>yahooIndexMap[s.name]))];
-    const res = await fetch(`${YAHOO_PROXY_URL}?symbols=${encodeURIComponent(syms.join(','))}`);
+    const syms = candidates.map(s=>yahooIndexMap[s.name]);
+    const names = candidates.map(s=>s.name);
+    const res = await fetch(`${YAHOO_PROXY_URL}?symbols=${encodeURIComponent(syms.join(','))}&names=${encodeURIComponent(names.join('||'))}`);
     if(!res.ok) throw new Error('yahoo index proxy http '+res.status);
     const data = await res.json();
     const prices = data.prices || {};
@@ -3183,7 +3179,6 @@ async function fetchLiveYahooIndices(){
   }
 }
 fetchLiveYahooIndices();
-setInterval(fetchLiveYahooIndices, 90000);
 
 /* ============ Live real prices: commodity futures (Yahoo Finance, free, no key) ============ */
 liveDataStatus.yahooCommodities = 'connecting';
@@ -3191,8 +3186,9 @@ async function fetchLiveYahooCommodities(){
   try {
     const candidates = symbols.filter((s,i)=> (s.fav || i===activeSymbolIdx) && s.cat==='commodities' && yahooCommodityMap[s.name] && !s.anchorPrice);
     if(candidates.length===0){ liveDataStatus.yahooCommodities='idle'; return; }
-    const syms = [...new Set(candidates.map(s=>yahooCommodityMap[s.name]))];
-    const res = await fetch(`${YAHOO_PROXY_URL}?symbols=${encodeURIComponent(syms.join(','))}`);
+    const syms = candidates.map(s=>yahooCommodityMap[s.name]);
+    const names = candidates.map(s=>s.name);
+    const res = await fetch(`${YAHOO_PROXY_URL}?symbols=${encodeURIComponent(syms.join(','))}&names=${encodeURIComponent(names.join('||'))}`);
     if(!res.ok) throw new Error('yahoo commodity proxy http '+res.status);
     const data = await res.json();
     const prices = data.prices || {};
@@ -3221,7 +3217,6 @@ async function fetchLiveYahooCommodities(){
   }
 }
 fetchLiveYahooCommodities();
-setInterval(fetchLiveYahooCommodities, 90000);
 
 /* ============ Live real prices: European "global" stocks (Yahoo Finance, free, no key) ============ */
 liveDataStatus.yahooGlobal = 'connecting';
@@ -3229,8 +3224,9 @@ async function fetchLiveYahooGlobal(){
   try {
     const candidates = symbols.filter((s,i)=> (s.fav || i===activeSymbolIdx) && s.cat==='global' && yahooGlobalMap[s.name] && !s.anchorPrice);
     if(candidates.length===0){ liveDataStatus.yahooGlobal='idle'; return; }
-    const syms = [...new Set(candidates.map(s=>yahooGlobalMap[s.name]))];
-    const res = await fetch(`${YAHOO_PROXY_URL}?symbols=${encodeURIComponent(syms.join(','))}`);
+    const syms = candidates.map(s=>yahooGlobalMap[s.name]);
+    const names = candidates.map(s=>s.name);
+    const res = await fetch(`${YAHOO_PROXY_URL}?symbols=${encodeURIComponent(syms.join(','))}&names=${encodeURIComponent(names.join('||'))}`);
     if(!res.ok) throw new Error('yahoo global proxy http '+res.status);
     const data = await res.json();
     const prices = data.prices || {};
@@ -3259,7 +3255,6 @@ async function fetchLiveYahooGlobal(){
   }
 }
 fetchLiveYahooGlobal();
-setInterval(fetchLiveYahooGlobal, 90000);
 
 /* ============ Live real prices: forex (Frankfurter, api.frankfurter.dev, free, no key, reliable CORS) ============ */
 async function fetchLiveForexRates(){
@@ -3301,7 +3296,40 @@ async function fetchLiveForexRates(){
   }
 }
 fetchLiveForexRates();
-setInterval(fetchLiveForexRates, 60000);
+
+/* ============ Unified poll scheduler ============ */
+// Replaces 9 independent setIntervals (one per price source) with a single
+// clock that checks every 5s which tasks are due, based on each task's own
+// cadence. Cuts down on concurrent JS timers for battery/perf on mobile,
+// without changing how often any individual source actually gets polled.
+const pollTasks = [
+  { fn: loadStockPriceOverrides, intervalMs: 60000, lastRun: 0 },
+  { fn: fetchLiveCryptoPrices,    intervalMs: 45000, lastRun: 0 },
+  { fn: fetchLiveCoinGeckoPrices, intervalMs: 90000, lastRun: 0 },
+  { fn: fetchLiveTwelveData,      intervalMs: 90000, lastRun: 0 },
+  { fn: fetchLiveSaudiPrices,     intervalMs: 90000, lastRun: 0 },
+  { fn: fetchLiveYahooIndices,    intervalMs: 90000, lastRun: 0 },
+  { fn: fetchLiveYahooCommodities,intervalMs: 90000, lastRun: 0 },
+  { fn: fetchLiveYahooGlobal,     intervalMs: 90000, lastRun: 0 },
+  { fn: fetchLiveForexRates,      intervalMs: 60000, lastRun: 0 },
+];
+function runDuePollTasks(){
+  if(document.hidden) return; // tab in background — skip this tick, save battery/bandwidth
+  const now = Date.now();
+  pollTasks.forEach(task=>{
+    if(now - task.lastRun >= task.intervalMs){
+      task.lastRun = now;
+      try { task.fn(); } catch(err){ console.warn('poll task failed:', err); }
+    }
+  });
+}
+document.addEventListener('visibilitychange', ()=>{
+  if(!document.hidden) runDuePollTasks(); // catch up right away when the tab comes back
+});
+// mark the tasks we already ran immediately above as just-run, so the
+// scheduler's first tick doesn't re-fire them a few seconds later
+pollTasks.forEach(task=>{ task.lastRun = Date.now(); });
+setInterval(runDuePollTasks, 5000);
 
 /* ============ Live tick loop ============ */
 function jitterSpread(baseStep){
@@ -3372,7 +3400,7 @@ function renderHistory(){
     historyBody.innerHTML = `<tr class="empty-row"><td colspan="7">${t('noHistory')}</td></tr>`;
     return;
   }
-  historyBody.innerHTML = closedTrades.map(tr=>{
+  const rows = closedTrades.map(tr=>{
     const s = symbols[tr.symIdx];
     const pnlClass = tr.pnl>=0?'pnl-pos':'pnl-neg';
     const time = tr.closedAt.toLocaleTimeString(lang==='en'?'en-US':'ar-EG',{hour:'2-digit',minute:'2-digit'});
@@ -3386,6 +3414,16 @@ function renderHistory(){
       <td>${time}</td>
     </tr>`;
   }).join('');
+  const loadMoreRow = closedTradesHasMore
+    ? `<tr><td colspan="7" style="text-align:center;padding:10px;"><button class="modal-btn ghost" id="loadMoreHistoryBtn" style="width:auto;padding:8px 20px;">${t('loadMoreBtn')}</button></td></tr>`
+    : '';
+  historyBody.innerHTML = rows + loadMoreRow;
+  const loadMoreBtn = document.getElementById('loadMoreHistoryBtn');
+  if(loadMoreBtn) loadMoreBtn.onclick = ()=>{
+    loadMoreBtn.disabled = true;
+    loadMoreBtn.textContent = t('authLoadingWord');
+    loadMoreClosedTrades();
+  };
 }
 
 /* ============ Report tab ============ */
@@ -4647,9 +4685,9 @@ async function loadPendingSubscriptions(){
       const dateLabel = new Date(r.created_at).toLocaleString('ar-EG');
       return `
         <div class="plan-card" style="text-align:right;">
-          <div class="plan-name">${r.email}</div>
+          <div class="plan-name">${escHtml(r.email)}</div>
           <div class="plan-desc">الباقة: ${planLabel} — ${priceLabel}</div>
-          <div class="plan-desc">الهاتف: ${r.phone || '—'} · ${dateLabel}</div>
+          <div class="plan-desc">الهاتف: ${escHtml(r.phone) || '—'} · ${dateLabel}</div>
           <button class="modal-btn primary" style="margin-top:8px;" data-approve-idx="${i}">✅ تفعيل الطلب ده</button>
         </div>`;
     }).join('');
@@ -4696,9 +4734,9 @@ async function loadPendingCashback(){
       const dateLabel = new Date(r.created_at).toLocaleString('ar-EG');
       return `
         <div class="plan-card" style="text-align:right;">
-          <div class="plan-name">${r.email}</div>
+          <div class="plan-name">${escHtml(r.email)}</div>
           <div class="plan-desc">المبلغ المطلوب إيداعه: ${fmt(r.amount,2)} ${t(r.currency==='USD'?'currencyUSD':'currencySAR')}</div>
-          <div class="plan-desc">الهاتف: ${r.phone || '—'} · ${dateLabel}</div>
+          <div class="plan-desc">الهاتف: ${escHtml(r.phone) || '—'} · ${dateLabel}</div>
           <button class="modal-btn primary" style="margin-top:8px;" data-contacted-idx="${i}">📞 تواصلت مع العميل</button>
         </div>`;
     }).join('');
@@ -4739,9 +4777,9 @@ async function loadPendingDeposits(){
       const dateLabel = new Date(r.created_at).toLocaleString('ar-EG');
       return `
         <div class="plan-card" style="text-align:right;">
-          <div class="plan-name">${r.email}</div>
+          <div class="plan-name">${escHtml(r.email)}</div>
           <div class="plan-desc">المبلغ المطلوب إضافته: ${fmt(r.amount,2)} ${t(r.currency==='USD'?'currencyUSD':'currencySAR')}</div>
-          <div class="plan-desc">الهاتف: ${r.phone || '—'} · ${dateLabel}</div>
+          <div class="plan-desc">الهاتف: ${escHtml(r.phone) || '—'} · ${dateLabel}</div>
           <button class="modal-btn primary" style="margin-top:8px;" data-deposit-contacted-idx="${i}">📞 تواصلت مع العميل</button>
         </div>`;
     }).join('');
@@ -4782,11 +4820,11 @@ async function loadPendingWithdrawals(){
       const dateLabel = new Date(r.created_at).toLocaleString('ar-EG');
       return `
         <div class="plan-card" style="text-align:right;">
-          <div class="plan-name">${r.email}</div>
+          <div class="plan-name">${escHtml(r.email)}</div>
           <div class="plan-desc">المبلغ المطلوب سحبه: ${fmt(r.amount,2)} ${t(r.currency==='USD'?'currencyUSD':'currencySAR')}</div>
-          <div class="plan-desc">البنك: ${r.bank_name || '—'} · رقم الحساب: ${r.account_number || '—'}</div>
-          <div class="plan-desc">الآيبان: ${r.iban || '—'}</div>
-          <div class="plan-desc">الهاتف: ${r.phone || '—'} · ${dateLabel}</div>
+          <div class="plan-desc">البنك: ${escHtml(r.bank_name) || '—'} · رقم الحساب: ${escHtml(r.account_number) || '—'}</div>
+          <div class="plan-desc">الآيبان: ${escHtml(r.iban) || '—'}</div>
+          <div class="plan-desc">الهاتف: ${escHtml(r.phone) || '—'} · ${dateLabel}</div>
           <button class="modal-btn primary" style="margin-top:8px;" data-withdrawal-contacted-idx="${i}">📞 تواصلت مع العميل</button>
         </div>`;
     }).join('');
@@ -4827,9 +4865,9 @@ async function loadPendingSupportRequests(){
       const dateLabel = new Date(r.created_at).toLocaleString('ar-EG');
       return `
         <div class="plan-card" style="text-align:right;">
-          <div class="plan-name">${r.email}</div>
-          <div class="plan-desc"><b>${r.subject || 'استفسار عام'}</b></div>
-          <div class="plan-desc" style="white-space:pre-wrap;">${r.message}</div>
+          <div class="plan-name">${escHtml(r.email)}</div>
+          <div class="plan-desc"><b>${escHtml(r.subject) || 'استفسار عام'}</b></div>
+          <div class="plan-desc" style="white-space:pre-wrap;">${escHtml(r.message)}</div>
           <div class="plan-desc">${dateLabel}</div>
           <button class="modal-btn primary" style="margin-top:8px;" data-support-resolve-idx="${i}">✅ تم الرد — إغلاق الطلب</button>
         </div>`;
@@ -4873,9 +4911,9 @@ async function loadPendingBricsReservations(){
       const dateLabel = new Date(r.created_at).toLocaleString('ar-EG');
       return `
         <div class="plan-card" style="text-align:right;">
-          <div class="plan-name">${r.email}</div>
+          <div class="plan-name">${escHtml(r.email)}</div>
           <div class="plan-desc">الكمية المطلوب حجزها: ${fmt(r.quantity,2)}</div>
-          <div class="plan-desc">الهاتف: ${r.phone || '—'} · ${dateLabel}</div>
+          <div class="plan-desc">الهاتف: ${escHtml(r.phone) || '—'} · ${dateLabel}</div>
           <div style="display:flex;gap:8px;margin-top:8px;">
             <button class="modal-btn primary" style="flex:1;" data-brics-approve-idx="${i}">✅ موافقة</button>
             <button class="modal-btn ghost" style="flex:1;" data-brics-reject-idx="${i}">❌ رفض</button>
@@ -5983,9 +6021,9 @@ function paintAdminDashUsers(){
       <tbody>
         ${rows.map(u=>{
           const letter = (u.email||'?').charAt(0).toUpperCase();
-          return `<tr data-userrow="${u.email}" style="cursor:pointer;">
+          return `<tr data-userrow="${escHtml(u.email)}" style="cursor:pointer;">
             <td><div class="admin-avatar">${letter}</div></td>
-            <td class="name-cell">${u.email}</td>
+            <td class="name-cell">${escHtml(u.email)}</td>
             <td style="color:var(--buy);">${fmt(u.balance,2)}</td>
             <td>${u.plan_count}</td>
             <td>${u.frozen ? `<span class="src-badge dly" style="color:var(--sell);background:var(--sell-dim);">🔒 مجمّد</span>` : ''}</td>
@@ -5994,7 +6032,7 @@ function paintAdminDashUsers(){
       </tbody>
     </table></div>
     <div style="font-size:11.5px;color:var(--text-dim);margin-top:6px;">اضغط على أي عميل لعرض تفاصيله الكاملة (الرصيد، الباقات، الصفقات، وتجميد الحساب).</div>
-    <datalist id="platformEmailsList">${adminDashUsersList.map(u=>`<option value="${u.email}"></option>`).join('')}</datalist>
+    <datalist id="platformEmailsList">${adminDashUsersList.map(u=>`<option value="${escHtml(u.email)}"></option>`).join('')}</datalist>
 
     <div class="admin-section-title">💳 تعديل الرصيد</div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;">
@@ -6307,12 +6345,12 @@ function paintAdminUserDetail(d){
     : `<span style="font-size:12px;color:var(--text-dim);">لا توجد باقات مفعّلة</span>`;
   const posHTML = d.open_positions && d.open_positions.length
     ? `<div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>السهم</th><th>النوع</th><th>الحجم</th><th>الدخول</th><th></th></tr></thead><tbody>
-        ${d.open_positions.map(p=>`<tr><td class="name-cell">${p.symbol}</td><td><span class="type-badge ${p.type}">${t(p.type)}</span></td><td>${fmt(p.vol,2)}</td><td>${fmt(p.entry,2)}</td><td style="white-space:nowrap;"><button class="close-btn" data-admin-edit-pos="${p.id}" data-admin-edit-symbol="${p.symbol}" data-admin-edit-entry="${p.entry}" title="تعديل سعر الدخول" style="margin-inline-end:4px;">✎</button><button class="close-btn" data-admin-close-pos="${p.id}" data-admin-close-symbol="${p.symbol}" data-admin-close-vol="${p.vol}" title="إغلاق يدوي">✕</button></td></tr>`).join('')}
+        ${d.open_positions.map(p=>`<tr><td class="name-cell">${escHtml(p.symbol)}</td><td><span class="type-badge ${p.type}">${t(p.type)}</span></td><td>${fmt(p.vol,2)}</td><td>${fmt(p.entry,2)}</td><td style="white-space:nowrap;"><button class="close-btn" data-admin-edit-pos="${p.id}" data-admin-edit-symbol="${escHtml(p.symbol)}" data-admin-edit-entry="${p.entry}" title="تعديل سعر الدخول" style="margin-inline-end:4px;">✎</button><button class="close-btn" data-admin-close-pos="${p.id}" data-admin-close-symbol="${escHtml(p.symbol)}" data-admin-close-vol="${p.vol}" title="إغلاق يدوي">✕</button></td></tr>`).join('')}
        </tbody></table></div>`
     : `<div style="font-size:12px;color:var(--text-dim);">لا توجد صفقات مفتوحة</div>`;
   const tradesHTML = d.closed_trades && d.closed_trades.length
     ? `<div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>السهم</th><th>الحجم</th><th>الدخول</th><th>الخروج</th><th>الربح/الخسارة</th></tr></thead><tbody>
-        ${d.closed_trades.map(tr=>`<tr><td class="name-cell">${tr.symbol}</td><td>${fmt(tr.vol,2)}</td><td>${fmt(tr.entry,2)}</td><td>${fmt(tr.exit,2)}</td><td style="color:${tr.pnl>=0?'var(--buy)':'var(--sell)'};">${fmt(tr.pnl,2)}</td></tr>`).join('')}
+        ${d.closed_trades.map(tr=>`<tr><td class="name-cell">${escHtml(tr.symbol)}</td><td>${fmt(tr.vol,2)}</td><td>${fmt(tr.entry,2)}</td><td>${fmt(tr.exit,2)}</td><td style="color:${tr.pnl>=0?'var(--buy)':'var(--sell)'};">${fmt(tr.pnl,2)}</td></tr>`).join('')}
        </tbody></table></div>`
     : `<div style="font-size:12px;color:var(--text-dim);">لا يوجد صفقات مقفولة بعد</div>`;
   const pd = d.personal_details || {};
@@ -6323,30 +6361,30 @@ function paintAdminUserDetail(d){
   const personalDetailsHTML = !pd.profile_completed
     ? `<div style="font-size:12px;color:var(--text-dim);">العميل لسه ما استكملش بياناته الشخصية.</div>`
     : `<div>
-        ${pdRow('بلد الميلاد', pd.birth_country_name)}
-        ${pdRow('مدينة الميلاد', pd.birth_city)}
-        ${pdRow('المدينة الحالية', pd.city)}
-        ${pdRow('الحي', pd.district)}
-        ${pdRow('الشارع', pd.street)}
-        ${pdRow('الرمز البريدي', pd.postal_code)}
-        ${pdRow('رقم المبنى', pd.building_number)}
-        ${pdRow('رقم الوحدة', pd.unit_number)}
-        ${pdRow('الرقم القومي/الهوية', pd.national_id)}
-        ${pdRow('الحالة الاجتماعية', maritalLabel(pd.marital_status))}
-        ${pdRow('المستوى التعليمي', eduLabel(pd.education_level))}
-        ${pdRow('واتساب', pd.whatsapp_number ? `+${pd.whatsapp_dial_code||''} ${pd.whatsapp_number}` : '—')}
-        ${pdRow('رقم إضافي', pd.alt_number ? `+${pd.alt_dial_code||''} ${pd.alt_number}` : '—')}
+        ${pdRow('بلد الميلاد', escHtml(pd.birth_country_name))}
+        ${pdRow('مدينة الميلاد', escHtml(pd.birth_city))}
+        ${pdRow('المدينة الحالية', escHtml(pd.city))}
+        ${pdRow('الحي', escHtml(pd.district))}
+        ${pdRow('الشارع', escHtml(pd.street))}
+        ${pdRow('الرمز البريدي', escHtml(pd.postal_code))}
+        ${pdRow('رقم المبنى', escHtml(pd.building_number))}
+        ${pdRow('رقم الوحدة', escHtml(pd.unit_number))}
+        ${pdRow('الرقم القومي/الهوية', escHtml(pd.national_id))}
+        ${pdRow('الحالة الاجتماعية', escHtml(maritalLabel(pd.marital_status)))}
+        ${pdRow('المستوى التعليمي', escHtml(eduLabel(pd.education_level)))}
+        ${pdRow('واتساب', pd.whatsapp_number ? `+${escHtml(pd.whatsapp_dial_code)||''} ${escHtml(pd.whatsapp_number)}` : '—')}
+        ${pdRow('رقم إضافي', pd.alt_number ? `+${escHtml(pd.alt_dial_code)||''} ${escHtml(pd.alt_number)}` : '—')}
       </div>`;
 
   bodyEl.innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
       <div>
-        <div style="font-family:var(--font-display);font-weight:800;font-size:16px;">${d.email}</div>
+        <div style="font-family:var(--font-display);font-weight:800;font-size:16px;">${escHtml(d.email)}</div>
         <div style="font-size:11.5px;color:var(--text-dim);">عضو منذ ${joined}</div>
       </div>
       <button class="admin-dash-close" onclick="closeAdminUserDetail()">✕</button>
     </div>
-    ${d.frozen ? `<div style="background:var(--sell-dim);color:var(--sell);border-radius:8px;padding:8px 12px;font-size:12.5px;margin-bottom:12px;">🔒 هذا الحساب مجمّد حاليًا${d.frozen_reason?' — '+d.frozen_reason:''}</div>` : ''}
+    ${d.frozen ? `<div style="background:var(--sell-dim);color:var(--sell);border-radius:8px;padding:8px 12px;font-size:12.5px;margin-bottom:12px;">🔒 هذا الحساب مجمّد حاليًا${d.frozen_reason?' — '+escHtml(d.frozen_reason):''}</div>` : ''}
     <div class="admin-stat-grid" style="grid-template-columns:1fr 1fr;">
       <div class="admin-stat-card"><span class="num" style="color:var(--buy);">${fmt(d.balance,2)}</span><span class="lbl">الرصيد الحالي</span></div>
       <div class="admin-stat-card"><span class="num">${(d.plans||[]).length}</span><span class="lbl">باقات مفعّلة</span></div>
@@ -6393,8 +6431,8 @@ function paintAdminUserDetail(d){
    (it already computes proceeds/PnL, credits the wallet, and logs the action
    server-side — nothing to duplicate here). */
 function openAdminManualCloseModal(email, positionId, symbol, vol){
-  openModal(`✕ إغلاق يدوي — ${symbol}`, `
-    <div class="modal-note">هتقفل صفقة "${symbol}" الخاصة بـ ${email} بالكامل. الكمية: ${fmt(vol,2)}.</div>
+  openModal(`✕ إغلاق يدوي — ${escHtml(symbol)}`, `
+    <div class="modal-note">هتقفل صفقة "${escHtml(symbol)}" الخاصة بـ ${escHtml(email)} بالكامل. الكمية: ${fmt(vol,2)}.</div>
     <label style="font-size:12.5px;font-weight:600;display:block;margin-top:10px;">سعر الإغلاق</label>
     <input type="number" id="adminCloseExitPrice" step="0.00001" placeholder="سعر التنفيذ" style="width:100%;padding:9px;border-radius:8px;border:1px solid var(--border);margin-top:6px;box-sizing:border-box;">
     <div id="adminCloseMsg" style="margin-top:10px;font-size:12.5px;"></div>
@@ -6427,7 +6465,7 @@ function openAdminManualCloseModal(email, positionId, symbol, vol){
    it rather than close it). Calls admin_edit_position_entry, which notifies
    the client and logs the change server-side. */
 function openAdminEditEntryModal(email, positionId, symbol, currentEntry){
-  openModal(`✎ تعديل سعر الدخول — ${symbol}`, `
+  openModal(`✎ تعديل سعر الدخول — ${escHtml(symbol)}`, `
     <div class="modal-note">السعر الحالي المسجّل: ${fmt(currentEntry,5)}</div>
     <label style="font-size:12.5px;font-weight:600;display:block;margin-top:10px;">السعر الصحيح</label>
     <input type="number" id="adminEditEntryPrice" step="0.00001" value="${currentEntry}" style="width:100%;padding:9px;border-radius:8px;border:1px solid var(--border);margin-top:6px;box-sizing:border-box;">
@@ -6515,7 +6553,7 @@ function openAdminModal(){
     if(error){ console.warn('could not load user list for admin email picker:', error); return; }
     const listEl = document.getElementById('platformEmailsList');
     if(listEl && data){
-      listEl.innerHTML = data.map(r=>`<option value="${r.email}"></option>`).join('');
+      listEl.innerHTML = data.map(r=>`<option value="${escHtml(r.email)}"></option>`).join('');
     }
   });
   document.getElementById('adminPlanSubmitBtn').onclick = async ()=>{

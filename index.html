@@ -1224,6 +1224,17 @@ const translations = {
 "marginLevel": "نسبة الاستثمار",
 "ownedLabel": "الكمية المملوكة",
 "insufficientBalanceMsg": "رصيدك غير كافٍ لشراء هذه الكمية.",
+"rateLimitMsg": "عدد كبير من العمليات خلال وقت قصير. من فضلك انتظر لحظات وحاول مرة أخرى.",
+"mfaVerifyTitle": "التحقق بخطوتين",
+"mfaVerifyIntro": "هذا حساب أدمن ومحمي بالتحقق بخطوتين. افتح تطبيق المصادقة (مثل Google Authenticator) وأدخل الكود المكوّن من 6 أرقام.",
+"mfaCodeLabel": "كود التحقق",
+"mfaVerifySubmitBtn": "تأكيد الدخول",
+"mfaLostDeviceBtn": "فقدت جهازي، تسجيل الخروج",
+"mfaInvalidCodeMsg": "الكود غير صحيح أو منتهي الصلاحية، حاول مرة أخرى.",
+"mfaEnrollTitle": "تأمين حساب الأدمن بالتحقق بخطوتين",
+"mfaEnrollIntro": "لحماية صلاحياتك كأدمن، لازم تفعّل التحقق بخطوتين الآن. افتح تطبيق مصادقة (Google Authenticator أو Authy) وامسح الكود، أو أدخل المفتاح يدويًا، ثم اكتب الكود الظاهر في التطبيق.",
+"mfaEnrollSubmitBtn": "تفعيل والدخول",
+"mfaEnrollFailedMsg": "تعذّر بدء إعداد التحقق بخطوتين. حاول مرة أخرى أو تواصل مع الدعم الفني.",
 "insufficientQtyMsg": "لا تمتلك كمية كافية من هذه الأداة لبيعها.",
 "invalidVolumeMsg": "أدخل حجم صحيح أكبر من صفر.",
 "volUnitLot": "الحجم (لوت)",
@@ -1593,6 +1604,17 @@ const translations = {
 "marginLevel": "Invested Ratio",
 "ownedLabel": "You own",
 "insufficientBalanceMsg": "Your balance isn't enough to buy this amount.",
+"rateLimitMsg": "Too many actions in a short time. Please wait a moment and try again.",
+"mfaVerifyTitle": "Two-Factor Verification",
+"mfaVerifyIntro": "This is an admin account protected by two-factor authentication. Open your authenticator app (e.g. Google Authenticator) and enter the 6-digit code.",
+"mfaCodeLabel": "Verification code",
+"mfaVerifySubmitBtn": "Confirm & Sign In",
+"mfaLostDeviceBtn": "Lost my device, sign out",
+"mfaInvalidCodeMsg": "That code is invalid or expired. Please try again.",
+"mfaEnrollTitle": "Secure Your Admin Account with 2FA",
+"mfaEnrollIntro": "To protect your admin privileges, you must enable two-factor authentication now. Open an authenticator app (Google Authenticator or Authy) and scan the code, or enter the key manually, then type the code it shows.",
+"mfaEnrollSubmitBtn": "Enable & Continue",
+"mfaEnrollFailedMsg": "Couldn't start two-factor setup. Please try again or contact support.",
 "insufficientQtyMsg": "You don't own enough of this instrument to sell that much.",
 "invalidVolumeMsg": "Enter a valid volume greater than zero.",
 "volUnitLot": "Volume (Lot)",
@@ -2438,6 +2460,13 @@ async function rpcCloseLot(positionId, sellVol, exitPrice, cat){
     return { ok:false, error: err };
   }
 }
+// Turns a raw Postgres/RPC error into a friendly, translated message for
+// known cases (rate limiting, etc.); falls back to a generic message.
+function friendlyTradeErrorMsg(error){
+  const raw = (error && (error.message || error.details || String(error))) || '';
+  if(raw.includes('rate_limit_exceeded')) return t('rateLimitMsg');
+  return t('persistFailedMsg');
+}
 /* ---- Favorites (starred instruments), per logged-in user ---- */
 async function persistFavoriteAdd(symName){
   if(!currentUser) return { ok:false, error:'no-user' };
@@ -2620,7 +2649,7 @@ async function buyPosition(){
     // really enough before touching anything, so this can't be spoofed.
     const posResult = await rpcOpenPosition(posRecord);
     if(!posResult.ok){
-      showOrderMsg(t('persistFailedMsg'));
+      showOrderMsg(friendlyTradeErrorMsg(posResult.error));
       return;
     }
     posRecord.id = posResult.id;
@@ -2662,6 +2691,7 @@ async function sellPosition(){
   let remaining = vol;
   let totalPnl = 0;
   let hadFailure = false;
+  let lastCloseError = null;
   try {
     for(const lot of lots){
       if(remaining <= EPS) break;
@@ -2672,7 +2702,7 @@ async function sellPosition(){
       // all recomputed on the server from the lot's own stored entry price,
       // never trusted blindly from the client.
       const closeResult = await rpcCloseLot(lot.id, sellVol, exitPrice, s.cat);
-      if(!closeResult.ok){ hadFailure = true; break; }
+      if(!closeResult.ok){ hadFailure = true; lastCloseError = closeResult.error; break; }
 
       const tr = { symIdx: lot.symIdx, type:'buy', vol: closeResult.soldVol, entry: lot.entry, exit: exitPrice, pnl: closeResult.pnl, closedAt: new Date() };
       closedTrades.unshift(tr);
@@ -2691,7 +2721,7 @@ async function sellPosition(){
     updateTradeButtonsState();
 
     if(hadFailure){
-      showOrderMsg(t('persistFailedRetryMsg'));
+      showOrderMsg(friendlyTradeErrorMsg(lastCloseError));
     }
     if(totalPnl !== 0 || remaining <= EPS){
       pushNotification(
@@ -2719,7 +2749,7 @@ async function closePosition(id, reason){
   // remaining volume of this one position.
   const closeResult = await rpcCloseLot(p.id, p.vol, exitPrice, s.cat);
   if(!closeResult.ok){
-    showOrderMsg(t('persistFailedRetryMsg'));
+    showOrderMsg(friendlyTradeErrorMsg(closeResult.error));
     return;
   }
   const pnl = closeResult.pnl;
@@ -3780,6 +3810,15 @@ function openModal(title, bodyHTML){
     <div class="modal-body">${bodyHTML}</div>`;
   document.getElementById('modalCloseBtn').onclick = closeModal;
   modalOverlay.classList.add('open');
+  modalLocked = false; // reset on every open; call lockModal() right after for a non-dismissible modal
+}
+// Used for security-critical modals (e.g. the mandatory admin 2FA gate)
+// that must not be dismissible via the ✕ button or by clicking the backdrop.
+let modalLocked = false;
+function lockModal(){
+  modalLocked = true;
+  const closeBtn = document.getElementById('modalCloseBtn');
+  if(closeBtn) closeBtn.style.display = 'none';
 }
 // Let Enter submit the modal's primary action from any single-line input,
 // instead of requiring a mouse click — same as most normal websites.
@@ -3810,7 +3849,7 @@ document.addEventListener('click', (e)=>{
   `);
   document.getElementById('infoCloseBtn').onclick = closeModal;
 });
-modalOverlay.addEventListener('click', (e)=>{ if(e.target===modalOverlay) closeModal(); });
+modalOverlay.addEventListener('click', (e)=>{ if(e.target===modalOverlay && !modalLocked) closeModal(); });
 
 /* ---- Real auth: Login / Signup / Verify gate (Supabase) ---- */
 function openLoginModal(){
@@ -4337,6 +4376,140 @@ async function onAuthSuccess(user){
   // — frozen-check skip, full market access, polling — agrees with each
   // other and with the admin dashboard's own access check.
   await checkIsAdmin();
+  if(currentIsAdmin){
+    // Admin accounts hold dangerous powers (edit balances/prices, freeze
+    // accounts, approve withdrawals), so every admin session must clear a
+    // TOTP two-factor check before anything else loads. If the admin has no
+    // factor enrolled yet, they're walked through enrollment right now
+    // instead of being let in unprotected.
+    const cleared = await enforceAdminMfaGate(user);
+    if(!cleared) return; // a blocking modal is now showing; it calls completeAuthSuccess(user) itself once verified
+  }
+  await completeAuthSuccess(user);
+}
+// Returns true if this admin session already satisfies (or doesn't need)
+// 2FA. Returns false if a blocking enroll/verify modal was shown instead —
+// in that case the modal itself calls completeAuthSuccess(user) once the
+// admin clears it, so the normal login flow must stop here for now.
+async function enforceAdminMfaGate(user){
+  try {
+    const { data: aal, error: aalErr } = await supabaseClient.auth.mfa.getAuthenticatorAssuranceLevel();
+    if(aalErr){ console.warn('mfa AAL check failed, letting admin in to avoid a hard lockout:', aalErr); return true; }
+    if(aal.nextLevel === 'aal2' && aal.currentLevel !== 'aal2'){
+      openAdminMfaVerifyModal(user);
+      return false;
+    }
+    if(aal.nextLevel === 'aal1'){
+      // No TOTP factor enrolled yet for this admin account — enrollment is mandatory.
+      openAdminMfaEnrollModal(user, true);
+      return false;
+    }
+    return true;
+  } catch(err){
+    console.warn('enforceAdminMfaGate failed, letting admin in to avoid a hard lockout:', err);
+    return true;
+  }
+}
+function openAdminMfaVerifyModal(user){
+  openModal(t('mfaVerifyTitle'), `
+    <div class="modal-note">${t('mfaVerifyIntro')}</div>
+    <div class="form-row">
+      <span class="field-label">${t('mfaCodeLabel')}</span>
+      <input class="field-input" style="text-align:center;letter-spacing:4px;font-family:var(--font-mono);font-size:18px;" id="mfaVerifyCodeInput" type="text" inputmode="numeric" maxlength="6" placeholder="000000">
+    </div>
+    <div id="mfaVerifyError" style="color:var(--sell);font-size:12.5px;display:none;"></div>
+    <button class="modal-btn primary" id="mfaVerifySubmitBtn">${t('mfaVerifySubmitBtn')}</button>
+    <button class="modal-btn ghost" id="mfaVerifyLogoutBtn">${t('mfaLostDeviceBtn')}</button>
+  `);
+  lockModal();
+  const codeInput = document.getElementById('mfaVerifyCodeInput');
+  const errEl = document.getElementById('mfaVerifyError');
+  codeInput.focus();
+  document.getElementById('mfaVerifyLogoutBtn').onclick = async ()=>{ await authSignOut(); location.reload(); };
+  document.getElementById('mfaVerifySubmitBtn').onclick = async ()=>{
+    const code = (codeInput.value||'').trim();
+    if(!/^\d{6}$/.test(code)){ errEl.textContent = t('mfaInvalidCodeMsg'); errEl.style.display='block'; return; }
+    errEl.style.display = 'none';
+    try {
+      const { data: factors, error: factorsErr } = await supabaseClient.auth.mfa.listFactors();
+      if(factorsErr) throw factorsErr;
+      const factor = (factors.totp || [])[0];
+      if(!factor) throw new Error('no-factor');
+      const { data: challenge, error: challengeErr } = await supabaseClient.auth.mfa.challenge({ factorId: factor.id });
+      if(challengeErr) throw challengeErr;
+      const { error: verifyErr } = await supabaseClient.auth.mfa.verify({ factorId: factor.id, challengeId: challenge.id, code });
+      if(verifyErr) throw verifyErr;
+      closeModal();
+      await completeAuthSuccess(user);
+    } catch(err){
+      console.warn('mfa verify failed:', err);
+      errEl.textContent = t('mfaInvalidCodeMsg');
+      errEl.style.display = 'block';
+    }
+  };
+}
+function openAdminMfaEnrollModal(user, mandatory){
+  openModal(t('mfaEnrollTitle'), `<div class="modal-note">${t('loadingMsg')}</div>`);
+  if(mandatory) lockModal();
+  (async ()=>{
+    try {
+      const { data, error } = await supabaseClient.auth.mfa.enroll({ factorType: 'totp' });
+      if(error) throw error;
+      const factorId = data.id;
+      const qrSvg = data.totp.qr_code;
+      const secret = data.totp.secret;
+      openModal(t('mfaEnrollTitle'), `
+        <div class="modal-note">${t('mfaEnrollIntro')}</div>
+        <div style="background:#fff;border-radius:12px;padding:12px;display:flex;justify-content:center;margin:10px 0;">${qrSvg}</div>
+        <div class="modal-note" style="text-align:center;font-family:var(--font-mono);letter-spacing:1px;user-select:all;">${secret}</div>
+        <div class="form-row">
+          <span class="field-label">${t('mfaCodeLabel')}</span>
+          <input class="field-input" style="text-align:center;letter-spacing:4px;font-family:var(--font-mono);font-size:18px;" id="mfaEnrollCodeInput" type="text" inputmode="numeric" maxlength="6" placeholder="000000">
+        </div>
+        <div id="mfaEnrollError" style="color:var(--sell);font-size:12.5px;display:none;"></div>
+        <button class="modal-btn primary" id="mfaEnrollSubmitBtn">${t('mfaEnrollSubmitBtn')}</button>
+        ${mandatory ? `<button class="modal-btn ghost" id="mfaEnrollLogoutBtn">${t('mfaLostDeviceBtn')}</button>` : `<button class="modal-btn ghost" id="mfaEnrollCancelBtn">${t('noBtn')}</button>`}
+      `);
+      if(mandatory){
+        lockModal();
+        document.getElementById('mfaEnrollLogoutBtn').onclick = async ()=>{
+          await supabaseClient.auth.mfa.unenroll({ factorId }).catch(()=>{});
+          await authSignOut();
+          location.reload();
+        };
+      } else {
+        document.getElementById('mfaEnrollCancelBtn').onclick = async ()=>{
+          await supabaseClient.auth.mfa.unenroll({ factorId }).catch(()=>{});
+          closeModal();
+        };
+      }
+      const codeInput = document.getElementById('mfaEnrollCodeInput');
+      const errEl = document.getElementById('mfaEnrollError');
+      codeInput.focus();
+      document.getElementById('mfaEnrollSubmitBtn').onclick = async ()=>{
+        const code = (codeInput.value||'').trim();
+        if(!/^\d{6}$/.test(code)){ errEl.textContent = t('mfaInvalidCodeMsg'); errEl.style.display='block'; return; }
+        errEl.style.display = 'none';
+        try {
+          const { data: challenge, error: challengeErr } = await supabaseClient.auth.mfa.challenge({ factorId });
+          if(challengeErr) throw challengeErr;
+          const { error: verifyErr } = await supabaseClient.auth.mfa.verify({ factorId, challengeId: challenge.id, code });
+          if(verifyErr) throw verifyErr;
+          closeModal();
+          if(mandatory) await completeAuthSuccess(user);
+        } catch(err){
+          console.warn('mfa enroll verify failed:', err);
+          errEl.textContent = t('mfaInvalidCodeMsg');
+          errEl.style.display = 'block';
+        }
+      };
+    } catch(err){
+      console.warn('mfa enroll failed:', err);
+      openModal(t('mfaEnrollTitle'), `<div class="modal-note" style="color:var(--sell);">${t('mfaEnrollFailedMsg')}</div>`);
+    }
+  })();
+}
+async function completeAuthSuccess(user){
   // Frozen-account check runs before anything else loads — a frozen customer
   // never sees the trading app, just a blocking message. Skipped for the
   // admin account itself (admins can't freeze themselves out). The session
@@ -5203,6 +5376,8 @@ const ADMIN_DASH_TABS = [
   { key:'users',    label:'اللوحة',        icon:'👥' },
   { key:'broadcast',label:'إشعار جماعي',   icon:'📣' },
   { key:'log',      label:'السجل',         icon:'📜' },
+  { key:'security', label:'الأمان',        icon:'🔐' },
+  { key:'tests',    label:'الاختبارات',    icon:'🧪' },
 ];
 // Fire-and-forget audit logging — never blocks or fails the admin's actual
 // action if logging itself has a hiccup.
@@ -5295,6 +5470,8 @@ function switchAdminDashTab(key){
   else if(key==='users') renderAdminDashUsers();
   else if(key==='broadcast') renderAdminDashBroadcast();
   else if(key==='log') renderAdminDashLog();
+  else if(key==='security') renderAdminDashSecurity();
+  else if(key==='tests') renderAdminDashTests();
 }
 
 /* ---- Tab: نظرة عامة (Dashboard overview) ----
@@ -6195,6 +6372,79 @@ function paintAdminDashUsers(){
 
 /* ---- Tab: السجل (audit log) ---- */
 let adminDashLogSubTab = 'admin';
+// Was referenced by switchAdminDashTab but never implemented (a leftover
+// from before this file's last session hit its limit) — that's what was
+// throwing "renderAdminDashTests is not defined" and hanging on loading.
+// Reuses the existing live-data diagnostics (previously only shown in a
+// popup from Settings) as real content for the "Tests" admin tab.
+function renderAdminDashTests(){
+  const body = document.getElementById('adminDashBody');
+  if(!body || adminDashActiveTab!=='tests') return;
+  const labels = { crypto:'كريبتو (Binance)', coingecko:'كريبتو (CoinGecko)', twelveData:'أسهم عالمية/فوركس (Twelve Data)', forex:'فوركس (Frankfurter)', saudi:'أسهم سعودية (Yahoo)', yahooIndices:'مؤشرات عالمية (Yahoo)', yahooCommodities:'سلع (Yahoo)', yahooGlobal:'أسهم أوروبية (Yahoo)' };
+  const rows = Object.keys(labels).map(key=>{
+    const status = liveDataStatus[key] || 'لم يتصل بعد';
+    const color = status==='live' ? 'var(--buy)' : status==='error' ? 'var(--sell)' : 'var(--text-dim)';
+    const err = window.__liveErrors[key];
+    const details = key==='twelveData' ? window.__liveErrors.twelveDataDetails : null;
+    return `<div class="switch-row"><span>${labels[key]}</span><span style="color:${color};font-family:var(--font-mono);font-size:12px;">${status}</span></div>` +
+      (err ? `<div style="font-size:11px;color:var(--sell);padding:0 0 8px;word-break:break-all;">${err}</div>` : '') +
+      (details && details.length ? `<div style="font-size:10.5px;color:var(--sell);padding:0 0 8px;word-break:break-all;">رموز لم تُرجع سعرًا صحيحًا:<br>${details.join('<br>')}</div>` : '');
+  }).join('');
+  body.innerHTML = `
+    <div class="admin-section-title">🧪 حالة الاتصال بمصادر الأسعار الحية</div>
+    <div class="modal-note">حالة كل مصدر بيانات لحظيًا، وآخر خطأ إن وُجد.</div>
+    ${rows}
+    <button class="modal-btn ghost" id="testsRefreshBtn" style="margin-top:10px;">🔄 تحديث</button>
+  `;
+  const refreshBtn = document.getElementById('testsRefreshBtn');
+  if(refreshBtn) refreshBtn.onclick = renderAdminDashTests;
+}
+async function renderAdminDashSecurity(){
+  const body = document.getElementById('adminDashBody');
+  if(!body || adminDashActiveTab!=='security') return;
+  body.innerHTML = `<div class="modal-note">${t('loadingMsg')}</div>`;
+  let factors = [];
+  try {
+    const { data, error } = await supabaseClient.auth.mfa.listFactors();
+    if(error) throw error;
+    factors = data.totp || [];
+  } catch(err){
+    body.innerHTML = `<div class="modal-note" style="color:var(--sell);">تعذّر تحميل بيانات الأمان: ${err.message||'حاول مرة أخرى'}</div>`;
+    return;
+  }
+  const verified = factors.filter(f=> f.status==='verified');
+  body.innerHTML = `
+    <div class="admin-section-title">🔐 التحقق بخطوتين (2FA)</div>
+    <div class="plan-card" style="text-align:right;">
+      ${verified.length ? `
+        <div class="plan-name" style="color:var(--buy);">✅ مفعّل على هذا الحساب</div>
+        <div class="plan-desc">أي دخول جديد لحسابك كأدمن هيطلب كود من تطبيق المصادقة بتاعك.</div>
+        <button class="modal-btn ghost" id="mfaResetBtn" style="margin-top:10px;color:var(--sell);">🔁 إعادة تعيين (لو غيّرت جهازك)</button>
+      ` : `
+        <div class="plan-name" style="color:var(--sell);">⚠️ غير مفعّل</div>
+        <div class="plan-desc">هتُطالَب بتفعيله في أول دخول قادم لحسابك.</div>
+      `}
+    </div>
+    <div class="modal-note" style="margin-top:10px;">ملحوظة: إعادة التعيين هتشيل الحماية الحالية مؤقتًا، وهتتطالب بإعداد جهاز جديد فور ما تسجّل دخول تاني.</div>
+  `;
+  const resetBtn = document.getElementById('mfaResetBtn');
+  if(resetBtn){
+    resetBtn.onclick = async ()=>{
+      if(!confirm('متأكد إنك عايز تلغي التحقق بخطوتين الحالي؟ هتحتاج تعمل إعداد جديد فور ما تسجّل دخول تاني.')) return;
+      resetBtn.disabled = true;
+      try {
+        for(const f of verified){
+          await supabaseClient.auth.mfa.unenroll({ factorId: f.id });
+        }
+        logAdmin('reset_own_mfa', currentUser?.email||null, null);
+        renderAdminDashSecurity();
+      } catch(err){
+        resetBtn.disabled = false;
+        alert('تعذّر إعادة التعيين: ' + (err.message||'حاول مرة أخرى'));
+      }
+    };
+  }
+}
 function renderAdminDashLog(){
   const body = document.getElementById('adminDashBody');
   if(!body || adminDashActiveTab!=='log') return;
@@ -6315,7 +6565,7 @@ function ensureAdminUserDetailOverlay(){
     </div>
   `;
   document.body.appendChild(el);
-  el.addEventListener('click', (e)=>{ if(e.target===el) closeAdminUserDetail(); });
+  el.addEventListener('click', (e)=>{ if(e.target===el || e.target.closest('.admin-detail-close-btn')) closeAdminUserDetail(); });
   return el;
 }
 function closeAdminUserDetail(){
@@ -6333,7 +6583,7 @@ async function openAdminUserDetail(email){
     paintAdminUserDetail(data);
   } catch(err){
     bodyEl.innerHTML = `<div class="modal-note" style="color:var(--sell);">تعذّر تحميل بيانات العميل: ${err.message||'حاول مرة أخرى'}</div>
-      <button class="modal-btn ghost" onclick="closeAdminUserDetail()" style="margin-top:10px;">إغلاق</button>`;
+      <button class="modal-btn ghost admin-detail-close-btn" style="margin-top:10px;">إغلاق</button>`;
   }
 }
 function paintAdminUserDetail(d){
@@ -6382,7 +6632,7 @@ function paintAdminUserDetail(d){
         <div style="font-family:var(--font-display);font-weight:800;font-size:16px;">${escHtml(d.email)}</div>
         <div style="font-size:11.5px;color:var(--text-dim);">عضو منذ ${joined}</div>
       </div>
-      <button class="admin-dash-close" onclick="closeAdminUserDetail()">✕</button>
+      <button class="admin-dash-close admin-detail-close-btn">✕</button>
     </div>
     ${d.frozen ? `<div style="background:var(--sell-dim);color:var(--sell);border-radius:8px;padding:8px 12px;font-size:12.5px;margin-bottom:12px;">🔒 هذا الحساب مجمّد حاليًا${d.frozen_reason?' — '+escHtml(d.frozen_reason):''}</div>` : ''}
     <div class="admin-stat-grid" style="grid-template-columns:1fr 1fr;">

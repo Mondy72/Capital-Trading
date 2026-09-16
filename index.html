@@ -752,17 +752,26 @@ const SUPABASE_URL = 'https://lgisoufikwcaraclzdvr.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_khTPBoSluWtOnlc6oM_64Q_mVjkp_BU';
 const WEB3FORMS_KEY = '2e7d56fa-adb5-4267-aeb2-4b646f961a0e'; // gets subscription requests emailed to you
 const WEB3FORMS_KEY_2 = '07b75156-e424-42da-9224-3345e280c675'; // second inbox — same notifications, different email
-// Sends the same notification payload to both linked inboxes. Each key is tied to its own
-// email on web3forms.com, so this is just two independent free submissions, not a paid CC.
+const NOTIFY_ADMIN_URL = 'https://lgisoufikwcaraclzdvr.supabase.co/functions/v1/notify-admin';
+// Sends the same notification payload to both linked Web3Forms inboxes AND our own
+// Resend-based edge function (primary channel — Web3Forms silently blocks submissions
+// from domains it hasn't manually approved, so it's kept only as a free redundant backup).
 async function notifyWeb3Forms(payload){
   const keys = [WEB3FORMS_KEY, WEB3FORMS_KEY_2];
-  await Promise.all(keys.map(key =>
-    fetch('https://api.web3forms.com/submit', {
+  await Promise.all([
+    ...keys.map(key =>
+      fetch('https://api.web3forms.com/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...payload, access_key: key })
+      }).catch(err => console.warn('web3forms delivery failed for one inbox:', err))
+    ),
+    fetch(NOTIFY_ADMIN_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...payload, access_key: key })
-    }).catch(err => console.warn('web3forms delivery failed for one inbox:', err))
-  ));
+      body: JSON.stringify(payload)
+    }).catch(err => console.warn('resend admin notification failed:', err))
+  ]);
 }
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 let currentUser = null;
@@ -2671,6 +2680,63 @@ async function buyPosition(){
   }
 }
 
+// Picks which open lots to draw down for a sell, oldest-first (FIFO) — pulled
+// out on its own so it's both used here and covered by a self-test, instead
+// of only existing inline inside sellPosition where nothing could verify it.
+function selectFifoLots(allPositions, symIdx, vol){
+  const lots = allPositions.filter(p=>p.symIdx===symIdx).sort((a,b)=> a.openedAt - b.openedAt);
+  const plan = [];
+  let remaining = vol;
+  for(const lot of lots){
+    if(remaining <= EPS) break;
+    const sellVol = Math.min(lot.vol, remaining);
+    plan.push({ lot, sellVol });
+    remaining = round6(remaining - sellVol);
+  }
+  return plan;
+}
+// Self-test for selectFifoLots (same row shape as admin_run_financial_self_tests
+// on the server: {test_name, passed, details}) — this logic only exists in the
+// client, so it can't be covered by the server-side SQL self-tests.
+function runClientFifoSelfTests(){
+  const mk = (id, vol, daysAgo)=> ({ id, symIdx:0, vol, openedAt: new Date(Date.now() - daysAgo*86400000) });
+  const rows = [];
+  const push = (name, cond, details)=> rows.push({ test_name:name, passed: !!cond, details });
+
+  // scenario 1: three lots, oldest first, partial fill of the second lot
+  const lots1 = [ mk('c',2,1), mk('a',5,3), mk('b',3,2) ]; // scrambled input order on purpose
+  const plan1 = selectFifoLots(lots1, 0, 6);
+  push('ترتيب الاستهلاك: الأقدم أولًا (FIFO) بغض النظر عن ترتيب الإدخال',
+    plan1.length===2 && plan1[0].lot.id==='a' && plan1[1].lot.id==='b',
+    'المتوقع a ثم b، الناتج ' + plan1.map(x=>x.lot.id).join(','));
+  push('الكمية المسحوبة من كل صفقة صحيحة (5 كاملة من a، 1 جزئية من b)',
+    plan1[0] && plan1[0].sellVol===5 && plan1[1] && plan1[1].sellVol===1,
+    'المتوقع 5 ثم 1، الناتج ' + plan1.map(x=>x.sellVol).join(','));
+  push('الصفقة الأحدث (c) متتلمسش طالما اللي قبلها كانوا كفاية',
+    !plan1.some(x=>x.lot.id==='c'), 'c لازم يكون غير موجود في الخطة');
+
+  // scenario 2: sell the exact total across all lots
+  const lots2 = [ mk('x',4,3), mk('y',4,2), mk('z',2,1) ];
+  const plan2 = selectFifoLots(lots2, 0, 10);
+  const total2 = plan2.reduce((a,p)=>a+p.sellVol,0);
+  push('بيع الكمية الإجمالية بالظبط يستهلك كل الصفقات كاملة',
+    plan2.length===3 && Math.abs(total2-10)<EPS, 'المتوقع 10 موزعة على 3 صفقات، الناتج ' + total2 + ' على ' + plan2.length);
+
+  // scenario 3: sell less than the oldest lot alone — nothing else touched
+  const lots3 = [ mk('p',5,5), mk('q',5,1) ];
+  const plan3 = selectFifoLots(lots3, 0, 2);
+  push('بيع كمية أقل من أقدم صفقة يسيب باقي الصفقات من غير ما يلمسها',
+    plan3.length===1 && plan3[0].lot.id==='p' && plan3[0].sellVol===2,
+    'المتوقع صفقة واحدة (p) بكمية 2، الناتج ' + JSON.stringify(plan3.map(x=>({id:x.lot.id,v:x.sellVol}))));
+
+  // scenario 4: lots of a different symbol must never be touched
+  const lots4 = [ { id:'other', symIdx:1, vol:100, openedAt:new Date() }, mk('same',5,1) ];
+  const plan4 = selectFifoLots(lots4, 0, 3);
+  push('صفقات رمز تاني (symIdx مختلف) متتضمنش في الخطة خالص',
+    plan4.length===1 && plan4[0].lot.id==='same', 'المفروض يظهر بس same');
+
+  return rows;
+}
 async function sellPosition(){
   showOrderMsg('');
   const s = symbols[activeSymbolIdx];
@@ -2687,15 +2753,14 @@ async function sellPosition(){
   const sellBtnEl = document.getElementById('sellBtn');
   if(sellBtnEl) sellBtnEl.disabled = true;
   const exitPrice = bidPrice(s);
-  const lots = positions.filter(p=>p.symIdx===activeSymbolIdx).sort((a,b)=> a.openedAt - b.openedAt);
+  const plan = selectFifoLots(positions, activeSymbolIdx, vol);
   let remaining = vol;
   let totalPnl = 0;
   let hadFailure = false;
   let lastCloseError = null;
   try {
-    for(const lot of lots){
+    for(const { lot, sellVol } of plan){
       if(remaining <= EPS) break;
-      const sellVol = Math.min(lot.vol, remaining);
 
       // One safe server-side call does all of it atomically: shrinks/deletes
       // the position, records the closed trade, and credits the balance —
@@ -6372,29 +6437,58 @@ function paintAdminDashUsers(){
 
 /* ---- Tab: السجل (audit log) ---- */
 let adminDashLogSubTab = 'admin';
-// Was referenced by switchAdminDashTab but never implemented (a leftover
-// from before this file's last session hit its limit) — that's what was
-// throwing "renderAdminDashTests is not defined" and hanging on loading.
-// Reuses the existing live-data diagnostics (previously only shown in a
-// popup from Settings) as real content for the "Tests" admin tab.
-function renderAdminDashTests(){
+function testRowsHTML(rows){
+  return rows.map(r=>`
+    <div class="switch-row">
+      <span>${r.passed ? '✅' : '❌'} ${escHtml(r.test_name)}</span>
+    </div>
+    <div style="font-size:11px;color:${r.passed?'var(--text-dim)':'var(--sell)'};padding:0 0 8px;">${escHtml(r.details||'')}</div>
+  `).join('');
+}
+async function renderAdminDashTests(){
   const body = document.getElementById('adminDashBody');
   if(!body || adminDashActiveTab!=='tests') return;
+  body.innerHTML = `<div class="modal-note">جاري تشغيل الاختبارات...</div>`;
+
+  let financialRows = [];
+  let financialError = null;
+  try {
+    const { data, error } = await supabaseClient.rpc('admin_run_financial_self_tests');
+    if(error) throw error;
+    financialRows = data || [];
+  } catch(err){
+    financialError = err.message || String(err);
+  }
+
+  const fifoRows = runClientFifoSelfTests();
+  const financialPassCount = financialRows.filter(r=>r.passed).length;
+  const fifoPassCount = fifoRows.filter(r=>r.passed).length;
+
   const labels = { crypto:'كريبتو (Binance)', coingecko:'كريبتو (CoinGecko)', twelveData:'أسهم عالمية/فوركس (Twelve Data)', forex:'فوركس (Frankfurter)', saudi:'أسهم سعودية (Yahoo)', yahooIndices:'مؤشرات عالمية (Yahoo)', yahooCommodities:'سلع (Yahoo)', yahooGlobal:'أسهم أوروبية (Yahoo)' };
-  const rows = Object.keys(labels).map(key=>{
+  const liveRows = Object.keys(labels).map(key=>{
     const status = liveDataStatus[key] || 'لم يتصل بعد';
     const color = status==='live' ? 'var(--buy)' : status==='error' ? 'var(--sell)' : 'var(--text-dim)';
     const err = window.__liveErrors[key];
     const details = key==='twelveData' ? window.__liveErrors.twelveDataDetails : null;
     return `<div class="switch-row"><span>${labels[key]}</span><span style="color:${color};font-family:var(--font-mono);font-size:12px;">${status}</span></div>` +
-      (err ? `<div style="font-size:11px;color:var(--sell);padding:0 0 8px;word-break:break-all;">${err}</div>` : '') +
-      (details && details.length ? `<div style="font-size:10.5px;color:var(--sell);padding:0 0 8px;word-break:break-all;">رموز لم تُرجع سعرًا صحيحًا:<br>${details.join('<br>')}</div>` : '');
+      (err ? `<div style="font-size:11px;color:var(--sell);padding:0 0 8px;word-break:break-all;">${escHtml(err)}</div>` : '') +
+      (details && details.length ? `<div style="font-size:10.5px;color:var(--sell);padding:0 0 8px;word-break:break-all;">رموز لم تُرجع سعرًا صحيحًا:<br>${details.map(escHtml).join('<br>')}</div>` : '');
   }).join('');
+
   body.innerHTML = `
-    <div class="admin-section-title">🧪 حالة الاتصال بمصادر الأسعار الحية</div>
+    <div class="admin-section-title">🧪 اختبارات منطق الحسابات المالية (سيرفر)</div>
+    ${financialError
+      ? `<div class="modal-note" style="color:var(--sell);">تعذّر تشغيل الاختبارات: ${escHtml(financialError)}</div>`
+      : `<div class="modal-note">${financialPassCount} من ${financialRows.length} اختبار ناجح</div>${testRowsHTML(financialRows)}`}
+
+    <div class="admin-section-title" style="margin-top:16px;">🧪 اختبارات ترتيب بيع الصفقات (FIFO — متصفح)</div>
+    <div class="modal-note">${fifoPassCount} من ${fifoRows.length} اختبار ناجح</div>
+    ${testRowsHTML(fifoRows)}
+
+    <div class="admin-section-title" style="margin-top:16px;">📡 حالة الاتصال بمصادر الأسعار الحية</div>
     <div class="modal-note">حالة كل مصدر بيانات لحظيًا، وآخر خطأ إن وُجد.</div>
-    ${rows}
-    <button class="modal-btn ghost" id="testsRefreshBtn" style="margin-top:10px;">🔄 تحديث</button>
+    ${liveRows}
+    <button class="modal-btn ghost" id="testsRefreshBtn" style="margin-top:10px;">🔄 إعادة تشغيل كل الاختبارات</button>
   `;
   const refreshBtn = document.getElementById('testsRefreshBtn');
   if(refreshBtn) refreshBtn.onclick = renderAdminDashTests;

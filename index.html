@@ -1172,12 +1172,6 @@ function snapVolume(raw, cfg){
   return round6(v);
 }
 let positions = [];
-// The demo/practice account is a purely local sandbox — it never touches the
-// server, always starts empty, and is what's shown whenever accountMode is
-// 'demo'. Switching back to 'real' re-loads the actual wallet from the DB.
-let demoBalance = 0;
-let demoPositions = [];
-let demoClosedTrades = [];
 let posIdCounter = 1;
 function newPosId(){ return (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : 'p'+(posIdCounter++)+'-'+Date.now(); }
 let balance = 0;
@@ -1268,7 +1262,7 @@ const translations = {
 "menuLangLabel": "🌐 English",
 "accounts": "الحسابات",
 "demoAccount": "الحساب التجريبي",
-"demoBalanceLbl": "رصيدك يبدأ من صفر — فعّل اشتراكك للوصول الكامل",
+"demoBalanceLbl": "رصيدك حقيقي من أول لحظة — التداول يتطلب الاشتراك في باقة",
 "realAccount": "الحساب المميز",
 "requiresLogin": "يتطلب التحقق من الهوية",
 "loginTitle": "التحقق لفتح الحساب المميز",
@@ -1400,7 +1394,7 @@ const translations = {
 "settingsSavedDetail": "تم تحديث تفضيلاتك بنجاح",
 "portfolioTitle": "المحفظة",
 "closedPositionsLbl": "الصفقات المقفولة",
-"portfolioNote": "الإيداع والسحب متاحين فقط للحسابات المميزة الموثّقة.",
+"portfolioNote": "الإيداع والسحب متاحان لأي حساب. التداول الفعلي (الشراء) متاح فقط بعد الاشتراك في باقة.",
 "depositBtn": "إيداع أموال",
 "subscribeBtn": "خطط الاشتراك",
 "subscriptionModalTitle": "خطط اشتراك كابيتال برو",
@@ -1508,6 +1502,8 @@ const translations = {
 "depositSuccessNotifTitle": "تم إرسال طلب إضافة رصيد",
 "depositPartialFailMsg": "استلمنا طلبك عبر البريد الإلكتروني، لكن حدثت مشكلة في حفظه بالنظام. سيتواصل معك فريق كابيتال برو أيضًا، وإذا لم تصلك أي أخبار خلال يوم فيُرجى التواصل معنا مباشرة.",
 "depositNeedsPlanTitle": "يجب الاشتراك في باقة أولًا",
+"noPlanBuyTitle": "يجب الاشتراك في باقة أولًا",
+"noPlanBuyMsg": "التداول الحقيقي متاح فقط بعد الاشتراك في إحدى الباقات. رصيدك محفوظ ويمكنك إضافة رصيد في أي وقت، لكن الشراء يتطلب اشتراكًا فعّالًا أولًا.",
 "depositNeedsPlanMsg": "إضافة الرصيد متاحة فقط للحسابات المميزة. اشترك في إحدى الباقات أولًا حتى تتمكن من إضافة رصيد وبدء التداول الحقيقي.",
 "withdrawBtn": "طلب سحب",
 "withdrawTitle": "طلب سحب أموال",
@@ -1648,7 +1644,7 @@ const translations = {
 "menuLangLabel": "🌐 العربية",
 "accounts": "Accounts",
 "demoAccount": "Demo Account",
-"demoBalanceLbl": "Balance starts at zero — activate a subscription for full access",
+"demoBalanceLbl": "Your balance is real from day one — trading requires a plan subscription",
 "realAccount": "Premium Account",
 "requiresLogin": "Requires verification",
 "loginTitle": "Verify to unlock Premium",
@@ -1780,7 +1776,7 @@ const translations = {
 "settingsSavedDetail": "Your preferences were updated successfully",
 "portfolioTitle": "Portfolio",
 "closedPositionsLbl": "Closed Trades",
-"portfolioNote": "Deposits and withdrawals are available for verified Premium accounts only.",
+"portfolioNote": "Deposits and withdrawals are available for any account. Real trading (buying) requires a plan subscription.",
 "depositBtn": "Deposit Funds",
 "subscribeBtn": "Subscription Plans",
 "subscriptionModalTitle": "Capital Pro Subscription Plans",
@@ -1888,6 +1884,8 @@ const translations = {
 "depositSuccessNotifTitle": "Add-balance request sent",
 "depositPartialFailMsg": "We received your request by email, but there was a problem saving it in the system. The Capital Pro team will still reach out, but if you don't hear back within a day, please contact us directly.",
 "depositNeedsPlanTitle": "Subscribe to a plan first",
+"noPlanBuyTitle": "Subscribe to a plan first",
+"noPlanBuyMsg": "Real trading is only available after subscribing to a plan. Your balance is safe and you can add funds anytime, but buying requires an active subscription first.",
 "depositNeedsPlanMsg": "Adding balance is only available for premium accounts. Subscribe to any plan first so you can add balance and start real trading.",
 "withdrawBtn": "Withdraw",
 "withdrawTitle": "Withdrawal Request",
@@ -2572,43 +2570,28 @@ async function loadUserFinancials(){
   updateSummary();
 }
 
-/* Loads whichever financial state matches the account mode: the real wallet
-   from the DB for 'real', or the local empty demo sandbox for 'demo'. This is
-   what keeps the two portfolios from ever bleeding into each other. */
+/* Always loads the real wallet from the DB. Historically this branched on
+   accountMode and showed a purely local, always-empty "demo" sandbox to
+   unsubscribed users — deposits now work regardless of subscription status,
+   so every user's real balance/positions load from day one; accountMode is
+   now only a status flag (subscribed or not) that gates buying/withdrawing. */
 async function loadFinancialsForMode(mode){
-  if(mode === 'real'){
-    await loadUserFinancials();
-  } else {
-    balance = demoBalance;
-    positions = demoPositions;
-    closedTrades = demoClosedTrades;
-    renderPositions();
-    renderHistory();
-    renderReport();
-    updateSummary();
-  }
-}
-
-/* Switches between the demo sandbox and the real wallet, re-rendering
-   everything so open positions/balance never carry over between the two. */
-async function switchToMode(mode){
-  if(mode === accountMode) return;
-  if(accountMode === 'demo'){
-    // keep whatever was in the demo sandbox (should normally still be empty,
-    // since buying is blocked at zero demo balance) so nothing is lost if the
-    // user flips back and forth in the same session.
-    demoBalance = balance; demoPositions = positions; demoClosedTrades = closedTrades;
-  }
-  accountMode = mode;
-  await loadFinancialsForMode(mode);
-  const chip = document.getElementById('accountChipLabel');
-  if(chip) chip.textContent = t(mode==='real' ? 'accountReal' : 'accountDemo');
-  updateTradeButtonsState();
+  await loadUserFinancials();
 }
 
 async function buyPosition(){
   showOrderMsg('');
   const s = symbols[activeSymbolIdx];
+  if(accountMode!=='real'){
+    openModal(t('noPlanBuyTitle'), `
+      <div class="modal-note">${t('noPlanBuyMsg')}</div>
+      <button class="modal-btn primary" id="noPlanBuyGoPlanBtn">${t('subscribeBtn')}</button>
+      <button class="modal-btn ghost" id="noPlanBuyClose">${t('closeBtn')}</button>
+    `);
+    document.getElementById('noPlanBuyClose').onclick = closeModal;
+    document.getElementById('noPlanBuyGoPlanBtn').onclick = ()=>{ closeModal(); openSubscriptionModal(); };
+    return;
+  }
   if(accountMode==='real'){
     const allowed = allowedCategoriesForUser();
     if(!allowed.includes(s.cat)){
@@ -3722,16 +3705,6 @@ if(balanceAddBtn){
       window.location.href = depositLink;
       return;
     }
-    if(accountMode !== 'real'){
-      openModal(t('depositNeedsPlanTitle'), `
-        <div class="modal-note">${t('depositNeedsPlanMsg')}</div>
-        <button class="modal-btn primary" id="depositGoPlanBtn">${t('subscribeBtn')}</button>
-        <button class="modal-btn ghost" id="depositNeedsPlanClose">${t('closeBtn')}</button>
-      `);
-      document.getElementById('depositNeedsPlanClose').onclick = closeModal;
-      document.getElementById('depositGoPlanBtn').onclick = ()=>{ closeModal(); openSubscriptionModal(); };
-      return;
-    }
     openAddBalanceModal();
   });
 }
@@ -3741,16 +3714,6 @@ if(balanceWithdrawBtn){
   balanceWithdrawBtn.addEventListener('click', (e)=>{
     e.stopPropagation();
     if(!currentUser){ openLoginModal(); return; }
-    if(accountMode !== 'real'){
-      openModal(t('depositNeedsPlanTitle'), `
-        <div class="modal-note">${t('withdrawNeedsPlanMsg')}</div>
-        <button class="modal-btn primary" id="withdrawGoPlanBtn">${t('subscribeBtn')}</button>
-        <button class="modal-btn ghost" id="withdrawNeedsPlanClose">${t('closeBtn')}</button>
-      `);
-      document.getElementById('withdrawNeedsPlanClose').onclick = closeModal;
-      document.getElementById('withdrawGoPlanBtn').onclick = ()=>{ closeModal(); openSubscriptionModal(); };
-      return;
-    }
     openWithdrawModal();
   });
 }
@@ -3823,38 +3786,26 @@ function closeAllDropdowns(except){
 }
 document.addEventListener('click', ()=> closeAllDropdowns(null));
 
-/* ============ Account dropdown & switching ============ */
+/* ============ Account status dropdown ============ */
 const accountDropdown = document.getElementById('accountDropdown');
 const accountChip = document.getElementById('accountChip');
-let accountMode = 'demo'; // 'demo' | 'real'
+let accountMode = 'demo'; // 'demo' | 'real' — now purely a subscription-status flag (gates buying/withdrawing), not a separate balance to switch into
 function renderAccountDropdown(){
+  const subscribed = accountMode==='real';
   accountDropdown.innerHTML = `
     <div class="dropdown-header"><span>${t('accounts')}</span></div>
     <div style="padding:10px 14px;display:flex;flex-direction:column;gap:8px;">
-      <div class="acc-option ${accountMode==='demo'?'active':''}" id="pickDemo">
-        <div><div style="font-weight:600;">${t('demoAccount')}</div><div class="notif-time">${t('demoBalanceLbl')}</div></div>
-        ${accountMode==='demo' ? '<span style="color:var(--accent);">✓</span>' : ''}
+      <div class="acc-option active">
+        <div><div style="font-weight:600;">${t(subscribed ? 'realAccount' : 'demoAccount')}</div><div class="notif-time">${t(subscribed ? 'requiresLogin' : 'demoBalanceLbl')}</div></div>
       </div>
-      <div class="acc-option ${accountMode==='real'?'active':''}" id="pickReal">
-        <div><div style="font-weight:600;">${t('realAccount')}</div><div class="notif-time">${t('requiresLogin')}</div></div>
-        ${accountMode==='real' ? '<span style="color:var(--accent);">✓</span>' : '🔒'}
-      </div>
+      ${subscribed ? '' : `<button class="modal-btn primary" id="accountDropdownSubscribeBtn" style="width:100%;">${t('subscribeBtn')}</button>`}
     </div>`;
-  document.getElementById('pickDemo').onclick = ()=>{
-    closeAllDropdowns(null);
-    switchToMode('demo');
-  };
-  document.getElementById('pickReal').onclick = ()=>{
-    closeAllDropdowns(null);
-    if(accountMode==='real'){ return; }
-    if(userHasAnyPlan){
-      // client already has an approved subscription on file — just switch back
-      // to it, don't make them go through the subscription request again.
-      switchToMode('real');
-      return;
-    }
-    openSubscriptionModal();
-  };
+  if(!subscribed){
+    document.getElementById('accountDropdownSubscribeBtn').onclick = ()=>{
+      closeAllDropdowns(null);
+      openSubscriptionModal();
+    };
+  }
 }
 accountChip.addEventListener('click', (e)=>{
   e.stopPropagation();
@@ -4662,9 +4613,6 @@ function openLogoutModal(){
     balance = 0;
     positions = [];
     closedTrades = [];
-    demoBalance = 0;
-    demoPositions = [];
-    demoClosedTrades = [];
     symbols.forEach(s=>{ s.fav = false; });
     notifications = [];
     renderNotifBadge();
@@ -8027,8 +7975,7 @@ function clientOwnsSymbol(name){
   const s = findSymbolByName(name);
   if(!s) return false;
   const idx = symbols.indexOf(s);
-  const activePositions = accountMode==='real' ? positions : demoPositions;
-  return activePositions.some(p=>p.symIdx===idx);
+  return positions.some(p=>p.symIdx===idx);
 }
 async function loadAIRecommendations(){
   try {

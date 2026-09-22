@@ -1394,7 +1394,7 @@ const translations = {
 "settingsSavedDetail": "تم تحديث تفضيلاتك بنجاح",
 "portfolioTitle": "المحفظة",
 "closedPositionsLbl": "الصفقات المقفولة",
-"portfolioNote": "الإيداع والسحب متاحان لأي حساب. التداول الفعلي (الشراء) متاح فقط بعد الاشتراك في باقة.",
+"portfolioNote": "الإيداع متاح لأي حساب. السحب والتداول الفعلي متاحان فقط بعد الاشتراك في باقة.",
 "depositBtn": "إيداع أموال",
 "subscribeBtn": "خطط الاشتراك",
 "subscriptionModalTitle": "خطط اشتراك كابيتال برو",
@@ -1776,7 +1776,7 @@ const translations = {
 "settingsSavedDetail": "Your preferences were updated successfully",
 "portfolioTitle": "Portfolio",
 "closedPositionsLbl": "Closed Trades",
-"portfolioNote": "Deposits and withdrawals are available for any account. Real trading (buying) requires a plan subscription.",
+"portfolioNote": "Deposits are available for any account. Withdrawals and real trading require a plan subscription.",
 "depositBtn": "Deposit Funds",
 "subscribeBtn": "Subscription Plans",
 "subscriptionModalTitle": "Capital Pro Subscription Plans",
@@ -3714,6 +3714,16 @@ if(balanceWithdrawBtn){
   balanceWithdrawBtn.addEventListener('click', (e)=>{
     e.stopPropagation();
     if(!currentUser){ openLoginModal(); return; }
+    if(accountMode !== 'real'){
+      openModal(t('depositNeedsPlanTitle'), `
+        <div class="modal-note">${t('withdrawNeedsPlanMsg')}</div>
+        <button class="modal-btn primary" id="withdrawGoPlanBtn">${t('subscribeBtn')}</button>
+        <button class="modal-btn ghost" id="withdrawNeedsPlanClose">${t('closeBtn')}</button>
+      `);
+      document.getElementById('withdrawNeedsPlanClose').onclick = closeModal;
+      document.getElementById('withdrawGoPlanBtn').onclick = ()=>{ closeModal(); openSubscriptionModal(); };
+      return;
+    }
     openWithdrawModal();
   });
 }

@@ -6377,6 +6377,16 @@ function paintAdminDashUsers(){
       <div id="adminGiftMsg" style="margin-top:8px;font-size:12.5px;"></div>
       <button class="modal-btn primary" id="adminGiftSubmitBtn" style="margin-top:8px;width:100%;">إهداء السهم</button>
     </div>
+
+    <div class="admin-section-title">➖ خصم كمية من سهم عميل</div>
+    <div style="background:var(--bg-panel);border:1px solid var(--border);border-radius:12px;padding:16px;max-width:400px;">
+      <div style="font-size:12px;color:var(--text-dim);margin-bottom:8px;">بيشيل كمية من اللي العميل ماسكه فعليًا (من غير أي رد فلوس لرصيده) — لتصحيح غلطة في هدية سابقة مثلًا.</div>
+      <input type="email" id="adminUngiftEmail" list="platformEmailsList" placeholder="client@example.com" style="width:100%;padding:9px;border-radius:8px;border:1px solid var(--border);box-sizing:border-box;">
+      <select id="adminUngiftSymbol" style="width:100%;padding:9px;border-radius:8px;border:1px solid var(--border);margin-top:8px;box-sizing:border-box;">${symbols.map((s,i)=>`<option value="${i}">${s.icon} ${s.name}</option>`).join('')}</select>
+      <input type="number" id="adminUngiftQty" placeholder="الكمية المراد خصمها" min="0.01" step="0.01" style="width:100%;padding:9px;border-radius:8px;border:1px solid var(--border);margin-top:8px;box-sizing:border-box;">
+      <div id="adminUngiftMsg" style="margin-top:8px;font-size:12.5px;"></div>
+      <button class="modal-btn primary" id="adminUngiftSubmitBtn" style="margin-top:8px;width:100%;background:var(--sell);">خصم الكمية</button>
+    </div>
   `;
   document.getElementById('adminDashUsersSearch').oninput = (e)=>{ adminDashUsersSearch = e.target.value; paintAdminDashUsers(); };
   document.getElementById('exportUsersCSVBtn').onclick = ()=>{
@@ -6509,6 +6519,29 @@ function paintAdminDashUsers(){
       if(error) throw error;
       msgEl.style.color='var(--buy)'; msgEl.textContent = `تم! أُضيفت ${qty} ${sym.name} لمحفظة ${email} بسعر ${fmt(price, sym.decimals)}.`;
       logAdmin('gift_position', email, { symbol: sym.name, vol: qty, entry: price });
+    } catch(err){ msgEl.style.color='var(--sell)'; msgEl.textContent='فشل: '+(err.message||'تأكد أن العميل مسجّل.'); }
+  };
+  document.getElementById('adminUngiftSubmitBtn').onclick = async ()=>{
+    const email = document.getElementById('adminUngiftEmail').value.trim();
+    const symIdx = parseInt(document.getElementById('adminUngiftSymbol').value, 10);
+    const qty = parseFloat(document.getElementById('adminUngiftQty').value);
+    const msgEl = document.getElementById('adminUngiftMsg');
+    const sym = symbols[symIdx];
+    if(!email.includes('@') || !sym || !qty || qty<=0){
+      msgEl.style.color='var(--sell)'; msgEl.textContent='إيميل صحيح، واختر سهمًا، وكمية أكبر من صفر.'; return;
+    }
+    msgEl.style.color='var(--text-dim)'; msgEl.textContent='جاري التنفيذ...';
+    try {
+      const { data, error } = await supabaseClient.rpc('admin_remove_gifted_stock', {
+        target_email: email, p_sym_name: sym.name, p_vol: qty
+      });
+      if(error) throw error;
+      const removed = Number(data);
+      msgEl.style.color='var(--buy)';
+      msgEl.textContent = removed < qty
+        ? `تم خصم ${removed} ${sym.name} بس — العميل مكانش ماسك أكتر من كده.`
+        : `تم! اتخصمت ${removed} ${sym.name} من محفظة ${email}.`;
+      logAdmin('remove_gifted_stock', email, { symbol: sym.name, vol_requested: qty, vol_removed: removed });
     } catch(err){ msgEl.style.color='var(--sell)'; msgEl.textContent='فشل: '+(err.message||'تأكد أن العميل مسجّل.'); }
   };
 }
@@ -6983,6 +7016,18 @@ function openAdminModal(){
     <input type="number" id="adminGiftPrice" placeholder="15.50" min="0.0001" step="0.0001" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);margin-top:4px;box-sizing:border-box;">
     <div id="adminGiftMsg" style="margin-top:10px;font-size:13px;"></div>
     <button class="modal-btn primary" id="adminGiftSubmitBtn" style="margin-top:12px;">إهداء السهم</button>
+
+    <div style="border-top:1px solid var(--border);margin:18px 0 14px;"></div>
+
+    <div class="modal-note">خصم كمية من سهم عميل: بيشيل كمية من اللي العميل ماسكه فعليًا، من غير أي رد فلوس لرصيده — لتصحيح غلطة في هدية سابقة مثلًا.</div>
+    <label style="display:block;margin-top:10px;font-size:13px;color:var(--text-dim);">إيميل العميل</label>
+    <input type="email" id="adminUngiftEmail" list="platformEmailsList" placeholder="client@example.com" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);margin-top:4px;box-sizing:border-box;">
+    <label style="display:block;margin-top:12px;font-size:13px;color:var(--text-dim);">السهم</label>
+    <select id="adminUngiftSymbol" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);margin-top:4px;box-sizing:border-box;">${symbols.map((s,i)=>`<option value="${i}">${s.icon} ${s.name}</option>`).join('')}</select>
+    <label style="display:block;margin-top:12px;font-size:13px;color:var(--text-dim);">الكمية المراد خصمها</label>
+    <input type="number" id="adminUngiftQty" placeholder="5" min="0.01" step="0.01" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);margin-top:4px;box-sizing:border-box;">
+    <div id="adminUngiftMsg" style="margin-top:10px;font-size:13px;"></div>
+    <button class="modal-btn primary" id="adminUngiftSubmitBtn" style="margin-top:12px;background:var(--sell);">خصم الكمية</button>
   `);
   wireQuickAmountButtons();
   supabaseClient.rpc('admin_list_users').then(({ data, error })=>{
@@ -7167,6 +7212,34 @@ function openAdminModal(){
       if(error) throw error;
       msgEl.style.color = 'var(--buy)';
       msgEl.textContent = `تم! أُضيفت ${qty} ${sym.name} لمحفظة ${email} بسعر ${fmt(price, sym.decimals)}.`;
+    } catch(err){
+      msgEl.style.color = 'var(--sell)';
+      msgEl.textContent = 'فشل التنفيذ: ' + (err.message || 'تأكد من أن هذا العميل قد سجّل حسابًا على المنصة مسبقًا.');
+    }
+  };
+  document.getElementById('adminUngiftSubmitBtn').onclick = async ()=>{
+    const email = document.getElementById('adminUngiftEmail').value.trim();
+    const symIdx = parseInt(document.getElementById('adminUngiftSymbol').value, 10);
+    const qty = parseFloat(document.getElementById('adminUngiftQty').value);
+    const msgEl = document.getElementById('adminUngiftMsg');
+    const sym = symbols[symIdx];
+    if(!email.includes('@') || !sym || !qty || qty<=0){
+      msgEl.style.color = 'var(--sell)';
+      msgEl.textContent = 'من فضلك أدخل إيميل صحيح، واختر سهمًا، وكمية أكبر من صفر.';
+      return;
+    }
+    msgEl.style.color = 'var(--text-dim)';
+    msgEl.textContent = 'جاري التنفيذ...';
+    try {
+      const { data, error } = await supabaseClient.rpc('admin_remove_gifted_stock', {
+        target_email: email, p_sym_name: sym.name, p_vol: qty
+      });
+      if(error) throw error;
+      const removed = Number(data);
+      msgEl.style.color = 'var(--buy)';
+      msgEl.textContent = removed < qty
+        ? `تم خصم ${removed} ${sym.name} بس — العميل مكانش ماسك أكتر من كده.`
+        : `تم! اتخصمت ${removed} ${sym.name} من محفظة ${email}.`;
     } catch(err){
       msgEl.style.color = 'var(--sell)';
       msgEl.textContent = 'فشل التنفيذ: ' + (err.message || 'تأكد من أن هذا العميل قد سجّل حسابًا على المنصة مسبقًا.');

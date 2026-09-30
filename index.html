@@ -641,6 +641,8 @@
         <div id="chartSourceNote" style="display:none;position:absolute;bottom:6px;right:10px;font-family:var(--font-mono);font-size:10.5px;color:var(--text-dim);background:rgba(255,255,255,0.7);padding:2px 7px;border-radius:5px;"></div>
       </div>
 
+      <div id="contractsWrap" style="display:none;"></div>
+
       <div class="tabs-row">
         <button class="tab-btn active" data-tab="open" data-i18n="tabOpen">الصفقات المفتوحة</button>
         <button class="tab-btn" data-tab="history" data-i18n="tabHistory">السجل</button>
@@ -2423,32 +2425,134 @@ function bidPrice(s){ return s.price - s.step*0.5; }
 // The server only returns codes for stocks this client currently holds, so a
 // stock with no code (or one the client doesn't own) renders exactly as before.
 let execCodes = {};
+let contractsBySym = {};      // symbol name -> [{id,code,price,spread}]
+let contractJitter = {};      // contract id -> small offset inside the spread
+let contractsOpenFor = null;  // symbol name whose contracts panel is open
+let contractBuyOpenId = null; // contract row with the qty box open
+function contractById(id){
+  for(const k in contractsBySym){ const c = contractsBySym[k].find(x=>x.id===id); if(c) return c; }
+  return null;
+}
+function contractPriceForPos(p){ const c = p.contractId ? contractById(p.contractId) : null; return c ? c.price : null; }
+function contractQuote(c){
+  const j = contractJitter[c.id] || 0;
+  return { ask: c.price + j + c.spread/2, bid: c.price + j - c.spread/2 };
+}
 async function loadMyExecCodes(){
-  if(!currentUser || currentIsAdmin){ execCodes = {}; return; }
+  if(!currentUser){ execCodes = {}; contractsBySym = {}; paintContractsPanel(); return; }
   try {
-    const { data, error } = await supabaseClient.rpc('get_my_exec_codes');
+    const { data, error } = await supabaseClient.from('stock_contracts').select('*').order('id',{ascending:true});
     if(error) throw error;
     const next = {};
-    (data||[]).forEach(r=>{ next[r.symbol] = r.code; });
-    execCodes = next;
+    (data||[]).forEach(r=>{ (next[r.symbol] = next[r.symbol] || []).push({ id:r.id, code:String(r.code), price:Number(r.price), spread:Number(r.spread) }); });
+    contractsBySym = next;
   } catch(err){
-    console.warn('could not load execution codes:', err);
+    console.warn('could not load contracts:', err);
   }
+  const ec = {};
+  positions.forEach(p=>{
+    if(!p.contractId) return;
+    const c = contractById(p.contractId); if(!c) return;
+    const nm = symbols[p.symIdx].name;
+    ec[nm] = ec[nm] || [];
+    if(!ec[nm].includes(c.code)) ec[nm].push(c.code);
+  });
+  execCodes = ec;
+  paintContractsPanel();
 }
 function execCodeLabelFor(sym){
   const c = sym && execCodes[sym.name];
-  return c ? `${(typeof lang!=='undefined' && lang==='en') ? 'Execution price' : 'سعر التنفيذ'}: ${escHtml(c)}` : '';
+  return (c && c.length) ? `${(typeof lang!=='undefined' && lang==='en') ? 'Execution price' : 'سعر التنفيذ'}: ${c.map(escHtml).join('، ')}` : '';
 }
 function paintChartExecCode(){
   const el = document.getElementById('chartExecCode');
   if(!el) return;
   const sym = symbols[activeSymbolIdx];
-  const label = (sym && ownedVolume(activeSymbolIdx) > EPS) ? execCodeLabelFor(sym) : '';
+  const label = sym ? execCodeLabelFor(sym) : '';
   el.innerHTML = label;
   el.style.display = label ? '' : 'none';
 }
+function fmtC(n){ return (Math.round(n*100)/100).toFixed(2); }
+function paintContractsPanel(){
+  const wrap = document.getElementById('contractsWrap');
+  if(!wrap) return;
+  const sym = symbols[activeSymbolIdx];
+  const list = (sym && contractsBySym[sym.name]) || [];
+  if(!list.length){ wrap.style.display = 'none'; wrap.innerHTML = ''; wrap.dataset.sig = ''; return; }
+  wrap.style.display = '';
+  const open = contractsOpenFor === sym.name;
+  // Skip the redraw when nothing structural changed, so price ticks don't wipe the qty box mid-typing.
+  const sig = JSON.stringify([sym.name, open, contractBuyOpenId, list.map(c=>[c.id,c.code,c.price,c.spread]), positions.filter(p=>p.contractId).map(p=>[p.id,p.vol])]);
+  if(wrap.dataset.sig === sig && wrap.innerHTML) return;
+  wrap.dataset.sig = sig;
+  let html = `<button class="tab-btn${open?' active':''}" id="contractsToggle" style="width:100%;margin:8px 0;">سعر التنفيذ ${open?'▲':'▼'}</button>`;
+  if(open){
+    html += '<div style="border:1px solid var(--border);border-radius:10px;padding:6px 10px;">' + list.map(c=>{
+      const q = contractQuote(c);
+      const held = round6(positions.filter(p=>p.contractId===c.id).reduce((a,p)=>a+p.vol,0));
+      const buying = contractBuyOpenId === c.id;
+      return `<div data-crow="${c.id}" style="padding:8px 0;border-bottom:1px solid var(--border);">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <b style="font-family:var(--font-mono);min-width:70px;">${escHtml(c.code)}</b>
+          <span style="font-family:var(--font-mono);font-size:12.5px;">بيع <span data-cbid="${c.id}" style="color:var(--sell);">${fmtC(q.bid)}</span></span>
+          <span style="font-family:var(--font-mono);font-size:12.5px;">شراء <span data-cask="${c.id}" style="color:var(--buy);">${fmtC(q.ask)}</span></span>
+          ${held>EPS?`<span style="font-size:12px;color:var(--text-dim);">مملوك: ${held.toFixed(2)}</span>`:''}
+          <button class="admin-mini-btn" data-cbuy="${c.id}" style="margin-inline-start:auto;">شراء</button>
+        </div>
+        ${buying?`<div style="display:flex;gap:8px;margin-top:8px;align-items:center;">
+          <input type="number" min="0" step="1" id="cqty${c.id}" placeholder="الكمية" style="width:110px;padding:7px;border-radius:8px;border:1px solid var(--border);">
+          <button class="admin-mini-btn" data-cconfirm="${c.id}">تأكيد الشراء</button>
+          <span style="font-size:11px;color:var(--text-dim);">التنفيذ بسعر العقد ${fmtC(c.price)}</span></div>`:''}
+      </div>`;
+    }).join('') + '<div class="modal-note" id="contractMsg" style="display:none;color:var(--sell);margin-top:6px;"></div></div>';
+  }
+  wrap.innerHTML = html;
+  document.getElementById('contractsToggle').onclick = ()=>{ contractsOpenFor = open ? null : sym.name; contractBuyOpenId = null; paintContractsPanel(); };
+  wrap.querySelectorAll('[data-cbuy]').forEach(b=> b.onclick = ()=>{ contractBuyOpenId = (+b.dataset.cbuy === contractBuyOpenId) ? null : +b.dataset.cbuy; paintContractsPanel(); });
+  wrap.querySelectorAll('[data-cconfirm]').forEach(b=> b.onclick = ()=> buyContract(+b.dataset.cconfirm, b));
+}
+function tickContractQuotes(){
+  Object.values(contractsBySym).forEach(list=>list.forEach(c=>{
+    const half = c.spread/2;
+    let j = (contractJitter[c.id]||0) + (Math.random()-0.5)*c.spread*0.6;
+    contractJitter[c.id] = Math.max(-half, Math.min(half, j));
+    const q = contractQuote(c);
+    const a = document.querySelector(`[data-cask="${c.id}"]`), b = document.querySelector(`[data-cbid="${c.id}"]`);
+    if(a) a.textContent = fmtC(q.ask);
+    if(b) b.textContent = fmtC(q.bid);
+  }));
+}
+setInterval(tickContractQuotes, 1500);
+async function buyContract(cid, btn){
+  const c = contractById(cid); const s = symbols[activeSymbolIdx];
+  const msg = (t_)=>{ const m = document.getElementById('contractMsg'); if(m){ m.textContent = t_; m.style.display = t_ ? 'block' : 'none'; } };
+  const volCfg = volConfigFor(s);
+  const rawVol = parseFloat((document.getElementById('cqty'+cid)||{}).value) || 0;
+  if(!c || !(rawVol > EPS)){ msg(t('invalidVolumeMsg')); return; }
+  if(volCfg.decimals === 0 && Math.abs(rawVol - Math.round(rawVol)) > EPS){ msg(t('wholeShareMsg')); return; }
+  const vol = snapVolume(rawVol, volCfg);
+  if(c.price * vol > balance + EPS){ msg(t('insufficientBalanceMsg')); return; }
+  btn.disabled = true;
+  try {
+    const { data, error } = await supabaseClient.rpc('rpc_open_contract_position', {
+      p_contract_id: c.id, p_vol: vol, p_entry: contractQuote(c).ask, p_request_id: newRequestId()
+    });
+    if(error){ msg(friendlyTradeErrorMsg(error)); return; }
+    const row = Array.isArray(data) ? data[0] : data;
+    balance = round6(Number(row.new_balance));
+    positions.push({ id: row.new_position_id, symIdx: activeSymbolIdx, type:'buy', vol, entry: c.price, cost: c.price*vol*s.unit, openedAt:new Date(), tp:null, sl:null, contractId:c.id });
+    contractBuyOpenId = null;
+    await loadMyExecCodes();
+    renderPositions(); updateTradeButtonsState();
+    pushNotification(
+      bilingualText(()=> `${t('openedTrade')} ${t('buy')}`),
+      bilingualText(()=> `${s.short} · ${c.code} · ${t('volumeWord')} ${vol.toFixed(2)} ${t('lotAt')} ${fmtC(c.price)}`),
+      'buy');
+    logClient('open_trade', { symbol: s.short, type:'buy', vol, entry: fmtC(c.price), contract: c.code });
+  } finally { btn.disabled = false; }
+}
 function ownedVolume(symIdx){
-  return round6(positions.filter(p=>p.symIdx===symIdx).reduce((a,p)=>a+p.vol,0));
+  return round6(positions.filter(p=>p.symIdx===symIdx && !p.contractId).reduce((a,p)=>a+p.vol,0));
 }
 
 function showOrderMsg(msg){
@@ -2576,7 +2680,7 @@ async function loadUserFinancials(){
       const cost = entry * vol * unit;
       const tp = (r.tp !== null && r.tp !== undefined) ? Number(r.tp) : null;
       const sl = (r.sl !== null && r.sl !== undefined) ? Number(r.sl) : null;
-      return { id:r.id, symIdx, type:'buy', vol, entry, cost, openedAt:new Date(r.opened_at), tp, sl };
+      return { id:r.id, symIdx, type:'buy', vol, entry, cost, openedAt:new Date(r.opened_at), tp, sl, contractId: r.contract_id ?? null };
     }).filter(Boolean);
   } catch(err){
     console.warn('could not load open positions (check positions table/RLS):', err);
@@ -2707,7 +2811,7 @@ async function buyPosition(){
 // out on its own so it's both used here and covered by a self-test, instead
 // of only existing inline inside sellPosition where nothing could verify it.
 function selectFifoLots(allPositions, symIdx, vol){
-  const lots = allPositions.filter(p=>p.symIdx===symIdx).sort((a,b)=> a.openedAt - b.openedAt);
+  const lots = allPositions.filter(p=>p.symIdx===symIdx && !p.contractId).sort((a,b)=> a.openedAt - b.openedAt);
   const plan = [];
   let remaining = vol;
   for(const lot of lots){
@@ -2825,13 +2929,15 @@ async function sellPosition(){
 
 function pnlFor(p){
   const s = symbols[p.symIdx];
-  return bidPrice(s) * p.vol * s.unit - p.cost;
+  const cp = contractPriceForPos(p);
+  return (cp!=null ? cp : bidPrice(s)) * p.vol * s.unit - p.cost;
 }
 async function closePosition(id, reason){
   const p = positions.find(x=>x.id===id);
   if(!p) return;
   const s = symbols[p.symIdx];
-  const exitPrice = bidPrice(s);
+  const cpx = contractPriceForPos(p);
+  const exitPrice = cpx!=null ? cpx : bidPrice(s);
 
   // Same safe server-side function as a partial sell, just for the whole
   // remaining volume of this one position.
@@ -2854,8 +2960,9 @@ async function closePosition(id, reason){
     bilingualText(()=> `${s.short} · ${pnl>=0?t('profitWord'):t('lossWord')} ${fmt(Math.abs(pnl),2)}`),
     pnl>=0?'profit':'loss');
 }
-function execCodeLine(s){
-  const l = execCodeLabelFor(s);
+function execCodeLine(s,p){
+  const c = p && p.contractId ? contractById(p.contractId) : null;
+  const l = c ? `سعر التنفيذ: ${escHtml(c.code)}` : '';
   return l ? `<div style="font-size:10.5px;color:var(--text-dim);margin-top:2px;font-family:var(--font-mono);">${l}</div>` : '';
 }
 function renderPositions(){
@@ -2874,14 +2981,18 @@ function renderPositions(){
     if(p.sl != null) tpSlBits.push(`🛑${fmt(p.sl, s.decimals)}`);
     const tpSlLine = tpSlBits.length ? `<div style="font-size:10.5px;color:var(--text-dim);margin-top:2px;">${tpSlBits.join(' · ')}</div>` : '';
     return `<tr class="position-row${p.symIdx===activeSymbolIdx?' active-row':''}" data-symidx="${p.symIdx}" style="cursor:pointer;">
-      <td>${s.icon} ${s.short}${execCodeLine(s)}${tpSlLine}</td>
+      <td>${s.icon} ${s.short}${execCodeLine(s,p)}${tpSlLine}${p.contractId?`<div><button class="admin-mini-btn" data-csell="${p.id}" style="margin-top:4px;">بيع</button></div>`:''}</td>
       <td><span class="type-badge ${p.type}">${t('buy')}</span></td>
       <td>${p.vol.toFixed(2)}</td>
       <td>${fmt(p.entry, s.decimals)}</td>
-      <td>${fmt(bidPrice(s) * p.vol * s.unit, 2)}</td>
+      <td>${fmt((contractPriceForPos(p) ?? bidPrice(s)) * p.vol * s.unit, 2)}</td>
       <td class="${pnlClass}" style="color:${pnl>=0?'var(--buy)':'var(--sell)'};font-weight:600;">${pnl>=0?'+':''}${fmt(pnl,2)}<div style="font-size:11px;margin-top:2px;">${pnlPct>=0?'+':''}${fmt(pnlPct,2)}%</div></td>
     </tr>`;
   }).join('');
+  posBody.querySelectorAll('[data-csell]').forEach(b=> b.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    if(confirm('بيع العقد بالكامل؟')) closePosition(+b.dataset.csell, 'manual');
+  }));
   posBody.querySelectorAll('.position-row').forEach(row=>{
     row.addEventListener('click', ()=>{
       activeSymbolIdx = +row.dataset.symidx;
@@ -2901,6 +3012,7 @@ function updateTradeButtonsState(){
   const ownedEl = document.getElementById('ownedVal');
   if(ownedEl) ownedEl.textContent = owned.toFixed(2);
   paintChartExecCode();
+  paintContractsPanel();
   const sellBtn = document.getElementById('sellBtn');
   if(sellBtn) sellBtn.disabled = !(owned > EPS);
   const buyBtn = document.getElementById('buyBtn');
@@ -5474,7 +5586,7 @@ function openAdminPaymentLinksModal(){
 const ADMIN_DASH_TABS = [
   { key:'overview', label:'نظرة عامة',   icon:'📊' },
   { key:'prices',   label:'أسعار الأسهم',  icon:'💰' },
-  { key:'execcodes',label:'سعر التنفيذ',   icon:'🔢' },
+  { key:'execcodes',label:'العقود',   icon:'🔢' },
   { key:'recs',     label:'التوصيات',      icon:'💡' },
   { key:'links',    label:'روابط الدفع',   icon:'🔗' },
   { key:'plans',    label:'الباقات',       icon:'📦' },
@@ -5680,18 +5792,22 @@ function adminDashSourceInfo(s){
   if(tdSymbolMap[s.name]) return { code:'DLY', cls:'dly', title:'بيانات مؤجلة (Twelve Data)' };
   return { code:'SIM', cls:'sim', title:'محاكاة بالكامل — لا يوجد مصدر حقيقي' };
 }
-/* ---- Tab: سعر التنفيذ — per-stock execution-price code (1-8 digits) ---- */
-let adminExecCodesMap = {};
-let adminExecSearch = '';
+/* ---- Tab: العقود — per-stock contracts (code 1-8 digits, price, spread) ---- */
+let adminContracts = [];
+let adminAllContracts = [];
+let adminContractSym = null;
+let adminContractCat = null;
+let adminContractQ = '';
 async function renderAdminDashExecCodes(){
+  const body = document.getElementById('adminDashBody');
+  if(!adminContractCat) adminContractCat = symbols[0].cat;
   try {
-    const { data, error } = await supabaseClient.rpc('admin_list_exec_codes');
+    const { data, error } = await supabaseClient.from('stock_contracts').select('*').order('id',{ascending:true});
     if(error) throw error;
-    adminExecCodesMap = {};
-    (data||[]).forEach(r=>{ adminExecCodesMap[r.symbol] = r.code; });
+    adminAllContracts = data || [];
+    adminContracts = adminContractSym ? adminAllContracts.filter(c=>c.symbol===adminContractSym) : [];
   } catch(err){
-    const body = document.getElementById('adminDashBody');
-    if(body) body.innerHTML = `<div class="modal-note" style="color:var(--sell);">تعذّر تحميل الأكواد: ${escHtml(err.message||'حاول مرة أخرى')}</div>`;
+    if(body) body.innerHTML = `<div class="modal-note" style="color:var(--sell);">تعذّر تحميل العقود: ${escHtml(err.message||'حاول مرة أخرى')}</div>`;
     return;
   }
   paintAdminDashExecCodes();
@@ -5699,73 +5815,60 @@ async function renderAdminDashExecCodes(){
 function paintAdminDashExecCodes(){
   const body = document.getElementById('adminDashBody');
   if(!body || adminDashActiveTab!=='execcodes') return;
-  const q = adminExecSearch.trim().toLowerCase();
-  const rows = symbols.filter(s=> !q || s.name.toLowerCase().includes(q) || (s.short||'').toLowerCase().includes(q));
-  const setCount = Object.keys(adminExecCodesMap).length;
+  const inp = 'style="width:90px;padding:6px;border-radius:8px;border:1px solid var(--border);"';
   body.innerHTML = `
-    <div class="admin-stat-grid">
-      <div class="admin-stat-card"><span class="num">${symbols.length}</span><span class="lbl">إجمالي الأسهم</span></div>
-      <div class="admin-stat-card"><span class="num">${setCount}</span><span class="lbl">أسهم لها كود</span></div>
-    </div>
-    <div class="modal-note" style="margin-bottom:8px;">الكود من 1 لـ 8 أرقام. بيظهر للعميل تحت اسم السهم كـ "سعر التنفيذ" بعد ما يشتريه فقط. السهم بدون كود بيظهر عادي.</div>
-    <div class="admin-toolbar">
-      <input type="text" class="admin-search" id="adminExecSearch" placeholder="ابحث باسم السهم..." value="${escHtml(adminExecSearch)}">
-    </div>
-    <div class="admin-table-wrap"><table class="admin-table">
-      <thead><tr><th>إجراءات</th><th>الكود</th><th>السهم</th></tr></thead>
-      <tbody>
-        ${rows.map(s=>{
-          const code = adminExecCodesMap[s.name];
-          return `<tr>
-            <td style="white-space:nowrap;">
-              <button class="admin-mini-btn" data-exec-save="${escHtml(s.name)}">${code?'✏️ تعديل':'➕ إضافة'}</button>
-              ${code ? `<button class="admin-mini-btn danger" data-exec-del="${escHtml(s.name)}">🗑️ حذف</button>` : ''}
-            </td>
-            <td><input type="text" inputmode="numeric" maxlength="8" class="admin-price-edit" data-exec-input="${escHtml(s.name)}" value="${code?escHtml(code):''}" placeholder="—" style="width:110px;font-family:var(--font-mono);"></td>
-            <td class="name-cell">${s.icon||'📈'} ${escHtml(s.name)}</td>
-          </tr>`;
-        }).join('')}
-      </tbody>
-    </table></div>
-    <div class="modal-note" id="adminExecMsg" style="margin-top:8px;"></div>
-  `;
+    <div class="modal-note" style="margin-bottom:8px;">اختار السهم، وضيف عقود بكود (1–8 أرقام) وسعر وسبريد. سعر العقد هو سعر التنفيذ للعميل.</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">${Object.keys(catKeys).filter(k=>symbols.some(x=>x.cat===k)).map(k=>`<button class="browser-tab ${adminContractCat===k?'active':''}" data-c-cat="${k}">${catNameFor(k)}</button>`).join('')}</div>
+    <input type="text" id="adminContractQ" class="admin-search" placeholder="بحث في ${escHtml(catNameFor(adminContractCat))}" value="${escHtml(adminContractQ)}" style="margin-bottom:6px;">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;max-height:160px;overflow-y:auto;margin-bottom:10px;">${symbols.filter(x=>x.cat===adminContractCat && (!adminContractQ || (x.short+' '+x.name).toLowerCase().includes(adminContractQ.toLowerCase()))).map(x=>{ const n = adminAllContracts.filter(c=>c.symbol===x.name).length; return `<button class="browser-tab ${adminContractSym===x.name?'active':''}" data-c-sym="${escHtml(x.name)}">${x.icon} ${escHtml(x.short)}${n?` (${n})`:''}</button>`; }).join('') || '<span class="modal-note">مفيش أسهم مطابقة.</span>'}</div>
+    ${adminContractSym ? `<div style="font-weight:600;margin-bottom:6px;">${escHtml((symbols.find(x=>x.name===adminContractSym)||{}).short||adminContractSym)}</div>
+    <table class="positions"><thead><tr><th>الكود</th><th>السعر</th><th>السبريد</th><th></th></tr></thead><tbody>
+      ${adminContracts.map(c=>`<tr>
+        <td><input type="text" inputmode="numeric" maxlength="8" data-c-code="${c.id}" value="${escHtml(c.code)}" ${inp}></td>
+        <td><input type="number" step="0.01" data-c-price="${c.id}" value="${c.price}" ${inp}></td>
+        <td><input type="number" step="0.01" data-c-spread="${c.id}" value="${c.spread}" ${inp}></td>
+        <td><button class="admin-mini-btn" data-c-save="${c.id}">💾 حفظ</button> <button class="admin-mini-btn danger" data-c-del="${c.id}">🗑️</button></td></tr>`).join('')}
+      <tr><td><input type="text" inputmode="numeric" maxlength="8" id="newCCode" placeholder="كود" ${inp}></td>
+        <td><input type="number" step="0.01" id="newCPrice" placeholder="سعر" ${inp}></td>
+        <td><input type="number" step="0.01" id="newCSpread" value="0.05" ${inp}></td>
+        <td><button class="admin-mini-btn" id="newCAdd">➕ إضافة</button></td></tr>
+    </tbody></table>` : '<div class="modal-note">اختار سهم عشان تشوف عقوده أو تضيف عقد.</div>'}
+    <div class="modal-note" id="adminExecMsg" style="margin-top:8px;"></div>`;
   const msg = (text, ok)=>{ const m = document.getElementById('adminExecMsg'); if(m){ m.style.color = ok ? 'var(--buy)' : 'var(--sell)'; m.textContent = text; } };
-  document.getElementById('adminExecSearch').oninput = (e)=>{ adminExecSearch = e.target.value; paintAdminDashExecCodes(); const el = document.getElementById('adminExecSearch'); el.focus(); el.setSelectionRange(el.value.length, el.value.length); };
-  body.querySelectorAll('[data-exec-input]').forEach(inp=>{
-    inp.oninput = ()=>{ inp.value = inp.value.replace(/\D/g,'').slice(0,8); };
+  body.querySelectorAll('[data-c-cat]').forEach(b=> b.onclick = ()=>{ adminContractCat = b.dataset.cCat; adminContractSym = null; adminContractQ = ''; adminContracts = []; paintAdminDashExecCodes(); });
+  body.querySelectorAll('[data-c-sym]').forEach(b=> b.onclick = ()=>{ adminContractSym = b.dataset.cSym; adminContracts = adminAllContracts.filter(c=>c.symbol===adminContractSym); paintAdminDashExecCodes(); });
+  const qEl = document.getElementById('adminContractQ');
+  qEl.oninput = ()=>{ adminContractQ = qEl.value; paintAdminDashExecCodes(); const n = document.getElementById('adminContractQ'); n.focus(); n.setSelectionRange(n.value.length, n.value.length); };
+  const save = async (id, code, price, spread, btn, action)=>{
+    if(!/^\d{1,8}$/.test(code)){ msg('الكود أرقام فقط من 1 لـ 8 أرقام.', false); return; }
+    if(!(price>0) || !(spread>=0)){ msg('السعر لازم أكبر من صفر والسبريد صفر أو أكتر.', false); return; }
+    btn.disabled = true;
+    try {
+      const { error } = await supabaseClient.rpc('admin_save_contract', { p_id: id, p_symbol: adminContractSym, p_code: code, p_price: price, p_spread: spread });
+      if(error) throw error;
+      logAdmin(action, null, { symbol: adminContractSym, code, price, spread });
+      await renderAdminDashExecCodes();
+      msg('تم الحفظ.', true);
+    } catch(err){ btn.disabled = false; msg('فشل الحفظ: ' + (err.message||'حاول مرة أخرى.'), false); }
+  };
+  const addBtn = document.getElementById('newCAdd');
+  if(addBtn) addBtn.onclick = (e)=> save(null, document.getElementById('newCCode').value.trim(), parseFloat(document.getElementById('newCPrice').value), parseFloat(document.getElementById('newCSpread').value), e.target, 'add_contract');
+  body.querySelectorAll('[data-c-save]').forEach(btn=> btn.onclick = ()=>{
+    const id = +btn.dataset.cSave, q = k=> body.querySelector(`[data-c-${k}="${id}"]`).value;
+    save(id, q('code').trim(), parseFloat(q('price')), parseFloat(q('spread')), btn, 'edit_contract');
   });
-  body.querySelectorAll('[data-exec-save]').forEach(btn=>{
-    btn.onclick = async ()=>{
-      const name = btn.dataset.execSave;
-      const inp = body.querySelector(`[data-exec-input="${CSS.escape(name)}"]`);
-      const code = (inp.value||'').trim();
-      if(!/^\d{1,8}$/.test(code)){ msg('الكود لازم يكون أرقام فقط من 1 لـ 8 أرقام.', false); return; }
-      btn.disabled = true;
-      try {
-        const { error } = await supabaseClient.rpc('admin_set_exec_code', { p_symbol: name, p_code: code });
-        if(error) throw error;
-        const wasSet = !!adminExecCodesMap[name];
-        adminExecCodesMap[name] = code;
-        logAdmin(wasSet ? 'edit_exec_code' : 'add_exec_code', null, { symbol: name, code });
-        paintAdminDashExecCodes();
-        msg(`تم حفظ كود ${name}.`, true);
-      } catch(err){ btn.disabled = false; msg('فشل الحفظ: ' + (err.message||'حاول مرة أخرى.'), false); }
-    };
-  });
-  body.querySelectorAll('[data-exec-del]').forEach(btn=>{
-    btn.onclick = async ()=>{
-      const name = btn.dataset.execDel;
-      if(!confirm(`حذف كود "${name}"؟`)) return;
-      btn.disabled = true;
-      try {
-        const { error } = await supabaseClient.rpc('admin_remove_exec_code', { p_symbol: name });
-        if(error) throw error;
-        delete adminExecCodesMap[name];
-        logAdmin('remove_exec_code', null, { symbol: name });
-        paintAdminDashExecCodes();
-        msg(`تم حذف كود ${name}.`, true);
-      } catch(err){ btn.disabled = false; msg('فشل الحذف: ' + (err.message||'حاول مرة أخرى.'), false); }
-    };
+  body.querySelectorAll('[data-c-del]').forEach(btn=> btn.onclick = async ()=>{
+    const id = +btn.dataset.cDel, c = adminContracts.find(x=>x.id===id);
+    if(!confirm(`حذف العقد ${c?c.code:''}؟`)) return;
+    btn.disabled = true;
+    try {
+      const { data, error } = await supabaseClient.rpc('admin_delete_contract', { p_id: id });
+      if(error) throw error;
+      if(data === 'has_open_positions'){ btn.disabled = false; msg('مينفعش الحذف: فيه صفقات مفتوحة على العقد ده عند عملاء.', false); return; }
+      logAdmin('delete_contract', null, { symbol: adminContractSym, code: c && c.code });
+      await renderAdminDashExecCodes();
+      msg('تم حذف العقد.', true);
+    } catch(err){ btn.disabled = false; msg('فشل الحذف: ' + (err.message||'حاول مرة أخرى.'), false); }
   });
 }
 async function renderAdminDashPrices(){

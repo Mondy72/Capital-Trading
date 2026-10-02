@@ -734,6 +734,7 @@
   </div>
 
   <!-- Summary bar -->
+  <div class="summary-title" style="padding:6px 14px 2px;font-size:13px;font-weight:700;color:var(--text-dim);">💰 الرصيد بالريال السعودي (ر.س)</div>
   <div class="summary-bar">
     <div class="summary-item"><div class="summary-label"><span data-i18n="balance">الرصيد</span><span class="info-ico" data-info="infoBalance">؟</span><span class="balance-add-ico" id="balanceAddBtn" title="إضافة رصيد">+</span><span class="balance-add-ico" id="balanceWithdrawBtn" title="طلب سحب">−</span></div><div class="summary-value"><span id="sumBalance">0.00</span></div></div>
     <div class="summary-item"><div class="summary-label"><span data-i18n="floatingPnl">الأرباح العائمة</span><span class="info-ico" data-info="infoFloatingPnl">؟</span></div><div class="summary-value" id="sumPnl">0.00</div></div>
@@ -741,6 +742,15 @@
     <div class="summary-item"><div class="summary-label"><span data-i18n="usedMargin">الهامش المستخدم</span><span class="info-ico" data-info="infoUsedMargin">؟</span></div><div class="summary-value" id="sumMargin">0.00</div></div>
     <div class="summary-item"><div class="summary-label"><span data-i18n="freeMargin">الهامش الحر</span><span class="info-ico" data-info="infoFreeMargin">؟</span></div><div class="summary-value" id="sumFreeMargin">0.00</div></div>
     <div class="summary-item"><div class="summary-label"><span data-i18n="marginLevel">مستوى الهامش</span><span class="info-ico" data-info="infoMarginLevel">؟</span></div><div class="summary-value" id="sumMarginLevel">—</div></div>
+  </div>
+  <div class="summary-title" style="padding:6px 14px 2px;font-size:13px;font-weight:700;color:var(--text-dim);">💵 الرصيد بالدولار ($)</div>
+  <div class="summary-bar">
+    <div class="summary-item"><div class="summary-label"><span data-i18n="balance">الرصيد</span><span class="info-ico" data-info="infoBalance">؟</span><span class="balance-add-ico" id="balanceAddBtnU" title="إضافة رصيد دولار">+</span><span class="balance-add-ico" id="balanceWithdrawBtnU" title="طلب سحب دولار">−</span></div><div class="summary-value"><span id="sumBalanceU">0.00</span></div></div>
+    <div class="summary-item"><div class="summary-label"><span data-i18n="floatingPnl">الأرباح العائمة</span><span class="info-ico" data-info="infoFloatingPnl">؟</span></div><div class="summary-value" id="sumPnlU">0.00</div></div>
+    <div class="summary-item"><div class="summary-label"><span data-i18n="equity">الحقوق (Equity)</span><span class="info-ico" data-info="infoEquity">؟</span></div><div class="summary-value accent" id="sumEquityU">0.00</div></div>
+    <div class="summary-item"><div class="summary-label"><span data-i18n="usedMargin">الهامش المستخدم</span><span class="info-ico" data-info="infoUsedMargin">؟</span></div><div class="summary-value" id="sumMarginU">0.00</div></div>
+    <div class="summary-item"><div class="summary-label"><span data-i18n="freeMargin">الهامش الحر</span><span class="info-ico" data-info="infoFreeMargin">؟</span></div><div class="summary-value" id="sumFreeMarginU">0.00</div></div>
+    <div class="summary-item"><div class="summary-label"><span data-i18n="marginLevel">مستوى الهامش</span><span class="info-ico" data-info="infoMarginLevel">؟</span></div><div class="summary-value" id="sumMarginLevelU">—</div></div>
   </div>
 </div>
 
@@ -1177,7 +1187,14 @@ function snapVolume(raw, cfg){
 let positions = [];
 let posIdCounter = 1;
 function newPosId(){ return (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : 'p'+(posIdCounter++)+'-'+Date.now(); }
-let balance = 0;
+let balance = 0;      // SAR wallet
+let balanceUsd = 0;   // USD wallet
+function curOfSym(s){ return s && s.cat==='saudi' ? 'SAR' : 'USD'; }
+function balFor(cur){ return cur==='USD' ? balanceUsd : balance; }
+function setBalFor(cur, v){ if(cur==='USD') balanceUsd = v; else balance = v; }
+function curSym(cur){ return cur==='USD' ? '$' : 'ر.س'; }
+function admCur(id){ const e = document.getElementById(id); return e && e.value==='USD' ? 'USD' : 'SAR'; }
+function dualFmt(sar, usd, d){ return `${fmt(sar,d)} ر.س · ${fmt(usd||0,d)} $`; }
 
 function fmt(n, d){ return Number(n).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d}); }
 // Escapes user-supplied text before it goes into an innerHTML template (admin panels
@@ -2531,7 +2548,7 @@ async function buyContract(cid, btn){
   if(!c || !(rawVol > EPS)){ msg(t('invalidVolumeMsg')); return; }
   if(volCfg.decimals === 0 && Math.abs(rawVol - Math.round(rawVol)) > EPS){ msg(t('wholeShareMsg')); return; }
   const vol = snapVolume(rawVol, volCfg);
-  if(c.price * vol > balance + EPS){ msg(t('insufficientBalanceMsg')); return; }
+  if(c.price * vol > balFor(curOfSym(s)) + EPS){ msg(t('insufficientBalanceMsg')); return; }
   btn.disabled = true;
   try {
     const { data, error } = await supabaseClient.rpc('rpc_open_contract_position', {
@@ -2539,8 +2556,8 @@ async function buyContract(cid, btn){
     });
     if(error){ msg(friendlyTradeErrorMsg(error)); return; }
     const row = Array.isArray(data) ? data[0] : data;
-    balance = round6(Number(row.new_balance));
-    positions.push({ id: row.new_position_id, symIdx: activeSymbolIdx, type:'buy', vol, entry: c.price, cost: c.price*vol*s.unit, openedAt:new Date(), tp:null, sl:null, contractId:c.id });
+    setBalFor(curOfSym(s), round6(Number(row.new_balance)));
+    positions.push({ currency: curOfSym(s), id: row.new_position_id, symIdx: activeSymbolIdx, type:'buy', vol, entry: c.price, cost: c.price*vol*s.unit, openedAt:new Date(), tp:null, sl:null, contractId:c.id });
     contractBuyOpenId = null;
     await loadMyExecCodes();
     renderPositions(); updateTradeButtonsState();
@@ -2659,11 +2676,12 @@ async function loadUserFavorites(){
 async function loadUserFinancials(){
   if(!currentUser) return;
   try {
-    const { data: walletRow } = await supabaseClient.from('wallets').select('balance').eq('user_id', currentUser.id).maybeSingle();
+    const { data: walletRow } = await supabaseClient.from('wallets').select('balance,balance_usd').eq('user_id', currentUser.id).maybeSingle();
     balance = walletRow ? Number(walletRow.balance) : 0;
+    balanceUsd = walletRow ? Number(walletRow.balance_usd||0) : 0;
   } catch(err){
     console.warn('could not load wallet balance (table may not exist yet):', err);
-    balance = 0;
+    balance = 0; balanceUsd = 0;
   }
   try {
     const { data: posRows } = await supabaseClient.from('positions').select('*').eq('user_id', currentUser.id).order('opened_at', { ascending:true }).limit(500);
@@ -2680,7 +2698,7 @@ async function loadUserFinancials(){
       const cost = entry * vol * unit;
       const tp = (r.tp !== null && r.tp !== undefined) ? Number(r.tp) : null;
       const sl = (r.sl !== null && r.sl !== undefined) ? Number(r.sl) : null;
-      return { id:r.id, symIdx, type:'buy', vol, entry, cost, openedAt:new Date(r.opened_at), tp, sl, contractId: r.contract_id ?? null };
+      return { id:r.id, symIdx, type:'buy', vol, entry, cost, openedAt:new Date(r.opened_at), tp, sl, contractId: r.contract_id ?? null, currency: r.currency || 'SAR' };
     }).filter(Boolean);
   } catch(err){
     console.warn('could not load open positions (check positions table/RLS):', err);
@@ -2758,7 +2776,7 @@ async function buyPosition(){
   const vol = snapVolume(rawVol, volCfg);
   const entry = askPrice(s);
   const cost = entry * vol * s.unit;
-  if(cost > balance + EPS){
+  if(cost > balFor(curOfSym(s)) + EPS){
     showOrderMsg(t('insufficientBalanceMsg'));
     return;
   }
@@ -2788,7 +2806,8 @@ async function buyPosition(){
       return;
     }
     posRecord.id = posResult.id;
-    balance = round6(posResult.balance);
+    posRecord.currency = curOfSym(s);
+    setBalFor(curOfSym(s), round6(posResult.balance));
     positions.push(posRecord);
     renderPositions();
     updateTradeButtonsState();
@@ -2899,7 +2918,7 @@ async function sellPosition(){
       const tr = { symIdx: lot.symIdx, type:'buy', vol: closeResult.soldVol, entry: lot.entry, exit: exitPrice, pnl: closeResult.pnl, closedAt: new Date() };
       closedTrades.unshift(tr);
       totalPnl += closeResult.pnl;
-      balance = round6(closeResult.balance);
+      setBalFor(lot.currency || 'SAR', round6(closeResult.balance));
       const newLotVol = round6(lot.vol - closeResult.soldVol);
       lot.vol = newLotVol;
       lot.cost = lot.entry * newLotVol * s.unit; // keep in sync with vol for correct unrealized P&L display
@@ -2949,7 +2968,7 @@ async function closePosition(id, reason){
   const pnl = closeResult.pnl;
   const tr = { ...p, exit: exitPrice, pnl, closedAt: new Date() };
   closedTrades.unshift(tr);
-  balance = round6(closeResult.balance);
+  setBalFor(p.currency || 'SAR', round6(closeResult.balance));
   positions = positions.filter(x=>x.id!==id);
   renderPositions();
   renderHistory();
@@ -3018,7 +3037,7 @@ function updateTradeButtonsState(){
   const buyBtn = document.getElementById('buyBtn');
   if(buyBtn){
     const vol = parseFloat(volInput.value) || 0;
-    buyBtn.disabled = !(vol > 0) || (askPrice(s) * vol * s.unit > balance + EPS);
+    buyBtn.disabled = !(vol > 0) || (askPrice(s) * vol * s.unit > balFor(curOfSym(s)) + EPS);
   }
   updateOrderEstimate();
 }
@@ -3073,22 +3092,34 @@ volInput.addEventListener('input', updateTradeButtonsState);
    - floatingPnl      = marketValue − investedAmount (unrealized gain/loss)
    - equity           = balance + marketValue (true net worth if you sold everything this second) */
 function updateSummary(){
-  let investedAmount = 0;
-  let marketValue = 0;
+  const agg = { SAR:{inv:0,mv:0}, USD:{inv:0,mv:0} };
   positions.forEach(p=>{
-    const s = symbols[p.symIdx];
-    investedAmount += p.cost;
-    marketValue += bidPrice(s) * p.vol * s.unit;
+    const sy = symbols[p.symIdx];
+    const g = agg[p.currency==='USD' ? 'USD' : 'SAR'];
+    g.inv += p.cost;
+    g.mv += (contractPriceForPos(p) ?? bidPrice(sy)) * p.vol * sy.unit;
   });
-  const floatingPnl = marketValue - investedAmount;
-  const equity = balance + marketValue;
-  document.getElementById('sumBalance').textContent = fmt(balance,2);
-  document.getElementById('sumPnl').textContent = (floatingPnl>=0?'+':'')+fmt(floatingPnl,2);
-  document.getElementById('sumPnl').style.color = floatingPnl>=0 ? 'var(--buy)' : 'var(--sell)';
-  document.getElementById('sumEquity').textContent = fmt(equity,2);
-  document.getElementById('sumMargin').textContent = fmt(investedAmount,2);
-  document.getElementById('sumFreeMargin').textContent = fmt(balance,2);
-  document.getElementById('sumMarginLevel').textContent = equity>0 ? fmt((investedAmount/equity)*100,1)+'%' : '—';
+  const S = agg.SAR, U = agg.USD;
+  const pnlS = S.mv - S.inv, pnlU = U.mv - U.inv;
+  const eqS = balance + S.mv, eqU = balanceUsd + U.mv;
+  const pnlTxt = (v)=> (v>=0?'+':'')+fmt(v,2);
+  const hasUsd = true;
+  const set = (id, v)=>{ const e = document.getElementById(id); if(e) e.textContent = v; };
+  const lvl = (inv,eq)=> eq>0 ? fmt((inv/eq)*100,1)+'%' : '—';
+  set('sumBalance', fmt(balance,2));
+  set('sumPnl', pnlTxt(pnlS));
+  const pe = document.getElementById('sumPnl'); if(pe) pe.style.color = pnlS>=0 ? 'var(--buy)' : 'var(--sell)';
+  set('sumEquity', fmt(eqS,2));
+  set('sumMargin', fmt(S.inv,2));
+  set('sumFreeMargin', fmt(balance,2));
+  set('sumMarginLevel', lvl(S.inv,eqS));
+  set('sumBalanceU', fmt(balanceUsd,2));
+  set('sumPnlU', pnlTxt(pnlU));
+  const peU = document.getElementById('sumPnlU'); if(peU) peU.style.color = pnlU>=0 ? 'var(--buy)' : 'var(--sell)';
+  set('sumEquityU', fmt(eqU,2));
+  set('sumMarginU', fmt(U.inv,2));
+  set('sumFreeMarginU', fmt(balanceUsd,2));
+  set('sumMarginLevelU', lvl(U.inv,eqU));
   updateTradeButtonsState();
 }
 
@@ -3853,7 +3884,8 @@ function normalizeExternalUrl(url){
   return url;
 }
 
-const balanceAddBtn = document.getElementById('balanceAddBtn');
+[['balanceAddBtn','SAR'],['balanceAddBtnU','USD']].forEach(([bid, cur])=>{
+const balanceAddBtn = document.getElementById(bid);
 if(balanceAddBtn){
   balanceAddBtn.addEventListener('click', async (e)=>{
     e.stopPropagation();
@@ -3863,11 +3895,13 @@ if(balanceAddBtn){
       window.location.href = depositLink;
       return;
     }
-    openAddBalanceModal();
+    openAddBalanceModal(cur);
   });
 }
+});
 
-const balanceWithdrawBtn = document.getElementById('balanceWithdrawBtn');
+[['balanceWithdrawBtn','SAR'],['balanceWithdrawBtnU','USD']].forEach(([bid, cur])=>{
+const balanceWithdrawBtn = document.getElementById(bid);
 if(balanceWithdrawBtn){
   balanceWithdrawBtn.addEventListener('click', (e)=>{
     e.stopPropagation();
@@ -3882,9 +3916,10 @@ if(balanceWithdrawBtn){
       document.getElementById('withdrawGoPlanBtn').onclick = ()=>{ closeModal(); openSubscriptionModal(); };
       return;
     }
-    openWithdrawModal();
+    openWithdrawModal(cur);
   });
 }
+});
 
 /* ============ Menu dropdown (☰) ============ */
 const menuBtn = document.getElementById('menuBtn');
@@ -4868,7 +4903,8 @@ function openProfileModal(){
     <div class="switch-row"><span>${t('accountTypeLabel')}</span><span class="notif-time">${accountMode==='demo'?t('demoWord'):t('realWord')}</span></div>
     <div class="switch-row"><span>${t('currentPlanLabel')}</span></div>
     ${plansHTML}
-    <div class="switch-row"><span>${t('balance')}</span><span class="notif-time" id="profBalance">${fmt(balance,2)}</span></div>
+    <div class="switch-row"><span>${t('balance')} — ﷼ ${t('currencySAR')}</span><span class="notif-time" id="profBalance">${fmt(balance, 2)} ر.س</span></div>
+    <div class="switch-row"><span>${t('balance')} — $ ${t('currencyUSD')}</span><span class="notif-time" id="profBalanceUsd">${fmt(balanceUsd, 2)} $</span></div>
     <button class="modal-btn primary" id="profSubscribeBtn" style="margin-top:8px;">${t('subscribeBtn')}</button>
     <button class="modal-btn ghost" id="profEditDetailsBtn">${t('pdEditBtn')}</button>
     <button class="modal-btn ghost" id="profClose">${t('closeBtn')}</button>
@@ -5216,9 +5252,25 @@ async function loadPendingWithdrawals(){
           <div class="plan-desc">الآيبان: ${escHtml(r.iban) || '—'}</div>
           <div class="plan-desc">الهاتف: ${escHtml(r.phone) || '—'} · ${dateLabel}</div>
           <button class="modal-btn primary" style="margin-top:8px;" data-withdrawal-contacted-idx="${i}">📞 تواصلت مع العميل</button>
+          <button class="modal-btn" style="margin-top:8px;" data-withdrawal-deduct-idx="${i}">💸 خصم ${fmt(r.amount,2)} ${r.currency==='USD'?'$':'ر.س'} من رصيد العميل</button>
+          <div class="modal-note" data-withdrawal-msg="${i}" style="margin-top:6px;"></div>
         </div>`;
     }).join('');
     data.forEach((r,i)=>{
+      const dBtn = listEl.querySelector(`[data-withdrawal-deduct-idx="${i}"]`);
+      if(dBtn) dBtn.onclick = async ()=>{
+        const cur = r.currency==='USD' ? 'USD' : 'SAR', m = listEl.querySelector(`[data-withdrawal-msg="${i}"]`);
+        if(!confirm(`خصم ${fmt(r.amount,2)} ${curSym(cur)} من رصيد ${r.email}؟`)) return;
+        dBtn.disabled = true;
+        try {
+          const { data: nb, error } = await supabaseClient.rpc('admin_add_balance', { target_email: r.email, amount: -Math.abs(Number(r.amount)), p_currency: cur });
+          if(error) throw error;
+          m.style.color = 'var(--buy)'; m.textContent = `تم الخصم. الرصيد الجديد: ${fmt(nb,2)} ${curSym(cur)}`;
+          dBtn.textContent = '✅ اتخصم';
+          if(currentUser && currentUser.email===r.email){ setBalFor(cur, Number(nb)); updateSummary(); }
+          logAdmin('deduct_balance', r.email, { amount: r.amount, currency: cur, source: 'withdrawal_request' });
+        } catch(err){ dBtn.disabled = false; m.style.color = 'var(--sell)'; m.textContent = 'فشل الخصم: ' + (err.message || 'حاول مرة أخرى'); }
+      };
       const btn = listEl.querySelector(`[data-withdrawal-contacted-idx="${i}"]`);
       if(btn) btn.onclick = async ()=>{
         btn.disabled = true;
@@ -6603,6 +6655,7 @@ function paintAdminDashUsers(){
       <div style="background:var(--bg-panel);border:1px solid var(--border);border-radius:12px;padding:16px;">
         <div style="font-weight:700;font-size:13.5px;margin-bottom:8px;">➕ إضافة رصيد</div>
         <input type="email" id="adminTargetEmail" list="platformEmailsList" placeholder="client@example.com" style="width:100%;padding:9px;border-radius:8px;border:1px solid var(--border);box-sizing:border-box;">
+        <select id="adminCurrency" style="width:100%;padding:9px;border-radius:8px;border:1px solid var(--border);margin-top:8px;box-sizing:border-box;"><option value="SAR">ريال سعودي (SAR)</option><option value="USD">دولار (USD)</option></select>
         <input type="number" id="adminAmount" placeholder="1000" min="0.01" step="0.01" style="width:100%;padding:9px;border-radius:8px;border:1px solid var(--border);margin-top:8px;box-sizing:border-box;">
         ${quickAmountButtonsHTML('adminAmount', quickAmounts)}
         <div id="adminMsg" style="margin-top:8px;font-size:12.5px;"></div>
@@ -6611,6 +6664,7 @@ function paintAdminDashUsers(){
       <div style="background:var(--bg-panel);border:1px solid var(--border);border-radius:12px;padding:16px;">
         <div style="font-weight:700;font-size:13.5px;margin-bottom:8px;">➖ خصم رصيد</div>
         <input type="email" id="adminDeductEmail" list="platformEmailsList" placeholder="client@example.com" style="width:100%;padding:9px;border-radius:8px;border:1px solid var(--border);box-sizing:border-box;">
+        <select id="adminDeductCurrency" style="width:100%;padding:9px;border-radius:8px;border:1px solid var(--border);margin-top:8px;box-sizing:border-box;"><option value="SAR">ريال سعودي (SAR)</option><option value="USD">دولار (USD)</option></select>
         <input type="number" id="adminDeductAmount" placeholder="500" min="0.01" step="0.01" style="width:100%;padding:9px;border-radius:8px;border:1px solid var(--border);margin-top:8px;box-sizing:border-box;">
         ${quickAmountButtonsHTML('adminDeductAmount', quickAmounts)}
         <div id="adminDeductMsg" style="margin-top:8px;font-size:12.5px;"></div>
@@ -6683,11 +6737,11 @@ function paintAdminDashUsers(){
     if(!email.includes('@') || !amount || amount<=0){ msgEl.style.color='var(--sell)'; msgEl.textContent='إيميل صحيح ومبلغ أكبر من صفر.'; return; }
     msgEl.style.color='var(--text-dim)'; msgEl.textContent='جاري التنفيذ...';
     try {
-      const { data, error } = await supabaseClient.rpc('admin_add_balance', { target_email: email, amount });
+      const { data, error } = await supabaseClient.rpc('admin_add_balance', { target_email: email, amount, p_currency: admCur('adminCurrency') });
       if(error) throw error;
-      msgEl.style.color='var(--buy)'; msgEl.textContent = `تم! الرصيد الجديد: ${fmt(data,2)} ر.س`;
-      if(currentUser && currentUser.email===email){ balance = Number(data); updateSummary(); }
-      logAdmin('add_balance', email, { amount });
+      msgEl.style.color='var(--buy)'; msgEl.textContent = `تم! الرصيد الجديد: ${fmt(data,2)} ${curSym(admCur('adminCurrency'))}`;
+      if(currentUser && currentUser.email===email){ setBalFor(admCur('adminCurrency'), Number(data)); updateSummary(); }
+      logAdmin('add_balance', email, { amount, currency: admCur('adminCurrency') });
       await renderAdminDashUsers();
     } catch(err){ msgEl.style.color='var(--sell)'; msgEl.textContent='فشل: '+(err.message||'تأكد أن العميل مسجّل.'); }
   };
@@ -6698,17 +6752,17 @@ function paintAdminDashUsers(){
     if(!email.includes('@') || !amount || amount<=0){ msgEl.style.color='var(--sell)'; msgEl.textContent='إيميل صحيح ومبلغ أكبر من صفر.'; return; }
     msgEl.style.color='var(--text-dim)'; msgEl.textContent='جاري التنفيذ...';
     try {
-      const { data, error } = await supabaseClient.rpc('admin_add_balance', { target_email: email, amount: -Math.abs(amount) });
+      const { data, error } = await supabaseClient.rpc('admin_add_balance', { target_email: email, amount: -Math.abs(amount), p_currency: admCur('adminDeductCurrency') });
       if(error) throw error;
       const newBalance = Number(data);
       if(newBalance < 0){
-        await supabaseClient.rpc('admin_add_balance', { target_email: email, amount: Math.abs(amount) });
+        await supabaseClient.rpc('admin_add_balance', { target_email: email, amount: Math.abs(amount), p_currency: admCur('adminDeductCurrency') });
         msgEl.style.color='var(--sell)'; msgEl.textContent='رصيد العميل أقل من المبلغ المطلوب خصمه — لم يتم التنفيذ.';
         return;
       }
-      msgEl.style.color='var(--buy)'; msgEl.textContent = `تم! الرصيد الجديد: ${fmt(newBalance,2)} ر.س`;
-      if(currentUser && currentUser.email===email){ balance = newBalance; updateSummary(); }
-      logAdmin('deduct_balance', email, { amount });
+      msgEl.style.color='var(--buy)'; msgEl.textContent = `تم! الرصيد الجديد: ${fmt(newBalance,2)} ${curSym(admCur('adminDeductCurrency'))}`;
+      if(currentUser && currentUser.email===email){ setBalFor(admCur('adminDeductCurrency'), newBalance); updateSummary(); }
+      logAdmin('deduct_balance', email, { amount, currency: admCur('adminDeductCurrency') });
       await renderAdminDashUsers();
     } catch(err){ msgEl.style.color='var(--sell)'; msgEl.textContent='فشل: '+(err.message||'تأكد أن العميل مسجّل.'); }
   };
@@ -7262,7 +7316,8 @@ function openAdminModal(){
     <label style="display:block;margin-top:10px;font-size:13px;color:var(--text-dim);">إيميل العميل</label>
     <input type="email" id="adminTargetEmail" list="platformEmailsList" placeholder="client@example.com" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);margin-top:4px;box-sizing:border-box;">
     <label style="display:block;margin-top:12px;font-size:13px;color:var(--text-dim);">المبلغ (ر.س)</label>
-    <input type="number" id="adminAmount" placeholder="1000" min="0.01" step="0.01" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);margin-top:4px;box-sizing:border-box;">
+    <select id="adminCurrency" style="width:100%;padding:9px;border-radius:8px;border:1px solid var(--border);margin-top:8px;box-sizing:border-box;"><option value="SAR">ريال سعودي (SAR)</option><option value="USD">دولار (USD)</option></select>
+        <input type="number" id="adminAmount" placeholder="1000" min="0.01" step="0.01" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);margin-top:4px;box-sizing:border-box;">
     ${quickAmountButtonsHTML('adminAmount', quickAmounts)}
     <div id="adminMsg" style="margin-top:10px;font-size:13px;"></div>
     <button class="modal-btn primary" id="adminSubmitBtn" style="margin-top:12px;">إضافة الرصيد</button>
@@ -7273,7 +7328,8 @@ function openAdminModal(){
     <label style="display:block;margin-top:10px;font-size:13px;color:var(--text-dim);">إيميل العميل</label>
     <input type="email" id="adminDeductEmail" list="platformEmailsList" placeholder="client@example.com" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);margin-top:4px;box-sizing:border-box;">
     <label style="display:block;margin-top:12px;font-size:13px;color:var(--text-dim);">المبلغ (ر.س)</label>
-    <input type="number" id="adminDeductAmount" placeholder="500" min="0.01" step="0.01" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);margin-top:4px;box-sizing:border-box;">
+    <select id="adminDeductCurrency" style="width:100%;padding:9px;border-radius:8px;border:1px solid var(--border);margin-top:8px;box-sizing:border-box;"><option value="SAR">ريال سعودي (SAR)</option><option value="USD">دولار (USD)</option></select>
+        <input type="number" id="adminDeductAmount" placeholder="500" min="0.01" step="0.01" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);margin-top:4px;box-sizing:border-box;">
     ${quickAmountButtonsHTML('adminDeductAmount', quickAmounts)}
     <div id="adminDeductMsg" style="margin-top:10px;font-size:13px;"></div>
     <button class="modal-btn primary" id="adminDeductSubmitBtn" style="margin-top:12px;background:var(--sell);">خصم الرصيد</button>
@@ -7420,11 +7476,11 @@ function openAdminModal(){
     msgEl.style.color = 'var(--text-dim)';
     msgEl.textContent = 'جاري التنفيذ...';
     try {
-      const { data, error } = await supabaseClient.rpc('admin_add_balance', { target_email: email, amount });
+      const { data, error } = await supabaseClient.rpc('admin_add_balance', { target_email: email, amount, p_currency: admCur('adminCurrency') });
       if(error) throw error;
       msgEl.style.color = 'var(--buy)';
-      msgEl.textContent = `تم! الرصيد الجديد لـ ${email}: ${fmt(data,2)} ر.س`;
-      if(currentUser && currentUser.email===email){ balance = Number(data); updateSummary(); }
+      msgEl.textContent = `تم! الرصيد الجديد لـ ${email}: ${fmt(data,2)} ${curSym(admCur('adminCurrency'))}`;
+      if(currentUser && currentUser.email===email){ setBalFor(admCur('adminCurrency'), Number(data)); updateSummary(); }
     } catch(err){
       msgEl.style.color = 'var(--sell)';
       msgEl.textContent = 'فشل التنفيذ: ' + (err.message || 'تأكد من أن هذا العميل قد سجّل حسابًا على المنصة مسبقًا.');
@@ -7443,7 +7499,7 @@ function openAdminModal(){
     msgEl.textContent = 'جاري التنفيذ...';
     const deduction = Math.abs(amount);
     try {
-      const { data, error } = await supabaseClient.rpc('admin_add_balance', { target_email: email, amount: -deduction });
+      const { data, error } = await supabaseClient.rpc('admin_add_balance', { target_email: email, amount: -deduction, p_currency: admCur('adminDeductCurrency') });
       if(error) throw error;
       const newBalance = Number(data);
       if(newBalance < 0){
@@ -7451,16 +7507,16 @@ function openAdminModal(){
         // wallet never actually sits negative, then tell the admin what's
         // really available.
         const currentBalance = newBalance + deduction;
-        const { error: revertError } = await supabaseClient.rpc('admin_add_balance', { target_email: email, amount: deduction });
+        const { error: revertError } = await supabaseClient.rpc('admin_add_balance', { target_email: email, amount: deduction, p_currency: admCur('adminDeductCurrency') });
         if(revertError) throw revertError;
         msgEl.style.color = 'var(--sell)';
-        msgEl.textContent = `لا يمكن خصم ${fmt(deduction,2)} ر.س — رصيد ${email} الحالي ${fmt(currentBalance,2)} ر.س فقط.`;
-        if(currentUser && currentUser.email===email){ balance = currentBalance; updateSummary(); }
+        msgEl.textContent = `لا يمكن خصم ${fmt(deduction,2)} ${curSym(admCur('adminDeductCurrency'))} — رصيد ${email} الحالي ${fmt(currentBalance,2)} ${curSym(admCur('adminDeductCurrency'))} فقط.`;
+        if(currentUser && currentUser.email===email){ setBalFor(admCur('adminDeductCurrency'), currentBalance); updateSummary(); }
         return;
       }
       msgEl.style.color = 'var(--buy)';
-      msgEl.textContent = `تم! الرصيد الجديد لـ ${email}: ${fmt(newBalance,2)} ر.س`;
-      if(currentUser && currentUser.email===email){ balance = newBalance; updateSummary(); }
+      msgEl.textContent = `تم! الرصيد الجديد لـ ${email}: ${fmt(newBalance,2)} ${curSym(admCur('adminDeductCurrency'))}`;
+      if(currentUser && currentUser.email===email){ setBalFor(admCur('adminDeductCurrency'), newBalance); updateSummary(); }
     } catch(err){
       msgEl.style.color = 'var(--sell)';
       msgEl.textContent = 'فشل التنفيذ: ' + (err.message || 'تأكد من أن هذا العميل قد سجّل حسابًا على المنصة مسبقًا.');
@@ -7979,7 +8035,8 @@ function openCashbackModal(){
     requestCashback(amount, phone, cashbackCurrency);
   };
 }
-function openAddBalanceModal(){
+function openAddBalanceModal(fixedCur){
+  fixedCur = fixedCur === 'USD' ? 'USD' : 'SAR';
   if(!currentUser){
     openLoginModal();
     return;
@@ -7990,10 +8047,7 @@ function openAddBalanceModal(){
       <span class="field-label">${t('depositAmountLabel')}</span>
       <input class="field-input" style="text-align:start;" id="depositAmountInput" type="number" min="1" step="0.01" placeholder="1000">
     </div>
-    <div class="currency-toggle">
-      <button type="button" class="currency-toggle-btn active" id="depositCurSAR" data-currency="SAR">﷼ ${t('currencySAR')}</button>
-      <button type="button" class="currency-toggle-btn" id="depositCurUSD" data-currency="USD">$ ${t('currencyUSD')}</button>
-    </div>
+    <div class="modal-note" style="font-weight:700;">${fixedCur==='USD' ? '$ ' + t('currencyUSD') : '﷼ ' + t('currencySAR')}</div>
     <div class="form-row">
       <span class="field-label">${t('phoneLabel')}</span>
       <input class="field-input" style="text-align:start;" id="depositPhoneInput" type="tel" placeholder="05xxxxxxxx">
@@ -8002,17 +8056,7 @@ function openAddBalanceModal(){
     <button class="modal-btn primary" id="depositSubmitBtn">${t('depositSubmitBtn')}</button>
     <button class="modal-btn ghost" id="depositCancelBtn">${t('noBtn')}</button>
   `);
-  let depositCurrency = 'SAR';
-  document.getElementById('depositCurSAR').onclick = ()=>{
-    depositCurrency = 'SAR';
-    document.getElementById('depositCurSAR').classList.add('active');
-    document.getElementById('depositCurUSD').classList.remove('active');
-  };
-  document.getElementById('depositCurUSD').onclick = ()=>{
-    depositCurrency = 'USD';
-    document.getElementById('depositCurUSD').classList.add('active');
-    document.getElementById('depositCurSAR').classList.remove('active');
-  };
+  const depositCurrency = fixedCur;
   document.getElementById('depositCancelBtn').onclick = closeModal;
   document.getElementById('depositSubmitBtn').onclick = ()=>{
     const amount = parseFloat(document.getElementById('depositAmountInput').value);
@@ -8209,7 +8253,8 @@ async function requestBricsReservation(qty, phone){
   pushNotification(bilingualText(()=> t('bricsSuccessTitle')), bilingualText(()=> String(qty)));
 }
 
-function openWithdrawModal(){
+function openWithdrawModal(fixedCur){
+  fixedCur = fixedCur === 'USD' ? 'USD' : 'SAR';
   if(!currentUser){
     openLoginModal();
     return;
@@ -8233,10 +8278,7 @@ function openWithdrawModal(){
       <span class="field-label">${t('withdrawAmountLabel')}</span>
       <input class="field-input" style="text-align:start;" id="withdrawAmountInput" type="number" min="1" step="0.01" placeholder="1000">
     </div>
-    <div class="currency-toggle">
-      <button type="button" class="currency-toggle-btn active" id="withdrawCurSAR" data-currency="SAR">﷼ ${t('currencySAR')}</button>
-      <button type="button" class="currency-toggle-btn" id="withdrawCurUSD" data-currency="USD">$ ${t('currencyUSD')}</button>
-    </div>
+    <div class="modal-note" style="font-weight:700;">${fixedCur==='USD' ? '$ ' + t('currencyUSD') : '﷼ ' + t('currencySAR')}</div>
     <div class="form-row">
       <span class="field-label">${t('phoneLabel')}</span>
       <input class="field-input" style="text-align:start;" id="withdrawPhoneInput" type="tel" placeholder="05xxxxxxxx">
@@ -8245,17 +8287,7 @@ function openWithdrawModal(){
     <button class="modal-btn primary" id="withdrawSubmitBtn">${t('withdrawSubmitBtn')}</button>
     <button class="modal-btn ghost" id="withdrawCancelBtn">${t('noBtn')}</button>
   `);
-  let withdrawCurrency = 'SAR';
-  document.getElementById('withdrawCurSAR').onclick = ()=>{
-    withdrawCurrency = 'SAR';
-    document.getElementById('withdrawCurSAR').classList.add('active');
-    document.getElementById('withdrawCurUSD').classList.remove('active');
-  };
-  document.getElementById('withdrawCurUSD').onclick = ()=>{
-    withdrawCurrency = 'USD';
-    document.getElementById('withdrawCurUSD').classList.add('active');
-    document.getElementById('withdrawCurSAR').classList.remove('active');
-  };
+  const withdrawCurrency = fixedCur;
   document.getElementById('withdrawCancelBtn').onclick = closeModal;
   document.getElementById('withdrawSubmitBtn').onclick = ()=>{
     const bankName = document.getElementById('withdrawBankNameInput').value.trim();
@@ -8815,6 +8847,53 @@ function renderAdminStockPricesModal(){
     var gate = document.getElementById('loggedOutScreen');
     if(gate) gate.remove();
   }
+})();
+</script>
+
+<style>
+#adminToastHost{position:fixed;top:calc(env(safe-area-inset-top,0px) + 10px);left:50%;transform:translateX(-50%);z-index:99999;display:flex;flex-direction:column;gap:8px;width:min(92vw,420px);pointer-events:none;}
+.admin-toast{pointer-events:auto;display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border-radius:12px;background:var(--panel,#1c2230);color:var(--text,#fff);border:1px solid var(--border,#333);box-shadow:0 8px 24px rgba(0,0,0,.35);font-size:13.5px;line-height:1.6;}
+.admin-toast.ok{border-color:var(--buy,#16a34a);}
+.admin-toast.err{border-color:var(--sell,#dc2626);}
+.admin-toast .at-msg{flex:1;word-break:break-word;}
+.admin-toast .at-x{cursor:pointer;opacity:.7;padding:0 4px;}
+</style>
+<script>
+/* Admin toast: success/failure messages that survive panel re-renders. */
+(function(){
+  var host = document.createElement('div'); host.id = 'adminToastHost'; document.body.appendChild(host);
+  function showToast(text, kind){
+    var d = document.createElement('div'); d.className = 'admin-toast ' + kind;
+    var ic = document.createElement('span'); ic.textContent = kind==='ok' ? '✅' : (kind==='err' ? '⚠️' : 'ℹ️');
+    var m = document.createElement('span'); m.className = 'at-msg'; m.textContent = text;
+    var x = document.createElement('span'); x.className = 'at-x'; x.textContent = '✕';
+    x.onclick = function(){ d.remove(); };
+    d.appendChild(ic); d.appendChild(m); d.appendChild(x);
+    host.appendChild(d);
+    while(host.children.length > 3) host.firstChild.remove();
+    setTimeout(function(){ d.remove(); }, 6500);
+  }
+  window.adminToast = showToast;
+  var skipIds = {orderMsg:1, contractMsg:1, pdEditMsg:1};
+  var last = '';
+  function isAdminMsg(el){
+    if(!el || !el.id || skipIds[el.id]) return false;
+    if(!/Msg$/.test(el.id)) return false;
+    return !!(typeof currentIsAdmin !== 'undefined' && currentIsAdmin);
+  }
+  new MutationObserver(function(muts){
+    muts.forEach(function(mu){
+      var el = mu.target && mu.target.nodeType === 3 ? mu.target.parentElement : mu.target;
+      if(!isAdminMsg(el)) return;
+      var text = (el.textContent || '').trim();
+      if(!text || /^جاري/.test(text) || text.indexOf('...') === text.length - 3 && text.length < 30) return;
+      var c = (el.style && el.style.color) || '';
+      var kind = c.indexOf('buy') >= 0 ? 'ok' : (c.indexOf('sell') >= 0 ? 'err' : 'info');
+      var key = kind + '|' + text;
+      if(key === last) return; last = key; setTimeout(function(){ if(last === key) last = ''; }, 800);
+      showToast(text, kind);
+    });
+  }).observe(document.body, { subtree:true, childList:true, characterData:true });
 })();
 </script>
 </body>

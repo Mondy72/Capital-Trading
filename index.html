@@ -666,7 +666,7 @@
         <table class="positions">
           <thead>
             <tr>
-              <th data-i18n="colSymbol">الرمز</th><th data-i18n="colType">النوع</th><th data-i18n="colVolume">الحجم</th><th data-i18n="colOpenPrice">سعر الفتح</th><th data-i18n="colClosePrice">سعر الإغلاق</th><th><span data-i18n="colPnl">الأرباح</span><span class="info-ico" data-info="infoPnl">؟</span></th><th data-i18n="colTime">الوقت</th>
+              <th data-i18n="colSymbol">الرمز</th><th data-i18n="colType">النوع</th><th data-i18n="colVolume">الحجم</th><th data-i18n="colOpenPrice">سعر الفتح</th><th data-i18n="colClosePrice">سعر الإغلاق</th><th><span data-i18n="colPnl">الأرباح</span><span class="info-ico" data-info="infoPnl">؟</span></th><th data-i18n="colTime">التاريخ والوقت</th>
             </tr>
           </thead>
           <tbody id="historyBody">
@@ -2422,7 +2422,7 @@ async function loadMoreClosedTrades(){
       const symName = r.sym_name ?? r.symbol;
       const symIdx = symbolIndexByName[symName];
       if(symIdx===undefined) return null;
-      return { symIdx, type:'buy', vol:Number(r.vol), entry:Number(r.entry), exit:Number(r.exit), pnl:Number(r.pnl), closedAt:new Date(r.closed_at) };
+      return { symIdx, type:'buy', vol:Number(r.vol), entry:Number(r.entry), exit:Number(r.exit), pnl:Number(r.pnl), closedAt:new Date(r.closed_at), currency:(r.currency==='USD'?'USD':'SAR'), contractCode: r.contract_code || null };
     }).filter(Boolean);
     closedTrades = closedTrades.concat(mapped);
     closedTradesOffset = closedTrades.length;
@@ -2715,7 +2715,7 @@ async function loadUserFinancials(){
       const symName = r.sym_name ?? r.symbol;
       const symIdx = symbolIndexByName[symName];
       if(symIdx===undefined) return null;
-      return { symIdx, type:'buy', vol:Number(r.vol), entry:Number(r.entry), exit:Number(r.exit), pnl:Number(r.pnl), closedAt:new Date(r.closed_at) };
+      return { symIdx, type:'buy', vol:Number(r.vol), entry:Number(r.entry), exit:Number(r.exit), pnl:Number(r.pnl), closedAt:new Date(r.closed_at), currency:(r.currency==='USD'?'USD':'SAR'), contractCode: r.contract_code || null };
     }).filter(Boolean);
     closedTradesOffset = closedTrades.length;
     closedTradesHasMore = (count||0) > closedTradesOffset;
@@ -3662,54 +3662,99 @@ window.addEventListener('resize', ()=>{ resizeCanvas(); drawChart(); });
 
 /* ============ History tab ============ */
 const historyBody = document.getElementById('historyBody');
-function renderHistory(){
-  if(closedTrades.length===0){
+const L = (ar,en)=> (typeof lang!=='undefined' && lang==='en') ? en : ar;
+function fmtDateTime(d){
+  return d.toLocaleString(lang==='en'?'en-GB':'ar-EG',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
+}
+function curTag(c){ return c==='USD' ? '$' : 'ر.س'; }
+let tradeEvents = [], tradeEventsHasMore = false, tradeEventsLoaded = false;
+const TRADE_EVENTS_PAGE = 50;
+async function loadTradeEvents(more){
+  if(!currentUser) return;
+  const from = more ? tradeEvents.length : 0;
+  try {
+    const { data, error } = await supabaseClient.from('trade_events').select('*')
+      .eq('user_id', currentUser.id).order('created_at', { ascending:false }).range(from, from + TRADE_EVENTS_PAGE);
+    if(error) throw error;
+    const rows = data || [];
+    tradeEventsHasMore = rows.length > TRADE_EVENTS_PAGE;
+    const page = rows.slice(0, TRADE_EVENTS_PAGE);
+    tradeEvents = more ? tradeEvents.concat(page) : page;
+    tradeEventsLoaded = true;
+  } catch(err){ console.warn('could not load trade events:', err); }
+}
+async function renderHistory(more){
+  if(!tradeEventsLoaded || more===true || more===undefined) { await loadTradeEvents(more===true); }
+  if(tradeEvents.length===0){
     historyBody.innerHTML = `<tr class="empty-row"><td colspan="7">${t('noHistory')}</td></tr>`;
     return;
   }
-  const rows = closedTrades.map(tr=>{
-    const s = symbols[tr.symIdx];
-    const pnlClass = tr.pnl>=0?'pnl-pos':'pnl-neg';
-    const time = tr.closedAt.toLocaleTimeString(lang==='en'?'en-US':'ar-EG',{hour:'2-digit',minute:'2-digit'});
-    return `<tr>
-      <td>${s.icon} ${s.short}</td>
-      <td><span class="type-badge ${tr.type}">${tr.type==='buy'?t('buy'):t('sell')}</span></td>
-      <td>${tr.vol.toFixed(2)}</td>
-      <td>${fmt(tr.entry, s.decimals)}</td>
-      <td>${fmt(tr.exit, s.decimals)}</td>
-      <td class="${pnlClass}">${tr.pnl>=0?'+':''}${fmt(tr.pnl,2)}</td>
-      <td>${time}</td>
-    </tr>`;
+  const rows = tradeEvents.map(ev=>{
+    const idx = symbolIndexByName[ev.symbol], s = idx!==undefined ? symbols[idx] : null;
+    const nm = s ? `${s.icon} ${s.short}` : escHtml(ev.symbol);
+    const dec = s ? s.decimals : 2;
+    const code = ev.contract_code ? `<div style="font-size:11px;color:var(--text-dim);">سعر التنفيذ: ${escHtml(ev.contract_code)}</div>` : '';
+    const tag = curTag(ev.currency), when = fmtDateTime(new Date(ev.created_at));
+    if(ev.type==='buy'){
+      return `<tr><td>${nm}${code}</td><td><span class="type-badge buy">${t('buy')}</span></td><td>${Number(ev.vol).toFixed(2)}</td><td>${fmt(Number(ev.price), dec)}</td><td>—</td><td style="color:var(--text-dim);">${tag}</td><td>${when}</td></tr>`;
+    }
+    const pnl = Number(ev.pnl||0);
+    return `<tr><td>${nm}${code}</td><td><span class="type-badge sell">${t('sell')}</span></td><td>${Number(ev.vol).toFixed(2)}</td><td>${fmt(Number(ev.entry), dec)}</td><td>${fmt(Number(ev.price), dec)}</td><td class="${pnl>=0?'pnl-pos':'pnl-neg'}">${pnl>=0?'+':''}${fmt(pnl,2)} ${tag}</td><td>${when}</td></tr>`;
   }).join('');
-  const loadMoreRow = closedTradesHasMore
+  const loadMoreRow = tradeEventsHasMore
     ? `<tr><td colspan="7" style="text-align:center;padding:10px;"><button class="modal-btn ghost" id="loadMoreHistoryBtn" style="width:auto;padding:8px 20px;">${t('loadMoreBtn')}</button></td></tr>`
     : '';
   historyBody.innerHTML = rows + loadMoreRow;
-  const loadMoreBtn = document.getElementById('loadMoreHistoryBtn');
-  if(loadMoreBtn) loadMoreBtn.onclick = ()=>{
-    loadMoreBtn.disabled = true;
-    loadMoreBtn.textContent = t('authLoadingWord');
-    loadMoreClosedTrades();
-  };
+  const lm = document.getElementById('loadMoreHistoryBtn');
+  if(lm) lm.onclick = ()=>{ lm.disabled = true; lm.textContent = t('authLoadingWord'); renderHistory(true); };
 }
 
 /* ============ Report tab ============ */
+function reportBlock(cur){
+  const trs = closedTrades.filter(x=>x.currency===cur);
+  const open = positions.filter(p=>p.currency===cur).length;
+  if(!trs.length && !open) return '';
+  const tag = curTag(cur);
+  const total = trs.length;
+  const wins = trs.filter(x=>x.pnl>0), losses = trs.filter(x=>x.pnl<0);
+  const net = trs.reduce((a,x)=>a+x.pnl,0);
+  const grossW = wins.reduce((a,x)=>a+x.pnl,0), grossL = Math.abs(losses.reduce((a,x)=>a+x.pnl,0));
+  const winRate = total ? ((wins.length/total)*100).toFixed(1)+'%' : '—';
+  const avgW = wins.length ? grossW/wins.length : 0, avgL = losses.length ? grossL/losses.length : 0;
+  const pf = grossL>0 ? (grossW/grossL).toFixed(2) : (grossW>0 ? '∞' : '—');
+  const best = total ? Math.max(...trs.map(x=>x.pnl)) : 0, worst = total ? Math.min(...trs.map(x=>x.pnl)) : 0;
+  const bySym = {};
+  trs.forEach(x=>{ const k = symbols[x.symIdx].short; bySym[k] = (bySym[k]||0) + x.pnl; });
+  const top = Object.entries(bySym).sort((a,b)=>b[1]-a[1]);
+  const col = v=> v>=0 ? 'var(--buy)' : 'var(--sell)';
+  const sg = v=> (v>=0?'+':'') + fmt(v,2) + ' ' + tag;
+  const box = (lbl,val,color)=> `<div class="stat-box"><div class="lbl">${lbl}</div><div class="val"${color?` style="color:${color}"`:''}>${val}</div></div>`;
+  const title = cur==='USD' ? L('💵 تقرير الدولار ($)','💵 USD report ($)') : L('💰 تقرير الريال السعودي (ر.س)','💰 SAR report');
+  const symRows = top.length ? `<div style="grid-column:1/-1;border:1px solid var(--border);border-radius:10px;padding:6px 10px;">
+      <div style="font-size:12px;color:var(--text-dim);margin-bottom:4px;">${L('الربح/الخسارة حسب السهم','P&L by symbol')}</div>
+      ${top.slice(0,8).map(([k,v])=>`<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:13px;"><span>${escHtml(k)}</span><span style="color:${col(v)};font-family:var(--font-mono);">${sg(v)}</span></div>`).join('')}
+    </div>` : '';
+  return `<div style="grid-column:1/-1;font-weight:700;font-size:14px;margin-top:6px;">${title}</div>`
+    + box(L('إجمالي الصفقات','Total trades'), total)
+    + box(L('نسبة الربح','Win rate'), winRate)
+    + box(L('صافي الربح','Net P&L'), sg(net), col(net))
+    + box(L('مفتوحة الآن','Open now'), open)
+    + box(L('أفضل صفقة','Best'), total?sg(best):'—', 'var(--buy)')
+    + box(L('أسوأ صفقة','Worst'), total?sg(worst):'—', 'var(--sell)')
+    + box(L('متوسط الربح','Avg win'), wins.length?sg(avgW):'—', 'var(--buy)')
+    + box(L('متوسط الخسارة','Avg loss'), losses.length?('-'+fmt(avgL,2)+' '+tag):'—', 'var(--sell)')
+    + box(L('معامل الربحية','Profit factor'), pf)
+    + box(L('رابحة / خاسرة','Wins / Losses'), wins.length+' / '+losses.length)
+    + symRows;
+}
 function renderReport(){
   const grid = document.getElementById('reportGrid');
-  const total = closedTrades.length;
-  const wins = closedTrades.filter(t=>t.pnl>=0).length;
-  const winRate = total>0 ? ((wins/total)*100).toFixed(1)+'%' : '—';
-  const totalPnl = closedTrades.reduce((a,t)=>a+t.pnl,0);
-  const best = total>0 ? Math.max(...closedTrades.map(t=>t.pnl)) : 0;
-  const worst = total>0 ? Math.min(...closedTrades.map(t=>t.pnl)) : 0;
-  grid.innerHTML = `
-    <div class="stat-box"><div class="lbl">${t('reportTotalTrades')}</div><div class="val">${total}</div></div>
-    <div class="stat-box"><div class="lbl">${t('reportWinRate')}</div><div class="val">${winRate}</div></div>
-    <div class="stat-box"><div class="lbl">${t('reportNetPnl')}</div><div class="val" style="color:${totalPnl>=0?'var(--buy)':'var(--sell)'}">${totalPnl>=0?'+':''}${fmt(totalPnl,2)}</div></div>
-    <div class="stat-box"><div class="lbl">${t('reportOpenNow')}</div><div class="val">${positions.length}</div></div>
-    <div class="stat-box"><div class="lbl">${t('reportBest')}</div><div class="val" style="color:var(--buy)">${total>0?('+'+fmt(best,2)):'—'}</div></div>
-    <div class="stat-box"><div class="lbl">${t('reportWorst')}</div><div class="val" style="color:var(--sell)">${total>0?fmt(worst,2):'—'}</div></div>
-  `;
+  const html = reportBlock('SAR') + reportBlock('USD');
+  const note = closedTradesHasMore ? `<div class="modal-note" style="grid-column:1/-1;">${L('التقرير محسوب على الصفقات المحمّلة فقط. اضغط "تحميل المزيد" في السجل لتشمل الأقدم.','Based on loaded trades only. Use "Load more" in History to include older ones.')}</div>` : '';
+  grid.innerHTML = (html || `<div class="modal-note" style="grid-column:1/-1;">${t('noHistory')}</div>`) + note;
+  grid.style.display = 'grid';
+  grid.style.gridTemplateColumns = 'repeat(2,minmax(0,1fr))';
+  grid.style.gap = '8px';
 }
 
 /* ============ Tabs (open / history / report) ============ */

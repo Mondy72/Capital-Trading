@@ -7170,16 +7170,16 @@ function paintAdminUserDetail(d){
   if(!bodyEl) return;
   const joined = d.created_at ? new Date(d.created_at).toLocaleDateString('ar-EG') : '—';
   const plansHTML = d.plans && d.plans.length
-    ? d.plans.map(p=>{ const plan = subscriptionPlans.find(sp=>sp.id===p.plan); return `<span class="admin-chip active" style="cursor:default;">${plan?t(plan.nameKey):p.plan}</span>`; }).join('')
+    ? d.plans.map(p=>{ const plan = subscriptionPlans.find(sp=>sp.id===p.plan); return `<span class="admin-chip active" style="cursor:default;">${plan?t(plan.nameKey):p.plan}${p.price!=null?` · ${fmt(Number(p.price),2)} ${curTag(p.currency)}`:''}${p.since?` · ${new Date(p.since).toLocaleDateString('ar-EG')}`:''}</span>`; }).join('')
     : `<span style="font-size:12px;color:var(--text-dim);">لا توجد باقات مفعّلة</span>`;
   const posHTML = d.open_positions && d.open_positions.length
     ? `<div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>السهم</th><th>النوع</th><th>الحجم</th><th>الدخول</th><th></th></tr></thead><tbody>
-        ${d.open_positions.map(p=>`<tr><td class="name-cell">${escHtml(p.symbol)}</td><td><span class="type-badge ${p.type}">${t(p.type)}</span></td><td>${fmt(p.vol,2)}</td><td>${fmt(p.entry,2)}</td><td style="white-space:nowrap;"><button class="close-btn" data-admin-edit-pos="${p.id}" data-admin-edit-symbol="${escHtml(p.symbol)}" data-admin-edit-entry="${p.entry}" title="تعديل سعر الدخول" style="margin-inline-end:4px;">✎</button><button class="close-btn" data-admin-close-pos="${p.id}" data-admin-close-symbol="${escHtml(p.symbol)}" data-admin-close-vol="${p.vol}" title="إغلاق يدوي">✕</button></td></tr>`).join('')}
+        ${d.open_positions.map(p=>`<tr><td class="name-cell">${escHtml(p.symbol)}</td><td><span class="type-badge ${p.type}">${t(p.type)}</span></td><td>${fmt(p.vol,2)}</td><td>${fmt(p.entry,2)} ${curTag(p.currency)}</td><td style="white-space:nowrap;"><button class="close-btn" data-admin-edit-pos="${p.id}" data-admin-edit-symbol="${escHtml(p.symbol)}" data-admin-edit-entry="${p.entry}" title="تعديل سعر الدخول" style="margin-inline-end:4px;">✎</button><button class="close-btn" data-admin-close-pos="${p.id}" data-admin-close-symbol="${escHtml(p.symbol)}" data-admin-close-vol="${p.vol}" title="إغلاق يدوي">✕</button></td></tr>`).join('')}
        </tbody></table></div>`
     : `<div style="font-size:12px;color:var(--text-dim);">لا توجد صفقات مفتوحة</div>`;
   const tradesHTML = d.closed_trades && d.closed_trades.length
     ? `<div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>السهم</th><th>الحجم</th><th>الدخول</th><th>الخروج</th><th>الربح/الخسارة</th></tr></thead><tbody>
-        ${d.closed_trades.map(tr=>`<tr><td class="name-cell">${escHtml(tr.symbol)}</td><td>${fmt(tr.vol,2)}</td><td>${fmt(tr.entry,2)}</td><td>${fmt(tr.exit,2)}</td><td style="color:${tr.pnl>=0?'var(--buy)':'var(--sell)'};">${fmt(tr.pnl,2)}</td></tr>`).join('')}
+        ${d.closed_trades.map(tr=>`<tr><td class="name-cell">${escHtml(tr.symbol)}</td><td>${fmt(tr.vol,2)}</td><td>${fmt(tr.entry,2)}</td><td>${fmt(tr.exit,2)}</td><td style="color:${tr.pnl>=0?'var(--buy)':'var(--sell)'};">${fmt(tr.pnl,2)} ${curTag(tr.currency)}</td></tr>`).join('')}
        </tbody></table></div>`
     : `<div style="font-size:12px;color:var(--text-dim);">لا يوجد صفقات مقفولة بعد</div>`;
   const pd = d.personal_details || {};
@@ -7216,8 +7216,18 @@ function paintAdminUserDetail(d){
     </div>
     ${d.frozen ? `<div style="background:var(--sell-dim);color:var(--sell);border-radius:8px;padding:8px 12px;font-size:12.5px;margin-bottom:12px;">🔒 هذا الحساب مجمّد حاليًا${d.frozen_reason?' — '+escHtml(d.frozen_reason):''}</div>` : ''}
     <div class="admin-stat-grid" style="grid-template-columns:1fr 1fr;">
-      <div class="admin-stat-card"><span class="num" style="color:var(--buy);">${fmt(d.balance,2)}</span><span class="lbl">الرصيد الحالي</span></div>
+      <div class="admin-stat-card"><span class="num" style="color:var(--buy);">${fmt(d.balance,2)}</span><span class="lbl">💰 الرصيد بالريال (ر.س)</span></div>
+      <div class="admin-stat-card"><span class="num" style="color:var(--buy);">${fmt(d.balance_usd||0,2)}</span><span class="lbl">💵 الرصيد بالدولار ($)</span></div>
       <div class="admin-stat-card"><span class="num">${(d.plans||[]).length}</span><span class="lbl">باقات مفعّلة</span></div>
+      <div class="admin-stat-card"><span class="num">${(d.open_positions||[]).length}</span><span class="lbl">صفقات مفتوحة</span></div>
+    </div>
+    <div class="admin-section-title" style="margin-top:16px;">ℹ️ معلومات الحساب</div>
+    <div>
+      ${pdRow('آخر دخول', d.last_sign_in_at ? new Date(d.last_sign_in_at).toLocaleString('ar-EG') : '—')}
+      ${pdRow('طلبات الإيداع', `${(d.requests||{}).deposits||0} (معلّق: ${(d.requests||{}).deposits_pending||0})`)}
+      ${pdRow('طلبات السحب', `${(d.requests||{}).withdrawals||0} (معلّق: ${(d.requests||{}).withdrawals_pending||0})`)}
+      ${pdRow('طلبات الكاش باك', `${(d.requests||{}).cashback||0} (معلّق: ${(d.requests||{}).cashback_pending||0})`)}
+      ${(d.trade_stats||[]).map(ts=>pdRow('أداء التداول ' + (ts.currency==='USD'?'($)':'(ر.س)'), `${ts.trades} صفقة · رابحة ${ts.wins} · صافي ${Number(ts.net_pnl)>=0?'+':''}${fmt(Number(ts.net_pnl),2)} ${curTag(ts.currency)}`)).join('') || pdRow('أداء التداول','لا توجد صفقات مقفولة')}
     </div>
     <div class="admin-section-title" style="margin-top:16px;">📦 الباقات</div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;">${plansHTML}</div>

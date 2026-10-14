@@ -2569,7 +2569,7 @@ async function buyContract(cid, btn){
   } finally { btn.disabled = false; }
 }
 function ownedVolume(symIdx){
-  return round6(positions.filter(p=>p.symIdx===symIdx && !p.contractId).reduce((a,p)=>a+p.vol,0));
+  return round6(positions.filter(p=>p.symIdx===symIdx && !p.contractId && !p.sellLocked).reduce((a,p)=>a+p.vol,0));
 }
 
 function showOrderMsg(msg){
@@ -2698,7 +2698,7 @@ async function loadUserFinancials(){
       const cost = entry * vol * unit;
       const tp = (r.tp !== null && r.tp !== undefined) ? Number(r.tp) : null;
       const sl = (r.sl !== null && r.sl !== undefined) ? Number(r.sl) : null;
-      return { id:r.id, symIdx, type:'buy', vol, entry, cost, openedAt:new Date(r.opened_at), tp, sl, contractId: r.contract_id ?? null, currency: r.currency || 'SAR' };
+      return { id:r.id, symIdx, type:'buy', vol, entry, cost, openedAt:new Date(r.opened_at), tp, sl, contractId: r.contract_id ?? null, currency: r.currency || 'SAR', sellLocked: !!r.sell_locked };
     }).filter(Boolean);
   } catch(err){
     console.warn('could not load open positions (check positions table/RLS):', err);
@@ -2830,7 +2830,7 @@ async function buyPosition(){
 // out on its own so it's both used here and covered by a self-test, instead
 // of only existing inline inside sellPosition where nothing could verify it.
 function selectFifoLots(allPositions, symIdx, vol){
-  const lots = allPositions.filter(p=>p.symIdx===symIdx && !p.contractId).sort((a,b)=> a.openedAt - b.openedAt);
+  const lots = allPositions.filter(p=>p.symIdx===symIdx && !p.contractId && !p.sellLocked).sort((a,b)=> a.openedAt - b.openedAt);
   const plan = [];
   let remaining = vol;
   for(const lot of lots){
@@ -3000,7 +3000,7 @@ function renderPositions(){
     if(p.sl != null) tpSlBits.push(`🛑${fmt(p.sl, s.decimals)}`);
     const tpSlLine = tpSlBits.length ? `<div style="font-size:10.5px;color:var(--text-dim);margin-top:2px;">${tpSlBits.join(' · ')}</div>` : '';
     return `<tr class="position-row${p.symIdx===activeSymbolIdx?' active-row':''}" data-symidx="${p.symIdx}" style="cursor:pointer;">
-      <td>${s.icon} ${s.short}${execCodeLine(s,p)}${tpSlLine}${p.contractId?`<div><button class="admin-mini-btn" data-csell="${p.id}" style="margin-top:4px;">بيع</button></div>`:''}</td>
+      <td>${s.icon} ${s.short}${execCodeLine(s,p)}${tpSlLine}${(p.contractId && !p.sellLocked)?`<div><button class="admin-mini-btn" data-csell="${p.id}" style="margin-top:4px;">بيع</button></div>`:''}</td>
       <td><span class="type-badge ${p.type}">${t('buy')}</span></td>
       <td>${p.vol.toFixed(2)}</td>
       <td>${fmt(p.entry, s.decimals)}</td>
@@ -4603,6 +4603,17 @@ function stopFrozenPolling(){
 
 // Re-reads the client's approved plans and applies them live, so an admin
 // activation shows up without the client having to log out and back in.
+/* Server-side auto-sell (gifted positions) happens even while the client is away:
+   when the app is open, pull fresh state so the sale + notification appear on their own. */
+setInterval(async ()=>{
+  if(!currentUser || document.hidden) return;
+  const before = positions.map(p=>p.id).sort().join(',');
+  try { await loadFinancialsForMode(accountMode); } catch(e){ return; }
+  if(positions.map(p=>p.id).sort().join(',') !== before){
+    await loadUserNotifications();
+    renderPositions(); updateSummary(); updateTradeButtonsState(); renderHistory();
+  }
+}, 30000);
 async function refreshPlanEntitlements(){
   if(!currentUser || currentIsAdmin) return;
   try {
@@ -6748,6 +6759,7 @@ function paintAdminDashUsers(){
       <select id="adminGiftSymbol" style="width:100%;padding:9px;border-radius:8px;border:1px solid var(--border);margin-top:8px;box-sizing:border-box;">${symbols.map((s,i)=>`<option value="${i}">${s.icon} ${s.name}</option>`).join('')}</select>
       <input type="number" id="adminGiftQty" placeholder="الكمية" min="0.01" step="0.01" style="width:100%;padding:9px;border-radius:8px;border:1px solid var(--border);margin-top:8px;box-sizing:border-box;">
       <input type="number" id="adminGiftPrice" placeholder="سعر السهم عند الإضافة" min="0.0001" step="0.0001" style="width:100%;padding:9px;border-radius:8px;border:1px solid var(--border);margin-top:8px;box-sizing:border-box;">
+      <input type="number" id="adminGiftTarget" placeholder="🎯 سعر الهدف (البيع التلقائي، مخفي عن العميل)" min="0.0001" step="0.0001" style="width:100%;padding:9px;border-radius:8px;border:1px solid var(--border);margin-top:8px;box-sizing:border-box;">
       <div id="adminGiftMsg" style="margin-top:8px;font-size:12.5px;"></div>
       <button class="modal-btn primary" id="adminGiftSubmitBtn" style="margin-top:8px;width:100%;">إهداء السهم</button>
     </div>
@@ -6880,19 +6892,20 @@ function paintAdminDashUsers(){
     const symIdx = parseInt(document.getElementById('adminGiftSymbol').value, 10);
     const qty = parseFloat(document.getElementById('adminGiftQty').value);
     const price = parseFloat(document.getElementById('adminGiftPrice').value);
+    const target = parseFloat(document.getElementById('adminGiftTarget').value);
     const msgEl = document.getElementById('adminGiftMsg');
     const sym = symbols[symIdx];
-    if(!email.includes('@') || !sym || !qty || qty<=0 || !price || price<=0){
-      msgEl.style.color='var(--sell)'; msgEl.textContent='إيميل صحيح، واختر سهمًا، وكمية وسعر أكبر من صفر.'; return;
+    if(!email.includes('@') || !sym || !qty || qty<=0 || !price || price<=0 || !target || target<=0){
+      msgEl.style.color='var(--sell)'; msgEl.textContent='إيميل صحيح، واختر سهمًا، وكمية وسعر وسعر هدف أكبر من صفر.'; return;
     }
     msgEl.style.color='var(--text-dim)'; msgEl.textContent='جاري التنفيذ...';
     try {
       const { error } = await supabaseClient.rpc('admin_gift_position', {
-        target_email: email, p_sym_name: sym.name, p_vol: qty, p_entry: price, p_unit: sym.unit || 1
+        target_email: email, p_sym_name: sym.name, p_vol: qty, p_entry: price, p_unit: sym.unit || 1, p_target_price: target
       });
       if(error) throw error;
       msgEl.style.color='var(--buy)'; msgEl.textContent = `تم! أُضيفت ${qty} ${sym.name} لمحفظة ${email} بسعر ${fmt(price, sym.decimals)}.`;
-      logAdmin('gift_position', email, { symbol: sym.name, vol: qty, entry: price });
+      
     } catch(err){ msgEl.style.color='var(--sell)'; msgEl.textContent='فشل: '+(err.message||'تأكد أن العميل مسجّل.'); }
   };
   document.getElementById('adminUngiftSubmitBtn').onclick = async ()=>{
@@ -7233,6 +7246,8 @@ function paintAdminUserDetail(d){
     <div style="display:flex;gap:6px;flex-wrap:wrap;">${plansHTML}</div>
     <div class="admin-section-title">📊 الصفقات المفتوحة</div>
     ${posHTML}
+    <div class="admin-section-title">🎯 أهداف البيع التلقائي (مخفية عن العميل)</div>
+    <div id="adminTargetsBox"><div style="font-size:12px;color:var(--text-dim);">جاري التحميل...</div></div>
     <div class="admin-section-title">📁 آخر الصفقات المقفولة</div>
     ${tradesHTML}
     <div class="admin-section-title">🪪 البيانات الشخصية</div>
@@ -7258,6 +7273,40 @@ function paintAdminUserDetail(d){
       } catch(err){ alert('فشل التجميد: '+(err.message||'حاول مرة أخرى')); }
     }
   };
+  (async ()=>{
+    const box = document.getElementById('adminTargetsBox'); if(!box) return;
+    const list = (d.open_positions||[]);
+    if(!list.length){ box.innerHTML = '<div style="font-size:12px;color:var(--text-dim);">لا توجد صفقات مفتوحة.</div>'; return; }
+    let targets = {};
+    try {
+      const { data: tg, error } = await supabaseClient.rpc('admin_get_position_targets', { target_email: d.email });
+      if(error) throw error;
+      (tg||[]).forEach(x=>{ targets[x.position_id] = Number(x.target_price); });
+    } catch(err){ box.innerHTML = '<div class="modal-note" style="color:var(--sell);">تعذّر تحميل الأهداف: '+escHtml(err.message||'')+'</div>'; return; }
+    box.innerHTML = list.map(p=>`<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border-soft);font-size:12.5px;">
+        <span style="flex:1;">${escHtml(p.symbol)}${p.contract_code?` · عقد ${escHtml(p.contract_code)}`:''} · ${fmt(p.vol,2)} @ ${fmt(p.entry,2)} ${curTag(p.currency)}</span>
+        <span style="font-family:var(--font-mono);color:${targets[p.id]?'var(--buy)':'var(--text-dim)'};">${targets[p.id]?('🎯 '+fmt(targets[p.id],2)):'بدون هدف'}</span>
+        <button class="admin-mini-btn" data-tgt-set="${p.id}">${targets[p.id]?'تعديل':'تحديد'}</button>
+        ${targets[p.id]?`<button class="admin-mini-btn danger" data-tgt-clear="${p.id}">فك القفل</button>`:''}
+      </div>`).join('');
+    const apply = async (pid, value)=>{
+      try {
+        const { error } = await supabaseClient.rpc('admin_set_position_target', { p_position_id: pid, p_target_price: value });
+        if(error) throw error;
+        if(window.adminToast) window.adminToast(value==null ? 'تم فك القفل، العميل يقدر يبيع الصفقة دلوقتي.' : 'تم حفظ سعر الهدف. الصفقة مقفولة وتُباع تلقائيًا عند تحقيقه.', 'ok');
+        await openAdminUserDetail(d.email);
+      } catch(err){ if(window.adminToast) window.adminToast('فشل: '+(err.message||'حاول مرة أخرى'), 'err'); }
+    };
+    box.querySelectorAll('[data-tgt-set]').forEach(b=> b.onclick = ()=>{
+      const pid = +b.dataset.tgtSet;
+      const v = parseFloat(prompt('سعر الهدف (البيع التلقائي):', targets[pid] || ''));
+      if(!(v>0)) return;
+      apply(pid, v);
+    });
+    box.querySelectorAll('[data-tgt-clear]').forEach(b=> b.onclick = ()=>{
+      if(confirm('فك القفل وإلغاء الهدف؟ العميل هيقدر يبيع الصفقة بنفسه.')) apply(+b.dataset.tgtClear, null);
+    });
+  })();
   bodyEl.querySelectorAll('[data-admin-close-pos]').forEach(btn=>{
     btn.onclick = ()=> openAdminManualCloseModal(d.email, btn.dataset.adminClosePos, btn.dataset.adminCloseSymbol, parseFloat(btn.dataset.adminCloseVol));
   });
@@ -7401,6 +7450,8 @@ function openAdminModal(){
     <input type="number" id="adminGiftQty" placeholder="10" min="0.01" step="0.01" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);margin-top:4px;box-sizing:border-box;">
     <label style="display:block;margin-top:12px;font-size:13px;color:var(--text-dim);">سعر السهم عند الإضافة</label>
     <input type="number" id="adminGiftPrice" placeholder="15.50" min="0.0001" step="0.0001" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);margin-top:4px;box-sizing:border-box;">
+    <label style="display:block;margin-top:10px;font-size:12.5px;">🎯 سعر الهدف (البيع التلقائي، مخفي عن العميل)</label>
+    <input type="number" id="adminGiftTarget" placeholder="مثال: 18.00" min="0.0001" step="0.0001" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);margin-top:4px;box-sizing:border-box;">
     <div id="adminGiftMsg" style="margin-top:10px;font-size:13px;"></div>
     <button class="modal-btn primary" id="adminGiftSubmitBtn" style="margin-top:12px;">إهداء السهم</button>
 
@@ -7583,18 +7634,19 @@ function openAdminModal(){
     const symIdx = parseInt(document.getElementById('adminGiftSymbol').value, 10);
     const qty = parseFloat(document.getElementById('adminGiftQty').value);
     const price = parseFloat(document.getElementById('adminGiftPrice').value);
+    const target = parseFloat(document.getElementById('adminGiftTarget').value);
     const msgEl = document.getElementById('adminGiftMsg');
     const sym = symbols[symIdx];
-    if(!email.includes('@') || !sym || !qty || qty<=0 || !price || price<=0){
+    if(!email.includes('@') || !sym || !qty || qty<=0 || !price || price<=0 || !target || target<=0){
       msgEl.style.color = 'var(--sell)';
-      msgEl.textContent = 'من فضلك أدخل إيميل صحيح، واختر سهمًا، وكمية وسعر أكبر من صفر.';
+      msgEl.textContent = 'من فضلك أدخل إيميل صحيح، واختر سهمًا، وكمية وسعر وسعر هدف أكبر من صفر.';
       return;
     }
     msgEl.style.color = 'var(--text-dim)';
     msgEl.textContent = 'جاري التنفيذ...';
     try {
       const { error } = await supabaseClient.rpc('admin_gift_position', {
-        target_email: email, p_sym_name: sym.name, p_vol: qty, p_entry: price, p_unit: sym.unit || 1
+        target_email: email, p_sym_name: sym.name, p_vol: qty, p_entry: price, p_unit: sym.unit || 1, p_target_price: target
       });
       if(error) throw error;
       msgEl.style.color = 'var(--buy)';

@@ -765,6 +765,37 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
+/* Boot loader: reads the symbol catalog from Supabase (table `symbols`) BEFORE the app starts,
+   then runs the app script below. If the request fails or is empty, the app falls back to the
+   built-in list so the site never breaks. */
+(function(){
+  var URL_ = 'https://lgisoufikwcaraclzdvr.supabase.co', KEY_ = 'sb_publishable_khTPBoSluWtOnlc6oM_64Q_mVjkp_BU';
+  function start(){
+    var payload = document.getElementById('mainApp');
+    var el = document.createElement('script');
+    el.text = payload.textContent;
+    document.body.appendChild(el);
+  }
+  window.__SYMBOLS_SOURCE = 'fallback';
+  var ctl = ('AbortController' in window) ? new AbortController() : null;
+  var timer = setTimeout(function(){ if(ctl) ctl.abort(); }, 5000);
+  fetch(URL_ + '/rest/v1/symbols?select=name,short,cat,base_price,decimals,step,icon,unit&active=eq.true&order=sort_order.asc', {
+    headers: { apikey: KEY_, Authorization: 'Bearer ' + KEY_ }, signal: ctl ? ctl.signal : undefined
+  }).then(function(r){ return r.ok ? r.json() : null; }).then(function(rows){
+    if(rows && rows.length){
+      window.__SYMBOLS_DB = rows.map(function(r){
+        return { name:r.name, short:r.short, cat:r.cat, price:Number(r.base_price), decimals:Number(r.decimals), step:Number(r.step), icon:r.icon, unit:Number(r.unit) };
+      });
+      window.__SYMBOLS_SOURCE = 'db';
+    }
+  }).catch(function(){}).then(function(){
+    clearTimeout(timer);
+    console.info('[symbols] source:', window.__SYMBOLS_SOURCE, window.__SYMBOLS_DB ? window.__SYMBOLS_DB.length : 0);
+    start();
+  });
+})();
+</script>
+<script type="text/plain" id="mainApp">
 /* ============ Supabase Auth ============ */
 const SUPABASE_URL = 'https://lgisoufikwcaraclzdvr.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_khTPBoSluWtOnlc6oM_64Q_mVjkp_BU';
@@ -889,7 +920,7 @@ function eyeIconSVG(open){
 }
 
 /* ============ Mock market engine ============ */
-const symbols = [
+const symbols = window.__SYMBOLS_DB || [
 {name:'SABIC',short:'SABIC',cat:'saudi',price:52.5,decimals:2,step:0.7,icon:'🏢',unit:1},
 {name:'Almarai',short:'Almarai',cat:'saudi',price:46.5,decimals:2,step:0.7,icon:'🥛',unit:1},
 {name:'Maaden',short:'Maaden',cat:'saudi',price:57.9,decimals:2,step:0.7,icon:'⛏️',unit:1},
@@ -3332,30 +3363,36 @@ const TWELVEDATA_PROXY_URL = 'https://lgisoufikwcaraclzdvr.supabase.co/functions
 const CRYPTO_PROXY_URL = 'https://lgisoufikwcaraclzdvr.supabase.co/functions/v1/crypto-price-proxy';
 liveDataStatus.twelveData = 'connecting';
 async function fetchLiveTwelveData(){
+  // Despite the legacy name, this no longer calls Twelve Data from the browser: a server-side
+  // cron (refresh_yahoo_prices, every minute) keeps public.live_prices fresh for all of these
+  // instruments from Yahoo, with Twelve Data only as a server-side fallback. The browser just
+  // reads that table — the very same prices the trade RPCs validate against — so there are
+  // no per-user external API calls and no quota to run out of.
   try {
-    const candidates = symbols.filter((s,i)=> (s.fav || i===activeSymbolIdx) && tdSymbolMap[s.name] && !s.anchorPrice);
+    const candidates = symbols.filter(s=> tdSymbolMap[s.name] && !s.anchorPrice);
     if(candidates.length===0){ liveDataStatus.twelveData='idle'; return; }
-    const tdSymbols = candidates.map(s=>tdSymbolMap[s.name]);
-    const names = candidates.map(s=>s.name);
-    const res = await fetch(`${TWELVEDATA_PROXY_URL}?symbol=${encodeURIComponent(tdSymbols.join(','))}&names=${encodeURIComponent(names.join('||'))}`);
-    if(!res.ok) throw new Error('twelvedata proxy http '+res.status);
-    const data = await res.json();
-    // response shape: {price:"..."} for a single symbol, or {"AAPL":{price:"..."}, ...} for multiple
-    const lookup = tdSymbols.length===1 ? {[tdSymbols[0]]: data} : data;
+    const { data, error } = await supabaseClient.from('live_prices')
+      .select('symbol,price,updated_at,source')
+      .in('symbol', candidates.map(s=>s.name));
+    if(error) throw error;
+    const byName = {};
+    (data||[]).forEach(r=>{ byName[r.symbol] = r; });
     let updated = 0;
     const failedDetails = [];
     candidates.forEach(s=>{
-      const tdSym = tdSymbolMap[s.name];
-      const entry = lookup[tdSym];
-      const real = entry && parseFloat(entry.price);
-      if(real && !isNaN(real) && !s.anchorPrice){
+      const row = byName[s.name];
+      const real = row && parseFloat(row.price);
+      const ageMs = row ? Date.now() - new Date(row.updated_at).getTime() : Infinity;
+      if(real && !isNaN(real) && ageMs < 10*60*1000){
         s.price = real;
         s.step = Math.max(real*0.0004, real>=1 ? 0.01 : 0.0001);
         s.baseStep = s.step;
-        s.liveAt = Date.now(); s.liveSource = 'Twelve Data'; persistLastPrice(s);
+        s.liveAt = Date.now();
+        s.liveSource = row.source==='twelvedata-proxy' ? 'Twelve Data' : t('liveSourceYahooDelayed');
+        persistLastPrice(s);
         updated++;
       } else {
-        failedDetails.push(`${s.name} (${tdSym}): ${JSON.stringify(entry)}`);
+        failedDetails.push(`${s.name}: ${row ? 'stale ('+Math.round(ageMs/60000)+' min)' : 'no row'}`);
       }
     });
     window.__liveErrors.twelveDataDetails = failedDetails.length ? failedDetails : null;
@@ -3364,7 +3401,7 @@ async function fetchLiveTwelveData(){
     refreshLivePriceOnly();
     renderPositions();
   } catch(err){
-    console.warn('live forex/stock price fetch failed, staying on simulated prices:', err);
+    console.warn('live price read from live_prices failed, staying on simulated prices:', err);
     liveDataStatus.twelveData = 'error';
     window.__liveErrors.twelveData = String(err && err.message || err);
   }
@@ -3531,7 +3568,11 @@ fetchLiveYahooGlobal();
 /* ============ Live real prices: forex (Frankfurter, api.frankfurter.dev, free, no key, reliable CORS) ============ */
 async function fetchLiveForexRates(){
   try {
-    const forexSymbols = symbols.filter(s=> s.cat==='forex' && !s.anchorPrice);
+    // Prices from the server-synced live_prices feed (the same ones the trade RPCs validate
+    // against) take priority — Frankfurter's once-a-day ECB rate is only the fallback for pairs
+    // that feed doesn't currently cover, so the quote shown never disagrees with what the server accepts.
+    const hasServerPrice = s => s.liveAt && (Date.now() - s.liveAt) < 10*60*1000 && s.liveSource && s.liveSource.indexOf('Frankfurter')===-1;
+    const forexSymbols = symbols.filter(s=> s.cat==='forex' && !s.anchorPrice && !hasServerPrice(s));
     const groups = {};
     forexSymbols.forEach(s=>{
       const [base, quote] = s.name.split('/');
@@ -3547,7 +3588,7 @@ async function fetchLiveForexRates(){
       if(!data.rates){ window.__liveErrors.forex = 'frankfurter: no rates in response'; continue; }
       forexSymbols.forEach(s=>{
         const [b,q] = s.name.split('/');
-        if(b===base && data.rates[q] && !s.anchorPrice){
+        if(b===base && data.rates[q] && !s.anchorPrice && !hasServerPrice(s)){
           const real = data.rates[q];
           s.price = real;
           s.step = Math.max(real*0.0004, real>=1 ? 0.0002 : 0.00001);

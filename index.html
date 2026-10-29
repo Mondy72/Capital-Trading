@@ -3968,6 +3968,18 @@ async function getAppSetting(key){
   }
 }
 
+// Deposit link for one wallet currency ('SAR' | 'USD'), set by the admin in public.deposit_links
+async function getDepositLink(currency){
+  try {
+    const { data, error } = await supabaseClient.from('deposit_links').select('payment_link').eq('currency', currency).maybeSingle();
+    if(error) throw error;
+    return (data && data.payment_link) || null;
+  } catch(err){
+    console.warn('could not read deposit link for '+currency+':', err);
+    return null;
+  }
+}
+
 function normalizeExternalUrl(url){
   url = (url || '').trim();
   if(!url) return '';
@@ -3981,7 +3993,7 @@ if(balanceAddBtn){
   balanceAddBtn.addEventListener('click', async (e)=>{
     e.stopPropagation();
     if(!currentUser){ openLoginModal(); return; }
-    const depositLink = normalizeExternalUrl(await getAppSetting('deposit_link'));
+    const depositLink = normalizeExternalUrl(await getDepositLink(cur));
     if(depositLink){
       window.location.href = depositLink;
       return;
@@ -6234,15 +6246,20 @@ function renderAdminDashLinks(){
   const body = document.getElementById('adminDashBody');
   if(!body || adminDashActiveTab!=='links') return;
   body.innerHTML = `
-    <div class="admin-section-title">🔗 رابط زر الإيداع</div>
-    <div style="background:var(--bg-panel);border:1px solid var(--border);border-radius:12px;padding:16px;max-width:520px;">
-      <div class="modal-note">لو حطيت رابطًا هنا، أي عميل يدوس على زر إيداع الرصيد هيتوجّه مباشرة لهذا الرابط بدل فتح نموذج الإيداع العادي.</div>
-      <input type="url" id="depositLinkInput" placeholder="https://example.com/pay" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);margin-top:8px;box-sizing:border-box;">
-      <div id="depositLinkMsg" style="margin-top:8px;font-size:13px;"></div>
-      <div style="display:flex;gap:8px;margin-top:8px;">
-        <button class="modal-btn primary" id="saveDepositLinkBtn" style="flex:1;">حفظ الرابط</button>
-        <button class="modal-btn ghost" id="clearDepositLinkBtn" style="flex:1;">إلغاء الرابط</button>
-      </div>
+    <div class="admin-section-title">🔗 روابط أزرار الإيداع (الموقع والتطبيق)</div>
+    <div class="modal-note" style="margin-bottom:10px;">لو حطيت رابطًا لعملة، أي عميل يدوس على زر "+" في قسم هذه العملة هيتوجّه مباشرة لهذا الرابط بدل فتح نموذج الإيداع العادي. لو سيبته فاضي يفتح النموذج العادي.</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;">
+      ${['SAR','USD'].map(cur=>`
+        <div style="background:var(--bg-panel);border:1px solid var(--border);border-radius:12px;padding:14px;">
+          <div style="font-size:13.5px;font-weight:700;margin-bottom:8px;">${cur==='SAR'?'﷼ إيداع بالريال السعودي':'$ إيداع بالدولار'}</div>
+          <input type="url" class="deposit-cur-input" data-cur="${cur}" placeholder="https://example.com/pay" style="width:100%;padding:9px;border-radius:8px;border:1px solid var(--border);box-sizing:border-box;font-size:12.5px;">
+          <div class="deposit-cur-msg" data-cur="${cur}" style="margin-top:6px;font-size:12px;"></div>
+          <div style="display:flex;gap:6px;margin-top:8px;">
+            <button class="admin-mini-btn deposit-cur-save" data-cur="${cur}" style="flex:1;">حفظ</button>
+            <button class="admin-mini-btn deposit-cur-clear" data-cur="${cur}" style="flex:1;">إلغاء</button>
+          </div>
+        </div>
+      `).join('')}
     </div>
     <div class="admin-section-title">روابط أزرار الاشتراك</div>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;">
@@ -6259,37 +6276,54 @@ function renderAdminDashLinks(){
       `).join('')}
     </div>
   `;
+  // Per-currency deposit links (SAR / USD) → public.deposit_links, which the app reads
   (async ()=>{
-    const current = await getAppSetting('deposit_link');
-    const input = document.getElementById('depositLinkInput');
-    if(input && current) input.value = current;
+    try {
+      const { data } = await supabaseClient.from('deposit_links').select('currency,payment_link');
+      (data||[]).forEach(r=>{
+        const input = document.querySelector(`.deposit-cur-input[data-cur="${r.currency}"]`);
+        if(input && r.payment_link) input.value = r.payment_link;
+      });
+    } catch(err){ console.warn('could not load deposit_links:', err); }
   })();
-  document.getElementById('saveDepositLinkBtn').onclick = async ()=>{
-    const link = normalizeExternalUrl(document.getElementById('depositLinkInput').value);
-    const msgEl = document.getElementById('depositLinkMsg');
-    if(!link){ msgEl.style.color='var(--sell)'; msgEl.textContent='من فضلك أدخل رابطًا صحيحًا.'; return; }
-    msgEl.style.color='var(--text-dim)'; msgEl.textContent='جاري الحفظ...';
-    try {
-      const { error } = await supabaseClient.rpc('admin_set_app_setting', { setting_key:'deposit_link', setting_value:link });
-      if(error) throw error;
-      msgEl.style.color='var(--buy)'; msgEl.textContent='تم الحفظ.';
-      logAdmin('set_deposit_link', null, { link });
-    } catch(err){ msgEl.style.color='var(--sell)'; msgEl.textContent='فشل الحفظ: '+(err.message||'حاول مرة أخرى.'); }
-  };
-  document.getElementById('clearDepositLinkBtn').onclick = async ()=>{
-    const msgEl = document.getElementById('depositLinkMsg');
-    msgEl.style.color='var(--text-dim)'; msgEl.textContent='جاري الإلغاء...';
-    try {
-      const { error } = await supabaseClient.rpc('admin_set_app_setting', { setting_key:'deposit_link', setting_value:'' });
-      if(error) throw error;
-      document.getElementById('depositLinkInput').value='';
-      msgEl.style.color='var(--buy)'; msgEl.textContent='تم الإلغاء.';
-      logAdmin('clear_deposit_link', null, null);
-    } catch(err){ msgEl.style.color='var(--sell)'; msgEl.textContent='فشل: '+(err.message||'حاول مرة أخرى.'); }
-  };
+  document.querySelectorAll('.deposit-cur-save').forEach(btn=>{
+    btn.onclick = async ()=>{
+      const cur = btn.dataset.cur;
+      const input = document.querySelector(`.deposit-cur-input[data-cur="${cur}"]`);
+      const msgEl = document.querySelector(`.deposit-cur-msg[data-cur="${cur}"]`);
+      const link = normalizeExternalUrl(input.value);
+      if(!link){ msgEl.style.color='var(--sell)'; msgEl.textContent='رابط غير صحيح.'; return; }
+      msgEl.style.color='var(--text-dim)'; msgEl.textContent='جاري الحفظ...';
+      try {
+        const { error } = await supabaseClient.from('deposit_links').upsert({ currency: cur, payment_link: link, updated_at: new Date().toISOString() }, { onConflict: 'currency' });
+        if(error) throw error;
+        msgEl.style.color='var(--buy)'; msgEl.textContent='تم الحفظ.';
+        logAdmin('set_deposit_link_'+cur.toLowerCase(), null, { currency: cur, link });
+      } catch(err){ msgEl.style.color='var(--sell)'; msgEl.textContent='فشل: '+(err.message||'حاول مرة أخرى.'); }
+    };
+  });
+  document.querySelectorAll('.deposit-cur-clear').forEach(btn=>{
+    btn.onclick = async ()=>{
+      const cur = btn.dataset.cur;
+      const input = document.querySelector(`.deposit-cur-input[data-cur="${cur}"]`);
+      const msgEl = document.querySelector(`.deposit-cur-msg[data-cur="${cur}"]`);
+      msgEl.style.color='var(--text-dim)'; msgEl.textContent='جاري الإلغاء...';
+      try {
+        const { error } = await supabaseClient.from('deposit_links').upsert({ currency: cur, payment_link: null, updated_at: new Date().toISOString() }, { onConflict: 'currency' });
+        if(error) throw error;
+        input.value=''; msgEl.style.color='var(--buy)'; msgEl.textContent='تم الإلغاء.';
+        logAdmin('clear_deposit_link_'+cur.toLowerCase(), null, { currency: cur });
+      } catch(err){ msgEl.style.color='var(--sell)'; msgEl.textContent='فشل: '+(err.message||'حاول مرة أخرى.'); }
+    };
+  });
   (async ()=>{
+    let catalogLinks = {};
+    try {
+      const { data } = await supabaseClient.from('plans_catalog').select('id,payment_link');
+      (data||[]).forEach(r=>{ catalogLinks[r.id] = r.payment_link; });
+    } catch(err){ console.warn('could not load plans_catalog payment links:', err); }
     for(const p of subscriptionPlans){
-      const val = await getAppSetting('plan_link_'+p.id);
+      const val = catalogLinks[p.id] || await getAppSetting('plan_link_'+p.id);
       const input = document.querySelector(`.plan-link-input[data-plan="${p.id}"]`);
       if(input && val) input.value = val;
     }
@@ -6303,9 +6337,14 @@ function renderAdminDashLinks(){
       if(!link){ msgEl.style.color='var(--sell)'; msgEl.textContent='رابط غير صحيح.'; return; }
       msgEl.style.color='var(--text-dim)'; msgEl.textContent='جاري الحفظ...';
       try {
+        // 1) the catalog column the mobile app reads
+        const { data: catRows, error: catErr } = await supabaseClient.from('plans_catalog').update({ payment_link: link }).eq('id', planId).select('id');
+        if(catErr) throw catErr;
+        // 2) the app_settings key the website's own buttons still read
         const { error } = await supabaseClient.rpc('admin_set_app_setting', { setting_key:'plan_link_'+planId, setting_value:link });
         if(error) throw error;
-        msgEl.style.color='var(--buy)'; msgEl.textContent='تم الحفظ.';
+        msgEl.style.color='var(--buy)';
+        msgEl.textContent = (catRows && catRows.length) ? 'تم الحفظ.' : 'تم الحفظ للموقع، لكن الباقة مش موجودة في الكتالوج فالتطبيق مش هيشوفه.';
         logAdmin('set_plan_link', null, { plan:planId, link });
       } catch(err){ msgEl.style.color='var(--sell)'; msgEl.textContent='فشل: '+(err.message||'حاول مرة أخرى.'); }
     };
@@ -6317,6 +6356,8 @@ function renderAdminDashLinks(){
       const msgEl = document.querySelector(`.plan-link-msg[data-plan="${planId}"]`);
       msgEl.style.color='var(--text-dim)'; msgEl.textContent='جاري الإلغاء...';
       try {
+        const { error: catErr } = await supabaseClient.from('plans_catalog').update({ payment_link: null }).eq('id', planId);
+        if(catErr) throw catErr;
         const { error } = await supabaseClient.rpc('admin_set_app_setting', { setting_key:'plan_link_'+planId, setting_value:'' });
         if(error) throw error;
         input.value=''; msgEl.style.color='var(--buy)'; msgEl.textContent='تم الإلغاء.';
@@ -7119,6 +7160,8 @@ async function renderAdminLogTable(){
     set_manual_price:'تحديد سعر يدوي', clear_manual_price:'إعادة سعر إلى اللايف',
     add_recommendation:'إضافة توصية', delete_recommendation:'حذف توصية',
     set_deposit_link:'تعديل رابط الإيداع', clear_deposit_link:'إلغاء رابط الإيداع',
+    set_deposit_link_sar:'تعديل رابط إيداع الريال', clear_deposit_link_sar:'إلغاء رابط إيداع الريال',
+    set_deposit_link_usd:'تعديل رابط إيداع الدولار', clear_deposit_link_usd:'إلغاء رابط إيداع الدولار',
     set_plan_link:'تعديل رابط باقة', clear_plan_link:'إلغاء رابط باقة',
     set_plan_price:'تعديل سعر باقة', reset_plan_price:'إرجاع سعر باقة للافتراضي',
     approve_subscription_request:'تفعيل طلب اشتراك', mark_contacted:'تسجيل تواصل مع عميل',

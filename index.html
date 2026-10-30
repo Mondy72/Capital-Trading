@@ -7765,14 +7765,54 @@ function openAdminModal(){
   };
 }
 function openPortfolioModal(){
-  const marketValue = positions.reduce((a,p)=> a + bidPrice(symbols[p.symIdx]) * p.vol * symbols[p.symIdx].unit, 0);
+  // One card per wallet currency: positions, cost basis and closed trades are never mixed across SAR and USD
+  const wallet = (cur)=>{
+    const mine = positions.filter(p=> (p.currency==='USD' ? 'USD' : 'SAR') === cur);
+    let inv = 0, mv = 0;
+    mine.forEach(p=>{
+      const sy = symbols[p.symIdx];
+      inv += p.cost;
+      mv += (contractPriceForPos(p) ?? bidPrice(sy)) * p.vol * sy.unit;
+    });
+    const bal = balFor(cur);
+    return {
+      cur, bal, inv, mv, equity: bal + mv, pnl: mv - inv,
+      open: mine.length,
+      closed: closedTrades.filter(tr=> tr.currency === cur).length
+    };
+  };
+  const signed = (v)=> (v>=0?'+':'') + fmt(v,2);
+  const stat = (label, value, color)=> `
+    <div style="background:var(--bg-panel-raised);border:1px solid var(--border-soft);border-radius:10px;padding:10px 12px;">
+      <div style="font-size:11px;color:var(--text-dim);margin-bottom:3px;">${label}</div>
+      <div style="font-family:var(--font-mono);font-weight:700;font-size:14.5px;${color?`color:${color};`:''}">${value}</div>
+    </div>`;
+  const card = (w)=>{
+    const isUsd = w.cur === 'USD';
+    const symbol = isUsd ? '$' : '﷼';
+    const name = isUsd ? t('currencyUSD') : t('currencySAR');
+    const ratio = w.equity > 0 ? fmt((w.inv / w.equity) * 100, 1) + '%' : '—';
+    return `
+      <div style="background:var(--bg-panel);border:1px solid var(--border);border-radius:14px;padding:14px;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+          <div style="width:34px;height:34px;border-radius:10px;background:var(--accent-dim);color:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:17px;">${symbol}</div>
+          <div style="font-family:var(--font-display);font-weight:700;font-size:14.5px;">${name}</div>
+        </div>
+        <div style="font-size:11.5px;color:var(--text-dim);">${t('balance')}</div>
+        <div style="font-family:var(--font-mono);font-weight:800;font-size:25px;line-height:1.25;margin-bottom:12px;direction:ltr;text-align:start;">${fmt(w.bal,2)} <span style="font-size:13px;font-weight:600;color:var(--text-muted);">${isUsd ? 'USD' : 'SAR'}</span></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          ${stat(t('equity'), fmt(w.equity,2))}
+          ${stat(t('floatingPnl'), signed(w.pnl), w.pnl>=0 ? 'var(--buy)' : 'var(--sell)')}
+          ${stat(t('usedMargin'), fmt(w.inv,2))}
+          ${stat(t('marginLevel'), ratio)}
+          ${stat(t('tabOpen'), w.open)}
+          ${stat(t('closedPositionsLbl'), w.closed)}
+        </div>
+      </div>`;
+  };
   openModal(t('portfolioTitle'), `
-    <div class="stat-grid">
-      <div class="stat-box"><div class="lbl">${t('balance')}</div><div class="val">${fmt(balance,2)}</div></div>
-      <div class="stat-box"><div class="lbl">${t('equity')}</div><div class="val">${fmt(balance+marketValue,2)}</div></div>
-      <div class="stat-box"><div class="lbl">${t('tabOpen')}</div><div class="val">${positions.length}</div></div>
-      <div class="stat-box"><div class="lbl">${t('closedPositionsLbl')}</div><div class="val">${closedTrades.length}</div></div>
-    </div>
+    ${card(wallet('SAR'))}
+    ${card(wallet('USD'))}
     <div class="modal-note">${t('portfolioNote')}</div>
     <button class="modal-btn primary" id="subscribeFromPortfolioBtn">${t('subscribeBtn')}</button>
     <button class="modal-btn ghost" id="portfolioClose">${t('closeBtn')}</button>

@@ -8448,7 +8448,7 @@ function openWithdrawModal(fixedCur){
   }
   openModal(t('withdrawTitle'), `
     <div class="modal-note">${t('withdrawIntro')}</div>
-    <div class="modal-note" style="color:var(--buy);font-weight:600;">${t('balance')}: ${fmt(balance,2)} ${t('currencySAR')}</div>
+    <div class="modal-note" style="color:var(--buy);font-weight:600;">${t('balance')}: ${fmt(balFor(fixedCur),2)} ${fixedCur==='USD' ? t('currencyUSD') : t('currencySAR')}</div>
     <div class="form-row">
       <span class="field-label">${t('bankNameLabel')}</span>
       <input class="field-input" style="text-align:start;" id="withdrawBankNameInput" type="text" placeholder="${t('bankNamePlaceholder')}">
@@ -8503,8 +8503,8 @@ function openWithdrawModal(fixedCur){
       errEl.style.display = 'block';
       return;
     }
-    if(amount > balance){
-      errEl.textContent = t('withdrawInsufficientBalanceMsg').replace('{balance}', fmt(balance,2));
+    if(amount > balFor(withdrawCurrency)){
+      errEl.textContent = t('withdrawInsufficientBalanceMsg').replace('{balance}', fmt(balFor(withdrawCurrency),2));
       errEl.style.display = 'block';
       return;
     }

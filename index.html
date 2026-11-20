@@ -9130,5 +9130,109 @@ if('serviceWorker' in navigator && location.protocol === 'https:'){
   window.addEventListener('load', function(){ navigator.serviceWorker.register('/sw.js').catch(function(){}); });
 }
 </script>
+<script>
+/* Native app bridge — active ONLY inside the Capacitor wrapper (the Android/iOS app).
+   In a normal browser this whole block returns immediately and does nothing. */
+(function(){
+  var C = window.Capacitor;
+  if(!C || typeof C.isNativePlatform !== 'function' || !C.isNativePlatform()) return;
+  var P = C.Plugins || {};
+  var platform = (C.getPlatform && C.getPlatform()) === 'ios' ? 'ios' : 'android';
+  document.documentElement.classList.add('native-app');
+
+  try {
+    if(P.StatusBar){
+      P.StatusBar.setStyle({ style: 'LIGHT' });
+      if(platform === 'android') P.StatusBar.setBackgroundColor({ color: '#FFFFFF' });
+    }
+  } catch(e){ console.warn('[native] status bar', e); }
+  try { if(P.SplashScreen) P.SplashScreen.hide(); } catch(e){}
+
+  /* Android back button: close an open modal first, then go back, then exit. */
+  try {
+    if(P.App){
+      P.App.addListener('backButton', function(ev){
+        var ov = document.getElementById('modalOverlay');
+        if(ov && ov.classList.contains('open') && typeof closeModal === 'function'){ closeModal(); return; }
+        if(ev && ev.canGoBack){ history.back(); return; }
+        P.App.exitApp();
+      });
+    }
+  } catch(e){ console.warn('[native] back button', e); }
+
+  /* Offline banner */
+  var banner = null;
+  function isAr(){ return !(typeof lang !== 'undefined' && lang === 'en'); }
+  function showOffline(on){
+    if(on){
+      if(banner) return;
+      banner = document.createElement('div');
+      banner.setAttribute('style','position:fixed;top:0;left:0;right:0;z-index:99999;background:#EA3943;color:#fff;text-align:center;font:600 13px sans-serif;padding:8px 12px;');
+      banner.textContent = isAr() ? 'لا يوجد اتصال بالإنترنت' : 'No internet connection';
+      document.body.appendChild(banner);
+    } else if(banner){ banner.remove(); banner = null; }
+  }
+  window.addEventListener('offline', function(){ showOffline(true); });
+  window.addEventListener('online', function(){ showOffline(false); });
+  if(!navigator.onLine) showOffline(true);
+
+  /* Push notifications: ask permission after login, store the device token in Supabase
+     (RPC register_device_token), drop it again on logout. Sending pushes is a separate
+     server-side step (FCM). Everything is try/catch'd so a missing Firebase config
+     can never break the app. */
+  var PN = P.PushNotifications;
+  var pushToken = null, pushStarted = false;
+  function savePushToken(){
+    if(!pushToken || typeof supabaseClient === 'undefined') return;
+    supabaseClient.rpc('register_device_token', { p_token: pushToken, p_platform: platform })
+      .then(function(res){ if(res && res.error) console.warn('[push] save token failed:', res.error.message); });
+  }
+  function initPush(){
+    if(!PN || pushStarted) return;
+    pushStarted = true;
+    try {
+      PN.addListener('registration', function(t){ pushToken = t && t.value; savePushToken(); });
+      PN.addListener('registrationError', function(e){ console.warn('[push] registration error', e); });
+      PN.requestPermissions().then(function(r){
+        if(r && r.receive === 'granted') return PN.register();
+      }).catch(function(e){ console.warn('[push] permission/register failed', e); });
+    } catch(e){ console.warn('[push] init failed', e); }
+  }
+  var tries = 0;
+  var iv = setInterval(function(){
+    tries++;
+    if(typeof supabaseClient !== 'undefined' && supabaseClient.auth){
+      clearInterval(iv);
+      supabaseClient.auth.onAuthStateChange(function(ev, session){
+        if(session && session.user && (ev === 'SIGNED_IN' || ev === 'INITIAL_SESSION')){
+          initPush();
+          if(ev === 'SIGNED_IN') savePushToken();
+        }
+      });
+      supabaseClient.auth.getSession().then(function(r){
+        if(r && r.data && r.data.session) initPush();
+      });
+    } else if(tries > 120){ clearInterval(iv); }
+  }, 500);
+
+  var wraps = 0;
+  var wiv = setInterval(function(){
+    wraps++;
+    if(typeof authSignOut === 'function' && !window.__authSignOutWrapped){
+      window.__authSignOutWrapped = true;
+      clearInterval(wiv);
+      var orig = authSignOut;
+      window.authSignOut = async function(){
+        try {
+          if(pushToken && typeof supabaseClient !== 'undefined'){
+            await supabaseClient.rpc('unregister_device_token', { p_token: pushToken });
+          }
+        } catch(e){}
+        return orig.apply(this, arguments);
+      };
+    } else if(wraps > 120){ clearInterval(wiv); }
+  }, 500);
+})();
+</script>
 </body>
 </html>
